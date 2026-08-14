@@ -1,7 +1,7 @@
 import { execFile } from "node:child_process";
-import { dirname, extname, join } from "node:path";
+import { dirname, extname, join, resolve } from "node:path";
 import { existsSync, readFileSync } from "node:fs";
-import { mkdir, readdir, readFile, rename, stat, writeFile } from "node:fs/promises";
+import { mkdir, readdir, readFile, rename, stat, writeFile, rm } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { homedir } from "node:os";
 import { pathToFileURL } from "node:url";
@@ -135,18 +135,25 @@ async function searchDir(root, q) {
 
 /** 送回收站删除（可恢复；目录递归）。 */
 function recycleBinDelete(target, isDir) {
-	return new Promise((resolve, reject) => {
-		const script = isDir
-			? 'Add-Type -AssemblyName Microsoft.VisualBasic; [Microsoft.VisualBasic.FileIO.FileSystem]::DeleteDirectory($env:DSH_DELETE_PATH, "OnlyErrorDialogs", "SendToRecycleBin")'
-			: 'Add-Type -AssemblyName Microsoft.VisualBasic; [Microsoft.VisualBasic.FileIO.FileSystem]::DeleteFile($env:DSH_DELETE_PATH, "OnlyErrorDialogs", "SendToRecycleBin")';
-		execFile("powershell.exe", ["-NoProfile", "-NonInteractive", "-Command", script], {
-			env: { ...process.env, DSH_DELETE_PATH: target },
-			timeout: 60000,
-			windowsHide: true
-		}, (error) => {
-			if (error) reject(new Error(`recycle-bin delete failed: ${error.message}`));
-			else resolve();
-		});
+	return new Promise((resolvePromise, rejectPromise) => {
+		if (process.platform === "win32") {
+			const script = isDir
+				? 'Add-Type -AssemblyName Microsoft.VisualBasic; [Microsoft.VisualBasic.FileIO.FileSystem]::DeleteDirectory($env:DSH_DELETE_PATH, "OnlyErrorDialogs", "SendToRecycleBin")'
+				: 'Add-Type -AssemblyName Microsoft.VisualBasic; [Microsoft.VisualBasic.FileIO.FileSystem]::DeleteFile($env:DSH_DELETE_PATH, "OnlyErrorDialogs", "SendToRecycleBin")';
+			execFile("powershell.exe", ["-NoProfile", "-NonInteractive", "-Command", script], {
+				env: { ...process.env, DSH_DELETE_PATH: target },
+				timeout: 60000,
+				windowsHide: true
+			}, (error) => {
+				if (error) rejectPromise(new Error(`recycle-bin delete failed: ${error.message}`));
+				else resolvePromise();
+			});
+		} else {
+			execFile("gio", ["trash", target], (error) => {
+				if (!error) return resolvePromise();
+				rm(target, { recursive: true, force: true }).then(resolvePromise, rejectPromise);
+			});
+		}
 	});
 }
 
@@ -249,10 +256,11 @@ function apply(ctx) {
 				} catch {}
 				return sendJson(res, 200, { ok: true, content });
 			}
-			const target = url.searchParams.get("path");
-			if (typeof target !== "string" || target.length === 0) {
+			const rawTarget = url.searchParams.get("path");
+			if (typeof rawTarget !== "string" || rawTarget.length === 0) {
 				return sendJson(res, 400, { ok: false, error: "missing path" });
 			}
+			const target = resolve(rawTarget);
 			try {
 				if (url.pathname === "/vscode-files/list") {
 					const entries = await readdir(target, { withFileTypes: true });
@@ -275,7 +283,7 @@ function apply(ctx) {
 					}
 					dirs.sort((a, b) => a.name.localeCompare(b.name));
 					files.sort((a, b) => a.name.localeCompare(b.name));
-					return sendJson(res, 200, { ok: true, path: target, dirs, files });
+					return sendJson(res, 200, { ok: true, path: target, root: target, dirs, files });
 				}
 				if (url.pathname === "/vscode-files/read") {
 					const info = await stat(target);

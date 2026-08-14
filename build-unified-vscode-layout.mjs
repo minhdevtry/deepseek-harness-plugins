@@ -5,20 +5,31 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-console.log('[+] Building Unified 3-Column VS Code + TipTap Notion Suite...');
+console.log('[+] Building Unified 3-Column VS Code + TipTap Notion Suite (Perfected UI & Shortcuts)...');
 
 const hostDir = path.join(__dirname, 'plugins/dsh-host-files');
 const clientDir = path.join(__dirname, 'plugins/dsh-client-vscode-layout');
 
-// 1. Ensure host plugin files exist
-const hostIndexSource = fs.readFileSync(path.join(hostDir, 'lib/index.js'), 'utf8');
+// 1. Read TipTap Bundle and SVG Icons Block
+const tiptapBundle = fs.readFileSync(path.join(clientDir, 'assets/tiptap.bundle.js'), 'utf8');
+const svgIcons = fs.readFileSync(path.join(clientDir, 'assets/file-icons-block.js'), 'utf8');
 
-// 2. Read TipTap Bundle and SVG Icons Block
-const tiptapBundle = fs.readFileSync(path.join(__dirname, 'plugins/dsh-local-filetree/tiptap.bundle.js'), 'utf8');
-const svgIcons = fs.readFileSync(path.join(__dirname, 'plugins/dsh-local-filetree/file-icons-block.js'), 'utf8');
-
-// 3. Read base client.js from dsh-client-vscode-layout
+// 2. Read base client.base.js
 let clientSource = fs.readFileSync(path.join(clientDir, 'lib/client.base.js'), 'utf8');
+
+// 3. Update computeColumns to support wider right panel (up to 80% viewport) and collapsible right panel
+const computeColumnsRegex = /function computeColumns\(viewport, sidebar, right\) \{[\s\S]*?\n\t\t\}/;
+const newComputeColumns = `function computeColumns(viewport, sidebar, right) {
+			const s = sidebar === 0 ? 0 : clampWidth(sidebar, 220, 500);
+			const maxRight = Math.max(480, Math.floor(viewport * 0.82));
+			const r0 = right === 0 ? 0 : clampWidth(right, 280, maxRight);
+			if (s + r0 + 300 <= viewport) return { sidebar: s, center: viewport - s - r0, right: r0 };
+			const r1 = r0 === 0 ? 0 : Math.max(280, viewport - s - 300);
+			if (s + r1 + 300 <= viewport) return { sidebar: s, center: viewport - s - r1, right: r1 };
+			if (s + 300 <= viewport) return { sidebar: s, center: viewport - s, right: 0 };
+			return { sidebar: 0, center: viewport, right: 0 };
+		}`;
+clientSource = clientSource.replace(computeColumnsRegex, newComputeColumns);
 
 // 4. Inject TipTap Bundle, SVG Icons & TipTapNotionEditor Component
 const tiptapEditorComponentCode = `
@@ -83,8 +94,8 @@ const tiptapEditorComponentCode = `
 			.vk_underline { text-decoration: underline; }
 
 			.vk_tiptap_canvas { flex: 1; overflow-y: auto; display: flex; flex-direction: column; position: relative; }
-			.vk_tiptap_container { flex: 1; display: flex; flex-direction: column; padding: 28px 44px 64px; max-width: 860px; margin: 0 auto; width: 100%; box-sizing: border-box; }
-			.vk_tiptap_prose { outline: none; font-size: 15.5px; line-height: 1.8; min-height: 450px; color: var(--dsw-alias-label-primary, #111827); width: 100%; }
+			.vk_tiptap_container { flex: 1; display: flex; flex-direction: column; padding: 32px 52px 80px; max-width: 900px; margin: 0 auto; width: 100%; box-sizing: border-box; }
+			.vk_tiptap_prose { outline: none; font-size: 15.5px; line-height: 1.8; min-height: 480px; color: var(--dsw-alias-label-primary, #111827); width: 100%; }
 			.vk_tiptap_prose h1 { font-size: 28px; font-weight: 800; margin: 26px 0 14px; color: #111827; border-bottom: 1px solid #f3f4f6; padding-bottom: 8px; line-height: 1.3; }
 			.vk_tiptap_prose h2 { font-size: 22px; font-weight: 700; margin: 22px 0 12px; color: #1f2937; line-height: 1.35; }
 			.vk_tiptap_prose h3 { font-size: 18px; font-weight: 600; margin: 18px 0 10px; color: #374151; }
@@ -151,6 +162,14 @@ const tiptapEditorComponentCode = `
 				border: none; cursor: pointer; display: flex; align-items: center; gap: 4px;
 			}
 			.vk_bubble_ai_btn:hover { filter: brightness(1.15); }
+			.vk_open_chat_float {
+				position: absolute; top: 8px; right: 12px; z-index: 50;
+				background: var(--dsw-alias-state-business-primary, #2563eb); color: #ffffff;
+				border: none; padding: 6px 14px; border-radius: 6px; font-size: 12.5px; font-weight: 600;
+				cursor: pointer; display: flex; align-items: center; gap: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+				transition: transform 0.1s, filter 0.1s;
+			}
+			.vk_open_chat_float:hover { filter: brightness(1.1); transform: translateY(-1px); }
 		\`;
 
 		if (typeof document !== "undefined" && !document.getElementById("vk-tiptap-styles")) {
@@ -323,7 +342,7 @@ const tiptapEditorComponentCode = `
 				if (!containerRef.current || !window.TipTapBundle) return;
 				const {
 					Editor, StarterKit, TaskList, TaskItem, Table, TableRow, TableCell, TableHeader,
-					Image, Youtube, Underline, Highlight, Typography, TextAlign, Link, Color, TextStyle, CodeBlockLowlight, lowlight, Markdown
+					Image, Youtube, Highlight, Typography, TextAlign, Link, Color, TextStyle, CodeBlockLowlight, lowlight, Markdown
 				} = window.TipTapBundle;
 
 				const editor = new Editor({
@@ -333,7 +352,7 @@ const tiptapEditorComponentCode = `
 						TaskList, TaskItem.configure({ nested: true }),
 						Table.configure({ resizable: true }), TableRow, TableCell, TableHeader,
 						Image, Youtube.configure({ inline: false, nocookie: true }),
-						Underline, Highlight, Typography, TextAlign.configure({ types: ['heading', 'paragraph'] }),
+						Highlight, Typography, TextAlign.configure({ types: ['heading', 'paragraph'] }),
 						Link.configure({ openOnClick: false }), Color, TextStyle,
 						CodeBlockLowlight.configure({ lowlight }),
 						Markdown.configure({ html: true, transformPastedText: true, transformCopiedText: true })
@@ -353,6 +372,13 @@ const tiptapEditorComponentCode = `
 					editorProps: {
 						attributes: { class: 'vk_tiptap_prose prose' },
 						handleKeyDown: (view, event) => {
+							if ((event.ctrlKey || event.metaKey) && (event.key === 's' || event.key === 'S')) {
+								event.preventDefault();
+								if (editorRef.current && editorRef.current.storage && editorRef.current.storage.markdown) {
+									onSave(editorRef.current.storage.markdown.getMarkdown());
+								}
+								return true;
+							}
 							const current = slashStateRef.current;
 							if (current.menu) {
 								const q = current.query.toLowerCase();
@@ -416,8 +442,8 @@ const tiptapEditorComponentCode = `
 						} else {
 							onSave(content);
 						}
-					} }, busy ? '保存中…' : '💾 保存 (Ctrl+S)'),
-					isDirty ? react.createElement('span', { key: 'dirty', className: 'vk_dirtyDot', title: '有未保存的修改' }) : null,
+					} }, busy ? 'Saving...' : '💾 Save (Ctrl+S)'),
+					isDirty ? react.createElement('span', { key: 'dirty', className: 'vk_dirtyDot', title: 'Unsaved changes' }) : null,
 					saveMsg ? react.createElement('span', { key: 'msg', className: 'vk_saveMsg' }, saveMsg) : null,
 					react.createElement('span', { key: 'sep0', className: 'vk_tb_sep' }),
 					react.createElement('button', { key: 'h1', type: 'button', className: 'vk_tb_tool', title: 'Heading 1 (#)', onMouseDown: (e) => e.preventDefault(), onClick: () => runCommand(c => c.toggleHeading({ level: 1 })) }, 'H1'),
@@ -578,38 +604,192 @@ if (viewerIndex !== -1) {
 	clientSource = clientSource.slice(0, viewerIndex) + tiptapEditorComponentCode + '\n\n' + clientSource.slice(viewerIndex);
 }
 
-// Modify Viewer to use TipTapNotionEditor when file is markdown (.md)
+// 5. English translations & UI improvements in LeftPanel, RightPanel, FileTree, Viewer, EditorArea, AppFrame
+
+// LeftPanel: English tabs & titles
+const leftPanelRegex = /function LeftPanel\(\{[\s\S]*?\n\t\t\}/;
+const newLeftPanel = `function LeftPanel({ tab, onTab, tree, sessionSlot, collapsed, onExpand, onCollapse }) {
+			if (collapsed) {
+				return h("div", { className: "vk_colLeft vk_rail" },
+					h("button", { className: "vk_railBtn" + (tab === "files" ? " vk_railBtnActive" : ""), title: "Explorer", onClick: () => { onTab("files"); onExpand(); } }, "📁"),
+					h("button", { className: "vk_railBtn" + (tab === "sessions" ? " vk_railBtnActive" : ""), title: "Quests", onClick: () => { onTab("sessions"); onExpand(); } }, "☰"),
+					h("div", { className: "vk_railSpacer" }),
+					h("button", { className: "vk_railBtn", title: "Expand Sidebar", onClick: onExpand }, "»"),
+					h("div", { style: { display: "none" } }, sessionSlot)
+				);
+			}
+			return h("div", { className: "vk_colLeft" },
+				h("div", { className: "vk_tabBar" },
+					h("button", { className: "vk_tabBtn" + (tab === "files" ? " vk_tabBtnActive" : ""), onClick: () => onTab("files") }, "Explorer"),
+					h("button", { className: "vk_tabBtn" + (tab === "sessions" ? " vk_tabBtnActive" : ""), onClick: () => onTab("sessions") }, "Quests"),
+					h("div", { className: "vk_tabBarSpacer" }),
+					h("button", { className: "vk_tabBtn", title: "Collapse Sidebar", onClick: onCollapse }, "«")
+				),
+				h("div", { className: "vk_tabBody" + (tab === "files" ? "" : " vk_tabBodyHidden") }, tree),
+				h("div", { className: "vk_tabBody" + (tab === "sessions" ? "" : " vk_tabBodyHidden") }, sessionSlot)
+			);
+		}`;
+clientSource = clientSource.replace(leftPanelRegex, newLeftPanel);
+
+// RightPanel: English tabs, Fullscreen, and Close/Collapse button
+const rightPanelRegex = /function RightPanel\(\{[\s\S]*?\n\t\t\}/;
+const newRightPanel = `function RightPanel({ tab, onTab, conversation, details, mode, onToggleMode, showDetails, onCloseRight }) {
+			return h("div", { className: "vk_colRight" },
+				h("div", { className: "vk_tabBar" },
+					h("button", { className: "vk_tabBtn" + (tab === "conversation" ? " vk_tabBtnActive" : ""), onClick: () => onTab("conversation") }, "Chat"),
+					showDetails ? h("button", { className: "vk_tabBtn" + (tab === "details" ? " vk_tabBtnActive" : ""), onClick: () => onTab("details") }, "Details") : null,
+					h("div", { className: "vk_tabBarSpacer" }),
+					h("button", { className: "vk_tabBtn vk_modeBtn", title: mode === "native" ? "Switch to Split View (Editor + Chat)" : "Switch to Fullscreen Chat", onClick: onToggleMode }, mode === "native" ? "◫ Split View" : "⛶ Fullscreen Chat"),
+					onCloseRight ? h("button", { className: "vk_tabBtn", title: "Close / Collapse Chat Panel (Ctrl+L)", onClick: onCloseRight }, "✕") : null
+				),
+				h("div", { className: "vk_tabBody" + (tab === "conversation" ? "" : " vk_tabBodyHidden") }, conversation),
+				showDetails ? h("div", { className: "vk_tabBody" + (tab === "details" ? "" : " vk_tabBodyHidden") }, details) : null
+			);
+		}`;
+clientSource = clientSource.replace(rightPanelRegex, newRightPanel);
+
+clientSource = clientSource.replace(
+	'setSidebar: (d, px) => { d.sidebar = clampWidth(px, 264, 420); },',
+	'setSidebar: (d, px) => { d.sidebar = px === 0 ? 0 : clampWidth(px, 220, 500); },'
+);
+clientSource = clientSource.replace(
+	'setRight: (d, px) => { d.right = clampWidth(px, 340, 640); },',
+	'setRight: (d, px) => { d.right = px === 0 ? 0 : clampWidth(px, 280, 1400); },'
+);
+
+// AppFrame: Workspace Root Auto-fallback, Ctrl+L shortcut & Full width collapse
+clientSource = clientSource.replace(
+	'const panels = useStore((s) => s);',
+	`const panels = useStore((s) => s);
+			const [defaultCwd, setDefaultCwd] = react.useState(null);
+			react.useEffect(() => {
+				fetch("/vscode-files/list?path=.")
+					.then((r) => r.json())
+					.then((d) => { if (d && d.ok && (d.root || d.path)) setDefaultCwd(d.root || d.path); })
+					.catch(() => {});
+			}, []);
+
+			// Global Ctrl+L shortcut to toggle right chat panel
+			react.useEffect(() => {
+				const onKeyDown = (e) => {
+					if ((e.ctrlKey || e.metaKey) && (e.key === 'l' || e.key === 'L')) {
+						e.preventDefault();
+						const curRight = panels.right;
+						actions.setRight(curRight === 0 ? 440 : 0);
+					}
+				};
+				window.addEventListener('keydown', onKeyDown);
+				return () => window.removeEventListener('keydown', onKeyDown);
+			}, [panels.right, actions]);`
+);
+
+clientSource = clientSource.replace(
+	'const fileRoot = tabsState.root != null ? tabsState.root : sessionCwd;',
+	'const fileRoot = tabsState.root != null ? tabsState.root : (sessionCwd || defaultCwd || ".");'
+);
+
+clientSource = clientSource.replace(
+	'const cols = computeColumns(viewport, sidebarCollapsed ? 0 : panels.sidebar === 0 ? 280 : panels.sidebar, panels.right === 0 ? 440 : panels.right);',
+	'const cols = computeColumns(viewport, sidebarCollapsed ? 0 : (panels.sidebar === 0 ? 0 : (panels.sidebar ?? 280)), panels.right === 0 ? 0 : (panels.right ?? 440));'
+);
+
+// AppFrame: Pass onCloseRight to RightPanel and render floating open chat when collapsed
+const rightBlockRegex = /const right = h\(RightPanel, \{[\s\S]*?\}\);/;
+const newRightBlock = `const right = cols.right > 0 ? h(RightPanel, {
+				onCloseRight: () => actions.setRight(0),
+				tab: panels.rightTab,
+				onTab: (t) => actions.setRightTab(t),
+				mode: tabsState.mode,
+				onToggleMode: toggleMode,
+				showDetails: native,
+				conversation: renderSlot("conversation", {}),
+				details: detailsSlot
+			}) : null;`;
+clientSource = clientSource.replace(rightBlockRegex, newRightBlock);
+
+clientSource = clientSource.replace(
+	'return h("div", { ref: frameRef, className: "vk_frame" + (dragging ? " vk_resizing" : "") },',
+	`const showOpenChatBtn = cols.right === 0 && panels.mode !== "native";
+			return h("div", { ref: frameRef, className: "vk_frame" + (dragging ? " vk_resizing" : "") },
+				showOpenChatBtn ? h("button", {
+					className: "vk_open_chat_float",
+					title: "Open AI Chat Panel (Ctrl+L)",
+					onClick: () => actions.setRight(440)
+				}, "💬 Open Chat (Ctrl+L)") : null,`
+);
+
+// FileTree: English Strings & SVG icons
+clientSource = clientSource.replace('const title = typeof root === "string" && root.length > 0 ? (root.split(/[\\\\/]/).pop() || root) : "文件";', 'const title = typeof root === "string" && root.length > 0 && root !== "." ? (root.split(/[\\\\/]/).pop() || root) : "EXPLORER";');
+clientSource = clientSource.replace('title: "打开文件夹（系统对话框）",', 'title: "Open Folder",');
+clientSource = clientSource.replace('title: showHidden ? "隐藏系统/配置文件" : "显示系统/配置文件（node_modules、.git 等）",', 'title: showHidden ? "Hide Hidden Files" : "Show Hidden Files (.git, node_modules, etc.)",');
+clientSource = clientSource.replace('title: "手动输入路径",', 'title: "Enter Path Manually",');
+clientSource = clientSource.replace('title: "新建文件/文件夹",', 'title: "New File / Folder",');
+clientSource = clientSource.replace('title: "搜索文件",', 'title: "Search Files",');
+clientSource = clientSource.replace('title: "关闭当前文件夹（回到会话工作区）",', 'title: "Reset to Workspace Folder",');
+clientSource = clientSource.replace('placeholder: "输入文件夹绝对路径，如 D:\\\\csgo.text",', 'placeholder: "Enter directory path...",');
+clientSource = clientSource.replace('h("button", { className: "vk_pickBtn", onClick: commitFolder }, "打开"),', 'h("button", { className: "vk_pickBtn", onClick: commitFolder }, "Open"),');
+clientSource = clientSource.replace('h("button", { className: "vk_pickBtn", onClick: () => { setPicking(false); setDraft(""); } }, "取消")', 'h("button", { className: "vk_pickBtn", onClick: () => { setPicking(false); setDraft(""); } }, "Cancel")');
+clientSource = clientSource.replace('h("button", { className: "vk_pickBtn" + (creating === "file" ? " vk_modeBtn" : ""), onClick: () => setCreating("file") }, "新建文件"),', 'h("button", { className: "vk_pickBtn" + (creating === "file" ? " vk_modeBtn" : ""), onClick: () => setCreating("file") }, "New File"),');
+clientSource = clientSource.replace('h("button", { className: "vk_pickBtn" + (creating === "dir" ? " vk_modeBtn" : ""), onClick: () => setCreating("dir") }, "新建文件夹")', 'h("button", { className: "vk_pickBtn" + (creating === "dir" ? " vk_modeBtn" : ""), onClick: () => setCreating("dir") }, "New Folder")');
+clientSource = clientSource.replace('placeholder: creating === "dir" ? "文件夹名" : "文件名",', 'placeholder: creating === "dir" ? "Folder name" : "File name",');
+clientSource = clientSource.replace('h("button", { className: "vk_pickBtn", onClick: commitCreate }, "创建"),', 'h("button", { className: "vk_pickBtn", onClick: commitCreate }, "Create"),');
+clientSource = clientSource.replace('placeholder: "搜索文件名…（回车打开第一个结果）",', 'placeholder: "Search files... (Enter to open first match)",');
+clientSource = clientSource.replace('if (searchResults === null) return h("div", { className: "vk_empty" }, "搜索中…");', 'if (searchResults === null) return h("div", { className: "vk_empty" }, "Searching...");');
+clientSource = clientSource.replace('if (searchResults.length === 0) return h("div", { className: "vk_empty" }, "没有匹配的文件");', 'if (searchResults.length === 0) return h("div", { className: "vk_empty" }, "No matching files found");');
+clientSource = clientSource.replace('if (typeof root !== "string" || root.length === 0) return h("div", { className: "vk_empty" }, "暂无工作区\\n打开一个会话后，这里会显示其文件树");', 'if (typeof root !== "string" || root.length === 0) return h("div", { className: "vk_empty" }, "No workspace active\\nSelect a Quest or open a folder to explore");');
+clientSource = clientSource.replace('if (dir === void 0) return h("div", { className: "vk_empty" }, "加载中…");', 'if (dir === void 0) return h("div", { className: "vk_empty" }, "Loading files...");');
+clientSource = clientSource.replace('return h("div", { className: "vk_err" }, dir.error || "无法读取目录");', 'return h("div", { className: "vk_err" }, dir.error || "Unable to read directory");');
+clientSource = clientSource.replace('title: "重命名",', 'title: "Rename",');
+clientSource = clientSource.replace('title: "删除（送入回收站）",', 'title: "Delete (Move to Trash)",');
+clientSource = clientSource.replace('if (typeof confirm === "function" && !confirm(`删除「${name}」？\\n（会送入回收站，可从回收站恢复）`)) return;', 'if (typeof confirm === "function" && !confirm(`Move "${name}" to Trash?`)) return;');
+clientSource = clientSource.replace('} else setCreateErr((d && d.error) || "创建失败");', '} else setCreateErr((d && d.error) || "Create failed");');
+clientSource = clientSource.replace('} else setRenameErr((d && d.error) || "重命名失败");', '} else setRenameErr((d && d.error) || "Rename failed");');
+clientSource = clientSource.replace('} else setError((d && d.error) || "删除失败");', '} else setError((d && d.error) || "Delete failed");');
+clientSource = clientSource.replace('} else setError((d && d.error) || "加载失败");', '} else setError((d && d.error) || "Load failed");');
+
+// Use SVG FileTypeIcon for FileTree rows
+clientSource = clientSource.replace(
+	'h("span", { className: "vk_icon " + ic.c, "aria-hidden": true }, ic.g),',
+	'props.isDir ? h(FileTypeIcon, { symbolId: props.expanded ? "fti-FolderOpen" : "fti-Folder" }) : h(FileTypeIcon, { symbolId: fileIconId(props.name, "file", false) }),'
+);
+
+// Viewer: English strings & Direct TipTap WYSIWYG for Markdown files
 clientSource = clientSource.replace(
 	'function Viewer({ file, rev, onStartEdit }) {',
-	`function Viewer({ file, rev, onStartEdit, onSaveDirect }) {
+	`function Viewer({ file, rev, onStartEdit, onSaveDirect, onUpdateDirect, isDirectDirty, saveMsg, busy }) {
 			const [forceRaw, setForceRaw] = react.useState(false);
 			const isMarkdown = (file.path.endsWith(".md") || file.path.endsWith(".markdown")) && !forceRaw;`
 );
 
 clientSource = clientSource.replace(
 	'if (state.loading) return h("div", { className: "vk_editorBody" }, bar, h("div", { className: "vk_notice" }, "加载中…"));',
-	`if (state.loading) return h("div", { className: "vk_editorBody" }, bar, h("div", { className: "vk_notice" }, "加载中…"));
+	`if (state.loading) return h("div", { className: "vk_editorBody" }, bar, h("div", { className: "vk_notice" }, "Loading file..."));
 			if (isMarkdown && state.kind === "text") {
 				return h(TipTapNotionEditor, {
 					file,
 					content: state.content,
-					isDirty: false,
-					onUpdateContent: (text) => onStartEdit(text),
+					isDirty: isDirectDirty || false,
+					onUpdateContent: (text) => onUpdateDirect ? onUpdateDirect(text) : onStartEdit(text),
 					onSave: (text) => onSaveDirect ? onSaveDirect(text) : onStartEdit(text),
 					onCancel: () => {},
-					busy: false,
-					saveMsg: null,
+					busy: busy || false,
+					saveMsg: saveMsg || null,
 					onToggleRawMode: () => setForceRaw(true)
 				});
 			}`
 );
 
-// Update EditorArea to pass onSaveDirect and handle markdown editing cleanly
+clientSource = clientSource.replace('if (state.error !== void 0) return h("div", { className: "vk_editorBody" }, bar, h("div", { className: "vk_notice" }, "读取失败：\\n" + state.error));', 'if (state.error !== void 0) return h("div", { className: "vk_editorBody" }, bar, h("div", { className: "vk_notice" }, "Failed to read file:\\n" + state.error));');
+clientSource = clientSource.replace('if (state.kind === "binary") return h("div", { className: "vk_editorBody" }, bar, h("div", { className: "vk_notice" }, "二进制文件，无法预览\\n（" + state.size + " 字节）"));', 'if (state.kind === "binary") return h("div", { className: "vk_editorBody" }, bar, h("div", { className: "vk_notice" }, "Binary file, preview unavailable\\n(" + state.size + " bytes)"));');
+clientSource = clientSource.replace('const head = "文件过大，仅显示前 2 MB（超大文件暂不支持编辑）\\n\\n";', 'const head = "File too large, showing first 2 MB (large files are read-only)\\n\\n";');
+clientSource = clientSource.replace('editable ? h("button", { className: "vk_editBtn", title: "编辑此文件（Ctrl+S 保存）", onClick: () => onStartEdit(state.content) }, "✏️ 编辑") : null,', 'editable ? h("button", { className: "vk_editBtn", title: "Edit File (Ctrl+S to save)", onClick: () => onStartEdit(state.content) }, "✏️ Edit") : null,');
+
+// EditorArea: English strings, save callback & multi-tab icons
 const saveRegex = /const save = react\.useCallback\(async \(\) => \{[\s\S]*?\}, \[currentPath, edits, busy\]\);/;
 const newSaveBlock = `const saveWithText = react.useCallback(async (textToSave) => {
 				if (busy) return;
 				setBusy(true);
-				setSaveMsg("保存中…");
+				setSaveMsg("Saving...");
 				try {
 					const r = await fetch("/vscode-files/write?path=" + encodeURIComponent(currentPath), {
 						method: "POST",
@@ -624,13 +804,13 @@ const newSaveBlock = `const saveWithText = react.useCallback(async (textToSave) 
 							return next;
 						});
 						setRevisions((prev) => ({ ...prev, [currentPath]: (prev[currentPath] ?? 0) + 1 }));
-						setSaveMsg("已保存");
+						setSaveMsg("Saved");
 						setTimeout(() => setSaveMsg(null), 2000);
 					} else {
-						setSaveMsg("保存失败：" + ((d && d.error) || "unknown"));
+						setSaveMsg("Save failed: " + ((d && d.error) || "unknown"));
 					}
 				} catch (e) {
-					setSaveMsg("保存失败：" + String(e));
+					setSaveMsg("Save failed: " + String(e));
 				} finally {
 					setBusy(false);
 				}
@@ -644,6 +824,35 @@ const newSaveBlock = `const saveWithText = react.useCallback(async (textToSave) 
 
 clientSource = clientSource.replace(saveRegex, newSaveBlock);
 
+clientSource = clientSource.replace('if (edit !== void 0 && edit.dirty && typeof confirm === "function" && !confirm("放弃未保存的修改？")) return;', 'if (edit !== void 0 && edit.dirty && typeof confirm === "function" && !confirm("Discard unsaved changes?")) return;');
+clientSource = clientSource.replace('if (edit !== void 0 && edit.dirty && typeof confirm === "function" && !confirm("该标签有未保存的修改，关闭将丢失。确定关闭？")) return;', 'if (edit !== void 0 && edit.dirty && typeof confirm === "function" && !confirm("This tab has unsaved changes. Discard and close?")) return;');
+clientSource = clientSource.replace('if (dirtyAny && typeof confirm === "function" && !confirm("有未保存的标签，关闭将丢失修改。确定关闭？")) return;', 'if (dirtyAny && typeof confirm === "function" && !confirm("Some tabs have unsaved changes. Discard and close?")) return;');
+clientSource = clientSource.replace('return h("div", { className: "vk_editor" }, h("div", { className: "vk_empty" }, "从左侧文件树打开一个文件\\n（点击文件名即可在标签页中查看）"));', 'return h("div", { className: "vk_editor" }, h("div", { className: "vk_empty" }, "Select a file from the Explorer\\n(Click any file to view and edit in tabs)"));');
+clientSource = clientSource.replace('h("button", { className: "vk_editBtn vk_editBtnPrimary", disabled: busy, title: "保存 (Ctrl+S)", onClick: save }, "💾 保存"),', 'h("button", { className: "vk_editBtn vk_editBtnPrimary", disabled: busy, title: "Save (Ctrl+S)", onClick: save }, "💾 Save"),');
+clientSource = clientSource.replace('h("button", { className: "vk_editBtn", disabled: busy, title: "取消编辑 (Esc)", onClick: cancel }, "✕ 取消"),', 'h("button", { className: "vk_editBtn", disabled: busy, title: "Cancel Edit (Esc)", onClick: cancel }, "✕ Cancel"),');
+clientSource = clientSource.replace('dirty ? h("span", { className: "vk_dirtyDot", title: "有未保存的修改" }) : null,', 'dirty ? h("span", { className: "vk_dirtyDot", title: "Unsaved changes" }) : null,');
+clientSource = clientSource.replace('h("span", { className: "vk_saveMsg" }, "编辑模式")', 'h("span", { className: "vk_saveMsg" }, "Edit Mode")');
+clientSource = clientSource.replace('title: "关闭",', 'title: "Close Tab",');
+clientSource = clientSource.replace('? h("div", { className: "vk_editorBody vk_trajBody" }, trajectory ?? h("div", { className: "vk_notice" }, "轨迹视图不可用"))', '? h("div", { className: "vk_editorBody vk_trajBody" }, trajectory ?? h("div", { className: "vk_notice" }, "Trajectory view unavailable"))');
+clientSource = clientSource.replace('ctxMenu.path !== null ? menuItem("关闭", () => closeTab(ctxMenu.path)) : null,', 'ctxMenu.path !== null ? menuItem("Close", () => closeTab(ctxMenu.path)) : null,');
+clientSource = clientSource.replace('ctxMenu.path !== null ? menuItem("关闭其他", () => closePaths(tabs.map((t) => t.path).filter((p) => p !== ctxMenu.path))) : null,', 'ctxMenu.path !== null ? menuItem("Close Others", () => closePaths(tabs.map((t) => t.path).filter((p) => p !== ctxMenu.path))) : null,');
+clientSource = clientSource.replace('ctxMenu.path !== null ? menuItem("关闭左侧", () => {', 'ctxMenu.path !== null ? menuItem("Close to the Left", () => {');
+clientSource = clientSource.replace('ctxMenu.path !== null ? menuItem("关闭右侧", () => {', 'ctxMenu.path !== null ? menuItem("Close to the Right", () => {');
+clientSource = clientSource.replace('menuItem("关闭全部", () => closePaths(tabs.map((t) => t.path)), true)', 'menuItem("Close All", () => closePaths(tabs.map((t) => t.path)), true)');
+
+// Tab SVG Icon in EditorArea
+clientSource = clientSource.replace(
+	'h("span", { className: "vk_icon " + ic.c }, ic.g),',
+	'h(FileTypeIcon, { symbolId: fileIconId(t.name, "file", false) }),'
+);
+
+// Markdown tabs ALWAYS use direct TipTap WYSIWYG Suite, not raw textarea
+clientSource = clientSource.replace(
+	'editing\n\t\t\t\t\t? h(react.Fragment, null,',
+	'(editing && !(active !== null && (active.path.endsWith(".md") || active.path.endsWith(".markdown"))))\n\t\t\t\t\t? h(react.Fragment, null,'
+);
+
+// Multi-Tab Renderer with TipTapNotionEditor for .md files
 clientSource = clientSource.replace(
 	': h(Viewer, { file: active, rev: revisions[active.path] ?? 0, onStartEdit: startEdit }),',
 	`: (active !== null && (active.path.endsWith(".md") || active.path.endsWith(".markdown")) && edits[active.path] !== void 0)
@@ -658,19 +867,23 @@ clientSource = clientSource.replace(
 							saveMsg,
 							onToggleRawMode: cancel
 						})
-						: h(Viewer, { file: active, rev: revisions[active.path] ?? 0, onStartEdit: startEdit, onSaveDirect: (txt) => saveWithText(txt) }),`
+						: h(Viewer, {
+							file: active,
+							rev: revisions[active.path] ?? 0,
+							onStartEdit: startEdit,
+							onSaveDirect: (txt) => saveWithText(txt),
+							onUpdateDirect: onEditText,
+							isDirectDirty: edits[active.path]?.dirty === true
+						}),`
 );
 
-// Update iconOf in FileTree to use FileTypeIcon SVG
-clientSource = clientSource.replace(
-	'h("span", { className: "vk_icon " + ic.c }, ic.g),',
-	'h(FileTypeIcon, { symbolId: fileIconId(t.name, "file", false) }),'
-);
-
-clientSource = clientSource.replace(
-	'h("span", { className: "vk_icon " + ic.c, "aria-hidden": true }, ic.g),',
-	'isDir ? h(FileTypeIcon, { symbolId: isOpen ? "fti-FolderOpen" : "fti-Folder" }) : h(FileTypeIcon, { symbolId: fileIconId(entry.name, "file", false) }),'
-);
+// Global Persona section translation
+clientSource = clientSource.replace('label: () => "全局人设"', 'label: () => "Global Persona"');
+clientSource = clientSource.replace('h("div", { className: "vk_personaDesc" }, "类似 Claude Code 的全局 CLAUDE.md：内容会注入到所有会话的系统提示中，新消息立即生效（无需重启）。支持 Markdown。"),', 'h("div", { className: "vk_personaDesc" }, "Global Instructions (similar to CLAUDE.md): Injected into system prompt of all sessions. Takes effect immediately. Supports Markdown."),');
+clientSource = clientSource.replace('placeholder: "例如：\\n- 你叫小鲸，说话简洁直接\\n- 一律用简体中文回答\\n- …"', 'placeholder: "Example:\\n- Be concise and precise\\n- Follow coding guidelines\\n- ..."');
+clientSource = clientSource.replace('saving ? "保存中…" : "保存"', 'saving ? "Saving..." : "Save"');
+clientSource = clientSource.replace('{ ok: true, text: "已保存 ✓ 新消息立即生效" }', '{ ok: true, text: "Saved ✓ Effective immediately" }');
+clientSource = clientSource.replace('text: (d && d.error) || "保存失败"', 'text: (d && d.error) || "Save failed"');
 
 fs.writeFileSync(path.join(clientDir, 'lib/client.js'), clientSource, 'utf8');
-console.log('[✓] Successfully generated and bundled dsh-client-vscode-layout with TipTap Notion Suite!');
+console.log('[✓] Successfully generated and bundled dsh-client-vscode-layout with English UI & enhanced controls!');

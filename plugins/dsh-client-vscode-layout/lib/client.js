@@ -24,12 +24,13 @@ window.__ModuleLoader__.load({
 		 * 右栏常驻不收起；窄视口先挤右栏，再挤左栏，最后保中间。
 		 */
 		function computeColumns(viewport, sidebar, right) {
-			const s = sidebar === 0 ? 56 : clampWidth(sidebar, 264, 420);
-			const r0 = right === 0 ? 0 : clampWidth(right, 340, 640);
-			if (s + r0 + 360 <= viewport) return { sidebar: s, center: viewport - s - r0, right: r0 };
-			const r1 = r0 === 0 ? 0 : Math.max(340, viewport - s - 360);
-			if (s + r1 + 360 <= viewport) return { sidebar: s, center: viewport - s - r1, right: r1 };
-			if (s + 360 <= viewport) return { sidebar: s, center: viewport - s, right: 0 };
+			const s = sidebar === 0 ? 0 : clampWidth(sidebar, 220, 500);
+			const maxRight = Math.max(480, Math.floor(viewport * 0.82));
+			const r0 = right === 0 ? 0 : clampWidth(right, 280, maxRight);
+			if (s + r0 + 300 <= viewport) return { sidebar: s, center: viewport - s - r0, right: r0 };
+			const r1 = r0 === 0 ? 0 : Math.max(280, viewport - s - 300);
+			if (s + r1 + 300 <= viewport) return { sidebar: s, center: viewport - s - r1, right: r1 };
+			if (s + 300 <= viewport) return { sidebar: s, center: viewport - s, right: 0 };
 			return { sidebar: 0, center: viewport, right: 0 };
 		}
 
@@ -574,7 +575,7 @@ window.__ModuleLoader__.load({
 							setCreateName("");
 							refreshAround(parent);
 							if (kind === "file" && d.path) onOpenFile({ path: d.path, name: n });
-						} else setCreateErr((d && d.error) || "创建失败");
+						} else setCreateErr((d && d.error) || "Create failed");
 					})
 					.catch((e) => setCreateErr(String(e)));
 			}
@@ -599,12 +600,12 @@ window.__ModuleLoader__.load({
 							setRenameErr(null);
 							refreshAround(parentOf(renaming.path));
 							onRenamed?.(renaming.path, newPath, n);
-						} else setRenameErr((d && d.error) || "重命名失败");
+						} else setRenameErr((d && d.error) || "Rename failed");
 					})
 					.catch((e) => setRenameErr(String(e)));
 			}
 			function doDelete(path, name) {
-				if (typeof confirm === "function" && !confirm(`删除「${name}」？\n（会送入回收站，可从回收站恢复）`)) return;
+				if (typeof confirm === "function" && !confirm(`Move "${name}" to Trash?`)) return;
 				fetch("/vscode-files/delete?path=" + encodeURIComponent(path), {
 					method: "POST",
 					headers: { "content-type": "application/json" },
@@ -615,7 +616,7 @@ window.__ModuleLoader__.load({
 						if (d && d.ok) {
 							refreshAround(parentOf(path));
 							onDeleted?.(path);
-						} else setError((d && d.error) || "删除失败");
+						} else setError((d && d.error) || "Delete failed");
 					})
 					.catch((e) => setError(String(e)));
 			}
@@ -656,8 +657,8 @@ window.__ModuleLoader__.load({
 					: h("span", { className: "vk_name" }, props.name);
 				const badge = props.badge ? h("span", { className: "vk_gitBadge" + props.badge.cls }, props.badge.text) : null;
 				const actions = h("span", { className: "vk_rowActions" },
-					h("button", { className: "vk_rowBtn", title: "重命名", onClick: (e) => { e.stopPropagation(); setRenaming({ path: props.path, name: props.name, oldName: props.name }); setRenameErr(null); } }, "🖊"),
-					h("button", { className: "vk_rowBtn", title: "删除（送入回收站）", onClick: (e) => { e.stopPropagation(); doDelete(props.path, props.name); } }, "🗑")
+					h("button", { className: "vk_rowBtn", title: "Rename", onClick: (e) => { e.stopPropagation(); setRenaming({ path: props.path, name: props.name, oldName: props.name }); setRenameErr(null); } }, "🖊"),
+					h("button", { className: "vk_rowBtn", title: "Delete (Move to Trash)", onClick: (e) => { e.stopPropagation(); doDelete(props.path, props.name); } }, "🗑")
 				);
 				return h("div", { className: "vk_row" + (props.hidden ? " vk_rowHidden" : "") + (props.active ? " vk_rowActive" : ""), style: pad, onClick: props.onToggle }, guides, caret, icon, name, badge, actions);
 			}
@@ -667,12 +668,12 @@ window.__ModuleLoader__.load({
 				setDraft("");
 				if (p.length > 0) onOpenFolder(p);
 			}
-			const title = typeof root === "string" && root.length > 0 ? (root.split(/[\\/]/).pop() || root) : "文件";
+			const title = typeof root === "string" && root.length > 0 && root !== "." ? (root.split(/[\\/]/).pop() || root) : "EXPLORER";
 			const head = h("div", { className: "vk_treeHead" },
 				h("span", { className: "vk_treeTitle", title: typeof root === "string" ? root : "" }, title),
 				h("button", {
 					className: "vk_treeBtn",
-					title: "打开文件夹（系统对话框）",
+					title: "Open Folder",
 					onClick: async () => {
 						try {
 							const p = await onPickNative();
@@ -683,16 +684,16 @@ window.__ModuleLoader__.load({
 						}
 					}
 				}, "📂"),
-				h("button", { className: "vk_treeBtn" + (showHidden ? " vk_treeBtnActive" : ""), title: showHidden ? "隐藏系统/配置文件" : "显示系统/配置文件（node_modules、.git 等）", onClick: () => setShowHidden((v) => !v) }, "👁"),
-				h("button", { className: "vk_treeBtn", title: "手动输入路径", onClick: () => { setPicking(true); setDraft(""); } }, "✏️"),
-				h("button", { className: "vk_treeBtn" + (creating !== null ? " vk_treeBtnActive" : ""), title: "新建文件/文件夹", onClick: () => { setCreating(creating === null ? "file" : null); setCreateName(""); setCreateErr(null); } }, "＋"),
-				h("button", { className: "vk_treeBtn" + (searchOn ? " vk_treeBtnActive" : ""), title: "搜索文件", onClick: () => { setSearchOn(!searchOn); setSearchQ(""); } }, "🔍"),
-				custom ? h("button", { className: "vk_treeBtn", title: "关闭当前文件夹（回到会话工作区）", onClick: onCloseFolder }, "×") : null
+				h("button", { className: "vk_treeBtn" + (showHidden ? " vk_treeBtnActive" : ""), title: showHidden ? "Hide Hidden Files" : "Show Hidden Files (.git, node_modules, etc.)", onClick: () => setShowHidden((v) => !v) }, "👁"),
+				h("button", { className: "vk_treeBtn", title: "Enter Path Manually", onClick: () => { setPicking(true); setDraft(""); } }, "✏️"),
+				h("button", { className: "vk_treeBtn" + (creating !== null ? " vk_treeBtnActive" : ""), title: "New File / Folder", onClick: () => { setCreating(creating === null ? "file" : null); setCreateName(""); setCreateErr(null); } }, "＋"),
+				h("button", { className: "vk_treeBtn" + (searchOn ? " vk_treeBtnActive" : ""), title: "Search Files", onClick: () => { setSearchOn(!searchOn); setSearchQ(""); } }, "🔍"),
+				custom ? h("button", { className: "vk_treeBtn", title: "Reset to Workspace Folder", onClick: onCloseFolder }, "×") : null
 			);
 			const picker = picking ? h("div", { className: "vk_pickForm" },
 				h("input", {
 					className: "vk_pickInput",
-					placeholder: "输入文件夹绝对路径，如 D:\\csgo.text",
+					placeholder: "Enter directory path...",
 					value: draft,
 					autoFocus: true,
 					onChange: (e) => setDraft(e.target.value),
@@ -702,18 +703,18 @@ window.__ModuleLoader__.load({
 					}
 				}),
 				h("div", { className: "vk_pickRow" },
-					h("button", { className: "vk_pickBtn", onClick: commitFolder }, "打开"),
-					h("button", { className: "vk_pickBtn", onClick: () => { setPicking(false); setDraft(""); } }, "取消")
+					h("button", { className: "vk_pickBtn", onClick: commitFolder }, "Open"),
+					h("button", { className: "vk_pickBtn", onClick: () => { setPicking(false); setDraft(""); } }, "Cancel")
 				)
 			) : null;
 			const createForm = creating !== null ? h("div", { className: "vk_pickForm" },
 				h("div", { className: "vk_pickRow" },
-					h("button", { className: "vk_pickBtn" + (creating === "file" ? " vk_modeBtn" : ""), onClick: () => setCreating("file") }, "新建文件"),
-					h("button", { className: "vk_pickBtn" + (creating === "dir" ? " vk_modeBtn" : ""), onClick: () => setCreating("dir") }, "新建文件夹")
+					h("button", { className: "vk_pickBtn" + (creating === "file" ? " vk_modeBtn" : ""), onClick: () => setCreating("file") }, "New File"),
+					h("button", { className: "vk_pickBtn" + (creating === "dir" ? " vk_modeBtn" : ""), onClick: () => setCreating("dir") }, "New Folder")
 				),
 				h("input", {
 					className: "vk_pickInput",
-					placeholder: creating === "dir" ? "文件夹名" : "文件名",
+					placeholder: creating === "dir" ? "Folder name" : "File name",
 					value: createName,
 					autoFocus: true,
 					onChange: (e) => setCreateName(e.target.value),
@@ -724,14 +725,14 @@ window.__ModuleLoader__.load({
 				}),
 				createErr !== null ? h("span", { className: "vk_saveMsg" }, createErr) : null,
 				h("div", { className: "vk_pickRow" },
-					h("button", { className: "vk_pickBtn", onClick: commitCreate }, "创建"),
+					h("button", { className: "vk_pickBtn", onClick: commitCreate }, "Create"),
 					h("button", { className: "vk_pickBtn", onClick: () => { setCreating(null); setCreateName(""); setCreateErr(null); } }, "取消")
 				)
 			) : null;
 			const searchForm = searchOn ? h("div", { className: "vk_pickForm" },
 				h("input", {
 					className: "vk_pickInput",
-					placeholder: "搜索文件名…（回车打开第一个结果）",
+					placeholder: "Search files... (Enter to open first match)",
 					value: searchQ,
 					autoFocus: true,
 					onChange: (e) => setSearchQ(e.target.value),
@@ -749,8 +750,8 @@ window.__ModuleLoader__.load({
 			const dir = typeof root === "string" && root.length > 0 ? entries[root] : void 0;
 			const body = (() => {
 				if (searchOn && searchQ.trim().length > 0) {
-					if (searchResults === null) return h("div", { className: "vk_empty" }, "搜索中…");
-					if (searchResults.length === 0) return h("div", { className: "vk_empty" }, "没有匹配的文件");
+					if (searchResults === null) return h("div", { className: "vk_empty" }, "Searching...");
+					if (searchResults.length === 0) return h("div", { className: "vk_empty" }, "No matching files found");
 					return searchResults.map((r) => h("div", { key: r.path, className: "vk_row", style: { paddingLeft: 10 + "px" }, onClick: () => { onOpenFile({ path: r.path, name: r.name }); setSearchOn(false); setSearchQ(""); } },
 						h("span", { className: "vk_caret" }, "\u00A0"),
 						h("span", { className: "vk_icon " + iconOf(r.name, false, false).c }, iconOf(r.name, false, false).g),
@@ -758,14 +759,14 @@ window.__ModuleLoader__.load({
 						h("span", { className: "vk_relPath" }, r.rel)
 					));
 				}
-				if (typeof root !== "string" || root.length === 0) return h("div", { className: "vk_empty" }, "暂无工作区\n打开一个会话后，这里会显示其文件树");
+				if (typeof root !== "string" || root.length === 0) return h("div", { className: "vk_empty" }, "No workspace active\nSelect a Quest or open a folder to explore");
 				if (error !== null) return h("div", { className: "vk_err" }, error);
-				if (dir === void 0) return h("div", { className: "vk_empty" }, "加载中…");
+				if (dir === void 0) return h("div", { className: "vk_empty" }, "Loading files...");
 				if (dir.ok) {
 					const hiddenCount = showHidden ? 0 : dir.dirs.filter((d) => d.hidden).length + dir.files.filter((f) => f.hidden).length;
 					return [...rows(dir, 0), hiddenCount > 0 ? h("div", { key: "__hiddenHint", className: "vk_hiddenHint" }, "⋯ 已折叠 " + hiddenCount + " 个隐藏项（点 👁 显示）") : null];
 				}
-				return h("div", { className: "vk_err" }, dir.error || "无法读取目录");
+				return h("div", { className: "vk_err" }, dir.error || "Unable to read directory");
 			})();
 			return h("div", { className: "vk_treeWrap" }, head, picker, createForm, searchForm, h("div", { className: "vk_tree" }, body));
 		}
@@ -63682,8 +63683,8 @@ const FILE_ICON_DIR_OPEN = "fti-FolderOpen";
 			.vk_underline { text-decoration: underline; }
 
 			.vk_tiptap_canvas { flex: 1; overflow-y: auto; display: flex; flex-direction: column; position: relative; }
-			.vk_tiptap_container { flex: 1; display: flex; flex-direction: column; padding: 28px 44px 64px; max-width: 860px; margin: 0 auto; width: 100%; box-sizing: border-box; }
-			.vk_tiptap_prose { outline: none; font-size: 15.5px; line-height: 1.8; min-height: 450px; color: var(--dsw-alias-label-primary, #111827); width: 100%; }
+			.vk_tiptap_container { flex: 1; display: flex; flex-direction: column; padding: 32px 52px 80px; max-width: 900px; margin: 0 auto; width: 100%; box-sizing: border-box; }
+			.vk_tiptap_prose { outline: none; font-size: 15.5px; line-height: 1.8; min-height: 480px; color: var(--dsw-alias-label-primary, #111827); width: 100%; }
 			.vk_tiptap_prose h1 { font-size: 28px; font-weight: 800; margin: 26px 0 14px; color: #111827; border-bottom: 1px solid #f3f4f6; padding-bottom: 8px; line-height: 1.3; }
 			.vk_tiptap_prose h2 { font-size: 22px; font-weight: 700; margin: 22px 0 12px; color: #1f2937; line-height: 1.35; }
 			.vk_tiptap_prose h3 { font-size: 18px; font-weight: 600; margin: 18px 0 10px; color: #374151; }
@@ -63750,6 +63751,14 @@ const FILE_ICON_DIR_OPEN = "fti-FolderOpen";
 				border: none; cursor: pointer; display: flex; align-items: center; gap: 4px;
 			}
 			.vk_bubble_ai_btn:hover { filter: brightness(1.15); }
+			.vk_open_chat_float {
+				position: absolute; top: 8px; right: 12px; z-index: 50;
+				background: var(--dsw-alias-state-business-primary, #2563eb); color: #ffffff;
+				border: none; padding: 6px 14px; border-radius: 6px; font-size: 12.5px; font-weight: 600;
+				cursor: pointer; display: flex; align-items: center; gap: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+				transition: transform 0.1s, filter 0.1s;
+			}
+			.vk_open_chat_float:hover { filter: brightness(1.1); transform: translateY(-1px); }
 		`;
 
 		if (typeof document !== "undefined" && !document.getElementById("vk-tiptap-styles")) {
@@ -63922,7 +63931,7 @@ const FILE_ICON_DIR_OPEN = "fti-FolderOpen";
 				if (!containerRef.current || !window.TipTapBundle) return;
 				const {
 					Editor, StarterKit, TaskList, TaskItem, Table, TableRow, TableCell, TableHeader,
-					Image, Youtube, Underline, Highlight, Typography, TextAlign, Link, Color, TextStyle, CodeBlockLowlight, lowlight, Markdown
+					Image, Youtube, Highlight, Typography, TextAlign, Link, Color, TextStyle, CodeBlockLowlight, lowlight, Markdown
 				} = window.TipTapBundle;
 
 				const editor = new Editor({
@@ -63932,7 +63941,7 @@ const FILE_ICON_DIR_OPEN = "fti-FolderOpen";
 						TaskList, TaskItem.configure({ nested: true }),
 						Table.configure({ resizable: true }), TableRow, TableCell, TableHeader,
 						Image, Youtube.configure({ inline: false, nocookie: true }),
-						Underline, Highlight, Typography, TextAlign.configure({ types: ['heading', 'paragraph'] }),
+						Highlight, Typography, TextAlign.configure({ types: ['heading', 'paragraph'] }),
 						Link.configure({ openOnClick: false }), Color, TextStyle,
 						CodeBlockLowlight.configure({ lowlight }),
 						Markdown.configure({ html: true, transformPastedText: true, transformCopiedText: true })
@@ -63952,6 +63961,13 @@ const FILE_ICON_DIR_OPEN = "fti-FolderOpen";
 					editorProps: {
 						attributes: { class: 'vk_tiptap_prose prose' },
 						handleKeyDown: (view, event) => {
+							if ((event.ctrlKey || event.metaKey) && (event.key === 's' || event.key === 'S')) {
+								event.preventDefault();
+								if (editorRef.current && editorRef.current.storage && editorRef.current.storage.markdown) {
+									onSave(editorRef.current.storage.markdown.getMarkdown());
+								}
+								return true;
+							}
 							const current = slashStateRef.current;
 							if (current.menu) {
 								const q = current.query.toLowerCase();
@@ -64015,8 +64031,8 @@ const FILE_ICON_DIR_OPEN = "fti-FolderOpen";
 						} else {
 							onSave(content);
 						}
-					} }, busy ? '保存中…' : '💾 保存 (Ctrl+S)'),
-					isDirty ? react.createElement('span', { key: 'dirty', className: 'vk_dirtyDot', title: '有未保存的修改' }) : null,
+					} }, busy ? 'Saving...' : '💾 Save (Ctrl+S)'),
+					isDirty ? react.createElement('span', { key: 'dirty', className: 'vk_dirtyDot', title: 'Unsaved changes' }) : null,
 					saveMsg ? react.createElement('span', { key: 'msg', className: 'vk_saveMsg' }, saveMsg) : null,
 					react.createElement('span', { key: 'sep0', className: 'vk_tb_sep' }),
 					react.createElement('button', { key: 'h1', type: 'button', className: 'vk_tb_tool', title: 'Heading 1 (#)', onMouseDown: (e) => e.preventDefault(), onClick: () => runCommand(c => c.toggleHeading({ level: 1 })) }, 'H1'),
@@ -64171,7 +64187,7 @@ const FILE_ICON_DIR_OPEN = "fti-FolderOpen";
 		}
 
 
-function Viewer({ file, rev, onStartEdit, onSaveDirect }) {
+function Viewer({ file, rev, onStartEdit, onSaveDirect, onUpdateDirect, isDirectDirty, saveMsg, busy }) {
 			const [forceRaw, setForceRaw] = react.useState(false);
 			const isMarkdown = (file.path.endsWith(".md") || file.path.endsWith(".markdown")) && !forceRaw;
 			const [state, setState] = react.useState({ loading: true });
@@ -64204,27 +64220,27 @@ function Viewer({ file, rev, onStartEdit, onSaveDirect }) {
 			}, [file.path, rev, state.kind, themeTick]);
 			const editable = state.kind === "text";
 			const bar = h("div", { className: "vk_editBar" },
-				editable ? h("button", { className: "vk_editBtn", title: "编辑此文件（Ctrl+S 保存）", onClick: () => onStartEdit(state.content) }, "✏️ 编辑") : null,
+				editable ? h("button", { className: "vk_editBtn", title: "Edit File (Ctrl+S to save)", onClick: () => onStartEdit(state.content) }, "✏️ Edit") : null,
 				h("div", { style: { flex: 1 } })
 			);
-			if (state.loading) return h("div", { className: "vk_editorBody" }, bar, h("div", { className: "vk_notice" }, "加载中…"));
+			if (state.loading) return h("div", { className: "vk_editorBody" }, bar, h("div", { className: "vk_notice" }, "Loading file..."));
 			if (isMarkdown && state.kind === "text") {
 				return h(TipTapNotionEditor, {
 					file,
 					content: state.content,
-					isDirty: false,
-					onUpdateContent: (text) => onStartEdit(text),
+					isDirty: isDirectDirty || false,
+					onUpdateContent: (text) => onUpdateDirect ? onUpdateDirect(text) : onStartEdit(text),
 					onSave: (text) => onSaveDirect ? onSaveDirect(text) : onStartEdit(text),
 					onCancel: () => {},
-					busy: false,
-					saveMsg: null,
+					busy: busy || false,
+					saveMsg: saveMsg || null,
 					onToggleRawMode: () => setForceRaw(true)
 				});
 			}
-			if (state.error !== void 0) return h("div", { className: "vk_editorBody" }, bar, h("div", { className: "vk_notice" }, "读取失败：\n" + state.error));
-			if (state.kind === "binary") return h("div", { className: "vk_editorBody" }, bar, h("div", { className: "vk_notice" }, "二进制文件，无法预览\n（" + state.size + " 字节）"));
+			if (state.error !== void 0) return h("div", { className: "vk_editorBody" }, bar, h("div", { className: "vk_notice" }, "Failed to read file:\n" + state.error));
+			if (state.kind === "binary") return h("div", { className: "vk_editorBody" }, bar, h("div", { className: "vk_notice" }, "Binary file, preview unavailable\n(" + state.size + " bytes)"));
 			if (state.kind === "too-large") {
-				const head = "文件过大，仅显示前 2 MB（超大文件暂不支持编辑）\n\n";
+				const head = "File too large, showing first 2 MB (large files are read-only)\n\n";
 				const lines = (head + state.content).split("\n");
 				const tokens = tokenize(head + state.content, familyOf(file.path));
 				const gutter = lines.map((_, i) => String(i + 1)).join("\n");
@@ -64296,7 +64312,7 @@ function Viewer({ file, rev, onStartEdit, onSaveDirect }) {
 			const saveWithText = react.useCallback(async (textToSave) => {
 				if (busy) return;
 				setBusy(true);
-				setSaveMsg("保存中…");
+				setSaveMsg("Saving...");
 				try {
 					const r = await fetch("/vscode-files/write?path=" + encodeURIComponent(currentPath), {
 						method: "POST",
@@ -64311,13 +64327,13 @@ function Viewer({ file, rev, onStartEdit, onSaveDirect }) {
 							return next;
 						});
 						setRevisions((prev) => ({ ...prev, [currentPath]: (prev[currentPath] ?? 0) + 1 }));
-						setSaveMsg("已保存");
+						setSaveMsg("Saved");
 						setTimeout(() => setSaveMsg(null), 2000);
 					} else {
-						setSaveMsg("保存失败：" + ((d && d.error) || "unknown"));
+						setSaveMsg("Save failed: " + ((d && d.error) || "unknown"));
 					}
 				} catch (e) {
-					setSaveMsg("保存失败：" + String(e));
+					setSaveMsg("Save failed: " + String(e));
 				} finally {
 					setBusy(false);
 				}
@@ -64330,7 +64346,7 @@ function Viewer({ file, rev, onStartEdit, onSaveDirect }) {
 			}, [currentPath, edits, busy, saveWithText]);
 			const cancel = react.useCallback(() => {
 				const edit = edits[currentPath];
-				if (edit !== void 0 && edit.dirty && typeof confirm === "function" && !confirm("放弃未保存的修改？")) return;
+				if (edit !== void 0 && edit.dirty && typeof confirm === "function" && !confirm("Discard unsaved changes?")) return;
 				setEdits((prev) => {
 					const next = { ...prev };
 					delete next[currentPath];
@@ -64347,7 +64363,7 @@ function Viewer({ file, rev, onStartEdit, onSaveDirect }) {
 			}, [currentPath]);
 			const closeTab = react.useCallback((path) => {
 				const edit = edits[path];
-				if (edit !== void 0 && edit.dirty && typeof confirm === "function" && !confirm("该标签有未保存的修改，关闭将丢失。确定关闭？")) return;
+				if (edit !== void 0 && edit.dirty && typeof confirm === "function" && !confirm("This tab has unsaved changes. Discard and close?")) return;
 				onClose(path);
 				setEdits((prev) => {
 					if (!(path in prev)) return prev;
@@ -64359,7 +64375,7 @@ function Viewer({ file, rev, onStartEdit, onSaveDirect }) {
 			const closePaths = react.useCallback((paths) => {
 				if (paths.length === 0) return;
 				const dirtyAny = paths.some((p) => edits[p]?.dirty === true);
-				if (dirtyAny && typeof confirm === "function" && !confirm("有未保存的标签，关闭将丢失修改。确定关闭？")) return;
+				if (dirtyAny && typeof confirm === "function" && !confirm("Some tabs have unsaved changes. Discard and close?")) return;
 				for (const p of paths) onClose(p);
 				setEdits((prev) => {
 					const next = { ...prev };
@@ -64372,16 +64388,16 @@ function Viewer({ file, rev, onStartEdit, onSaveDirect }) {
 				onClick: () => { setCtxMenu(null); action(); }
 			}, label);
 			if (!hasTabs) {
-				return h("div", { className: "vk_editor" }, h("div", { className: "vk_empty" }, "从左侧文件树打开一个文件\n（点击文件名即可在标签页中查看）"));
+				return h("div", { className: "vk_editor" }, h("div", { className: "vk_empty" }, "Select a file from the Explorer\n(Click any file to view and edit in tabs)"));
 			}
 			const editBar = editing
 				? h("div", { className: "vk_editBar" },
-					h("button", { className: "vk_editBtn vk_editBtnPrimary", disabled: busy, title: "保存 (Ctrl+S)", onClick: save }, "💾 保存"),
-					h("button", { className: "vk_editBtn", disabled: busy, title: "取消编辑 (Esc)", onClick: cancel }, "✕ 取消"),
-					dirty ? h("span", { className: "vk_dirtyDot", title: "有未保存的修改" }) : null,
+					h("button", { className: "vk_editBtn vk_editBtnPrimary", disabled: busy, title: "Save (Ctrl+S)", onClick: save }, "💾 Save"),
+					h("button", { className: "vk_editBtn", disabled: busy, title: "Cancel Edit (Esc)", onClick: cancel }, "✕ Cancel"),
+					dirty ? h("span", { className: "vk_dirtyDot", title: "Unsaved changes" }) : null,
 					saveMsg !== null ? h("span", { className: "vk_saveMsg" }, saveMsg) : null,
 					h("div", { style: { flex: 1 } }),
-					h("span", { className: "vk_saveMsg" }, "编辑模式")
+					h("span", { className: "vk_saveMsg" }, "Edit Mode")
 				)
 				: null;
 			return h("div", { className: "vk_editor" },
@@ -64423,12 +64439,12 @@ function Viewer({ file, rev, onStartEdit, onSaveDirect }) {
 						isDirty ? h("span", { className: "vk_dirtyDot vk_tabDot", title: "未保存" }) : null,
 						h("button", {
 							className: "vk_tabClose",
-							title: "关闭",
+							title: "Close Tab",
 							onClick: (e) => { e.stopPropagation(); closeTab(t.path); }
 						}, "×")
 					);
 				})),
-				editing
+				(editing && !(active !== null && (active.path.endsWith(".md") || active.path.endsWith(".markdown"))))
 					? h(react.Fragment, null,
 						editBar,
 						h("textarea", {
@@ -64447,7 +64463,7 @@ function Viewer({ file, rev, onStartEdit, onSaveDirect }) {
 						})
 					)
 					: (active !== null && active.path === TRAJECTORY_TAB_PATH)
-						? h("div", { className: "vk_editorBody vk_trajBody" }, trajectory ?? h("div", { className: "vk_notice" }, "轨迹视图不可用"))
+						? h("div", { className: "vk_editorBody vk_trajBody" }, trajectory ?? h("div", { className: "vk_notice" }, "Trajectory view unavailable"))
 						: (active !== null && (active.path.endsWith(".md") || active.path.endsWith(".markdown")) && edits[active.path] !== void 0)
 						? h(TipTapNotionEditor, {
 							file: active,
@@ -64460,23 +64476,30 @@ function Viewer({ file, rev, onStartEdit, onSaveDirect }) {
 							saveMsg,
 							onToggleRawMode: cancel
 						})
-						: h(Viewer, { file: active, rev: revisions[active.path] ?? 0, onStartEdit: startEdit, onSaveDirect: (txt) => saveWithText(txt) }),
+						: h(Viewer, {
+							file: active,
+							rev: revisions[active.path] ?? 0,
+							onStartEdit: startEdit,
+							onSaveDirect: (txt) => saveWithText(txt),
+							onUpdateDirect: onEditText,
+							isDirectDirty: edits[active.path]?.dirty === true
+						}),
 				ctxMenu !== null ? h("div", {
 					className: "vk_menu",
 					"data-vk-menu": true,
 					style: { left: Math.min(ctxMenu.x, window.innerWidth - 180) + "px", top: Math.min(ctxMenu.y, window.innerHeight - 200) + "px" }
 				},
-					ctxMenu.path !== null ? menuItem("关闭", () => closeTab(ctxMenu.path)) : null,
-					ctxMenu.path !== null ? menuItem("关闭其他", () => closePaths(tabs.map((t) => t.path).filter((p) => p !== ctxMenu.path))) : null,
-					ctxMenu.path !== null ? menuItem("关闭左侧", () => {
+					ctxMenu.path !== null ? menuItem("Close", () => closeTab(ctxMenu.path)) : null,
+					ctxMenu.path !== null ? menuItem("Close Others", () => closePaths(tabs.map((t) => t.path).filter((p) => p !== ctxMenu.path))) : null,
+					ctxMenu.path !== null ? menuItem("Close to the Left", () => {
 						const i = tabs.findIndex((t) => t.path === ctxMenu.path);
 						closePaths(tabs.slice(0, i).map((t) => t.path));
 					}) : null,
-					ctxMenu.path !== null ? menuItem("关闭右侧", () => {
+					ctxMenu.path !== null ? menuItem("Close to the Right", () => {
 						const i = tabs.findIndex((t) => t.path === ctxMenu.path);
 						closePaths(tabs.slice(i + 1).map((t) => t.path));
 					}) : null,
-					menuItem("关闭全部", () => closePaths(tabs.map((t) => t.path)), true)
+					menuItem("Close All", () => closePaths(tabs.map((t) => t.path)), true)
 				) : null
 			);
 		}
@@ -64501,18 +64524,18 @@ function Viewer({ file, rev, onStartEdit, onSaveDirect }) {
 				setMsg(null);
 				fetch("/vscode-files/persona", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ content }) })
 					.then((r) => r.json())
-					.then((d) => { setSaving(false); setMsg(d && d.ok ? { ok: true, text: "已保存 ✓ 新消息立即生效" } : { ok: false, text: (d && d.error) || "保存失败" }); })
+					.then((d) => { setSaving(false); setMsg(d && d.ok ? { ok: true, text: "Saved ✓ Effective immediately" } : { ok: false, text: (d && d.error) || "Save failed" }); })
 					.catch((e) => { setSaving(false); setMsg({ ok: false, text: String(e) }); });
 			};
 			return h("div", { className: "vk_personaSection" },
-				h("div", { className: "vk_personaDesc" }, "类似 Claude Code 的全局 CLAUDE.md：内容会注入到所有会话的系统提示中，新消息立即生效（无需重启）。支持 Markdown。"),
+				h("div", { className: "vk_personaDesc" }, "Global Instructions (similar to CLAUDE.md): Injected into system prompt of all sessions. Takes effect immediately. Supports Markdown."),
 				content === null
 					? h("div", { className: "vk_personaDesc" }, "加载中…")
-					: h("textarea", { className: "vk_personaArea", value: content, onChange: (e) => setContent(e.target.value), placeholder: "例如：\n- 你叫小鲸，说话简洁直接\n- 一律用简体中文回答\n- …" }),
+					: h("textarea", { className: "vk_personaArea", value: content, onChange: (e) => setContent(e.target.value), placeholder: "Example:\n- Be concise and precise\n- Follow coding guidelines\n- ..." }),
 				h("div", { className: "vk_personaFoot" },
 					msg !== null ? h("div", { className: "vk_personaMsg" + (msg.ok ? " vk_personaMsgOk" : " vk_personaMsgErr") }, msg.text) : null,
 					h("div", { style: { flex: 1 } }),
-					h("button", { className: "vk_personaSave", disabled: saving || content === null, onClick: save }, saving ? "保存中…" : "保存")
+					h("button", { className: "vk_personaSave", disabled: saving || content === null, onClick: save }, saving ? "Saving..." : "Save")
 				)
 			);
 		}
@@ -64523,31 +64546,32 @@ function Viewer({ file, rev, onStartEdit, onSaveDirect }) {
 		function LeftPanel({ tab, onTab, tree, sessionSlot, collapsed, onExpand, onCollapse }) {
 			if (collapsed) {
 				return h("div", { className: "vk_colLeft vk_rail" },
-					h("button", { className: "vk_railBtn" + (tab === "files" ? " vk_railBtnActive" : ""), title: "文件", onClick: () => { onTab("files"); onExpand(); } }, "📁"),
-					h("button", { className: "vk_railBtn" + (tab === "sessions" ? " vk_railBtnActive" : ""), title: "会话", onClick: () => { onTab("sessions"); onExpand(); } }, "☰"),
+					h("button", { className: "vk_railBtn" + (tab === "files" ? " vk_railBtnActive" : ""), title: "Explorer", onClick: () => { onTab("files"); onExpand(); } }, "📁"),
+					h("button", { className: "vk_railBtn" + (tab === "sessions" ? " vk_railBtnActive" : ""), title: "Quests", onClick: () => { onTab("sessions"); onExpand(); } }, "☰"),
 					h("div", { className: "vk_railSpacer" }),
-					h("button", { className: "vk_railBtn", title: "展开侧边栏", onClick: onExpand }, "»"),
+					h("button", { className: "vk_railBtn", title: "Expand Sidebar", onClick: onExpand }, "»"),
 					h("div", { style: { display: "none" } }, sessionSlot)
 				);
 			}
 			return h("div", { className: "vk_colLeft" },
 				h("div", { className: "vk_tabBar" },
-					h("button", { className: "vk_tabBtn" + (tab === "files" ? " vk_tabBtnActive" : ""), onClick: () => onTab("files") }, "文件"),
-					h("button", { className: "vk_tabBtn" + (tab === "sessions" ? " vk_tabBtnActive" : ""), onClick: () => onTab("sessions") }, "会话"),
+					h("button", { className: "vk_tabBtn" + (tab === "files" ? " vk_tabBtnActive" : ""), onClick: () => onTab("files") }, "Explorer"),
+					h("button", { className: "vk_tabBtn" + (tab === "sessions" ? " vk_tabBtnActive" : ""), onClick: () => onTab("sessions") }, "Quests"),
 					h("div", { className: "vk_tabBarSpacer" }),
-					h("button", { className: "vk_tabBtn", title: "收起侧边栏", onClick: onCollapse }, "«")
+					h("button", { className: "vk_tabBtn", title: "Collapse Sidebar", onClick: onCollapse }, "«")
 				),
 				h("div", { className: "vk_tabBody" + (tab === "files" ? "" : " vk_tabBodyHidden") }, tree),
 				h("div", { className: "vk_tabBody" + (tab === "sessions" ? "" : " vk_tabBodyHidden") }, sessionSlot)
 			);
 		}
-		function RightPanel({ tab, onTab, conversation, details, mode, onToggleMode, showDetails }) {
+		function RightPanel({ tab, onTab, conversation, details, mode, onToggleMode, showDetails, onCloseRight }) {
 			return h("div", { className: "vk_colRight" },
 				h("div", { className: "vk_tabBar" },
-					h("button", { className: "vk_tabBtn" + (tab === "conversation" ? " vk_tabBtnActive" : ""), onClick: () => onTab("conversation") }, "对话"),
-					showDetails ? h("button", { className: "vk_tabBtn" + (tab === "details" ? " vk_tabBtnActive" : ""), onClick: () => onTab("details") }, "详情") : null,
+					h("button", { className: "vk_tabBtn" + (tab === "conversation" ? " vk_tabBtnActive" : ""), onClick: () => onTab("conversation") }, "Chat"),
+					showDetails ? h("button", { className: "vk_tabBtn" + (tab === "details" ? " vk_tabBtnActive" : ""), onClick: () => onTab("details") }, "Details") : null,
 					h("div", { className: "vk_tabBarSpacer" }),
-					h("button", { className: "vk_tabBtn vk_modeBtn", title: mode === "native" ? "切回分栏模式（文件查看器 + 侧栏对话）" : "切换为全屏对话模式（隐藏文件查看器）", onClick: onToggleMode }, mode === "native" ? "◫ 分栏视图" : "⛶ 全屏对话")
+					h("button", { className: "vk_tabBtn vk_modeBtn", title: mode === "native" ? "Switch to Split View (Editor + Chat)" : "Switch to Fullscreen Chat", onClick: onToggleMode }, mode === "native" ? "◫ Split View" : "⛶ Fullscreen Chat"),
+					onCloseRight ? h("button", { className: "vk_tabBtn", title: "Close / Collapse Chat Panel (Ctrl+L)", onClick: onCloseRight }, "✕") : null
 				),
 				h("div", { className: "vk_tabBody" + (tab === "conversation" ? "" : " vk_tabBodyHidden") }, conversation),
 				showDetails ? h("div", { className: "vk_tabBody" + (tab === "details" ? "" : " vk_tabBodyHidden") }, details) : null
@@ -64607,6 +64631,26 @@ function Viewer({ file, rev, onStartEdit, onSaveDirect }) {
 		// ──────────────────────────────────────────────────────────────
 		function AppFrame({ useStore, useSessions, actions, renderSlot, pickFolder }) {
 			const panels = useStore((s) => s);
+			const [defaultCwd, setDefaultCwd] = react.useState(null);
+			react.useEffect(() => {
+				fetch("/vscode-files/list?path=.")
+					.then((r) => r.json())
+					.then((d) => { if (d && d.ok && (d.root || d.path)) setDefaultCwd(d.root || d.path); })
+					.catch(() => {});
+			}, []);
+
+			// Global Ctrl+L shortcut to toggle right chat panel
+			react.useEffect(() => {
+				const onKeyDown = (e) => {
+					if ((e.ctrlKey || e.metaKey) && (e.key === 'l' || e.key === 'L')) {
+						e.preventDefault();
+						const curRight = panels.right;
+						actions.setRight(curRight === 0 ? 440 : 0);
+					}
+				};
+				window.addEventListener('keydown', onKeyDown);
+				return () => window.removeEventListener('keydown', onKeyDown);
+			}, [panels.right, actions]);
 			const sessionCwd = useSessions((s) => {
 				const current = s.current;
 				if (current === void 0) return void 0;
@@ -64642,7 +64686,7 @@ function Viewer({ file, rev, onStartEdit, onSaveDirect }) {
 			const narrow = viewport < SIDEBAR_AUTO_COLLAPSE;
 			react.useEffect(() => { actions.setNarrow(narrow); }, [actions, narrow]);
 			const sidebarCollapsed = narrow ? !panels.narrowExpanded : panels.sidebar === 0;
-			const cols = computeColumns(viewport, sidebarCollapsed ? 0 : panels.sidebar === 0 ? 280 : panels.sidebar, panels.right === 0 ? 440 : panels.right);
+			const cols = computeColumns(viewport, sidebarCollapsed ? 0 : (panels.sidebar === 0 ? 0 : (panels.sidebar ?? 280)), panels.right === 0 ? 0 : (panels.right ?? 440));
 			const colsRef = react.useRef(cols);
 			colsRef.current = cols;
 			const sidebarBase = react.useRef(0);
@@ -64735,7 +64779,7 @@ function Viewer({ file, rev, onStartEdit, onSaveDirect }) {
 			react.useEffect(() => {
 				if (!native && panels.rightTab === "details") actions.setRightTab("conversation");
 			}, [native, panels.rightTab, actions]);
-			const fileRoot = tabsState.root != null ? tabsState.root : sessionCwd;
+			const fileRoot = tabsState.root != null ? tabsState.root : (sessionCwd || defaultCwd || ".");
 			const left = h(LeftPanel, {
 				tab: tabsState.sidebarTab,
 				onTab: setSidebarTab,
@@ -64747,7 +64791,8 @@ function Viewer({ file, rev, onStartEdit, onSaveDirect }) {
 			});
 			const detailsSlot = renderSlot("details", {});
 			const center = h(EditorArea, { tabs: tabsState.tabs, activePath: tabsState.active, onSelect: selectTab, onClose: closeFile, onMoveTab: moveTab, trajectory: native ? null : detailsSlot });
-			const right = h(RightPanel, {
+			const right = cols.right > 0 ? h(RightPanel, {
+				onCloseRight: () => actions.setRight(0),
 				tab: panels.rightTab,
 				onTab: (t) => actions.setRightTab(t),
 				mode: tabsState.mode,
@@ -64755,7 +64800,7 @@ function Viewer({ file, rev, onStartEdit, onSaveDirect }) {
 				showDetails: native,
 				conversation: renderSlot("conversation", {}),
 				details: detailsSlot
-			});
+			}) : null;
 			const gridCols = native
 				? `${cols.sidebar}px 0px minmax(0, 1fr)`
 				: `${cols.sidebar}px minmax(0, 1fr) ${cols.right}px`;
@@ -64791,8 +64836,8 @@ function Viewer({ file, rev, onStartEdit, onSaveDirect }) {
 					detailsSeq: 0
 				}),
 				actions: {
-					setSidebar: (d, px) => { d.sidebar = clampWidth(px, 264, 420); },
-					setRight: (d, px) => { d.right = clampWidth(px, 340, 640); },
+					setSidebar: (d, px) => { d.sidebar = px === 0 ? 0 : clampWidth(px, 220, 500); },
+					setRight: (d, px) => { d.right = px === 0 ? 0 : clampWidth(px, 280, 1400); },
 					toggleSidebar: (d) => {
 						if (d.narrow) d.narrowExpanded = !d.narrowExpanded;
 						else d.sidebar = d.sidebar === 0 ? 280 : 0;
@@ -64897,7 +64942,7 @@ function Viewer({ file, rev, onStartEdit, onSaveDirect }) {
 				name: "settings.section",
 				id: "persona",
 				order: 1,
-				label: () => "全局人设"
+				label: () => "Global Persona"
 			}, PersonaSection)), "vscode-layout: settings persona section");
 			ctx.effect(() => {
 				const presenter = new ThemePresenter();
