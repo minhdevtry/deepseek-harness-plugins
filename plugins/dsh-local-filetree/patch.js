@@ -64,7 +64,7 @@ if (fs.existsSync(serverFile)) {
 }
 
 // ==========================================
-// 2. REBUILD CLIENT (Clean, verified bundle)
+// 2. REBUILD CLIENT (Safe getSnapshot & Root fetch fallback)
 // ==========================================
 if (fs.existsSync(clientFile)) {
   const fullClientJs = `window.__ModuleLoader__.load({
@@ -476,12 +476,28 @@ if (fs.existsSync(clientFile)) {
 
 		// ── panel body (tree view + editor) ──────────────────────────────────────
 		function FileTree({ root, onRestoreDetails }) {
+			const [activeRoot, setActiveRoot] = react.useState(root);
 			const [cache, setCache] = react.useState({});
 			const [expanded, setExpanded] = react.useState({});
 			const [showHidden, setShowHidden] = react.useState(false);
 			const [nonce, setNonce] = react.useState(0);
 			const [editingFile, setEditingFile] = react.useState(null);
 			const [fileContent, setFileContent] = react.useState('');
+
+			react.useEffect(() => {
+				if (!activeRoot) {
+					fetch("/filetree/root")
+						.then((res) => res.json())
+						.then((data) => {
+							if (data.ok && data.path) {
+								setActiveRoot(data.path);
+							}
+						})
+						.catch(() => {});
+				} else {
+					setActiveRoot(root);
+				}
+			}, [root]);
 
 			const refresh = () => {
 				setCache({});
@@ -518,11 +534,11 @@ if (fs.existsSync(clientFile)) {
 			};
 
 			react.useEffect(() => {
-				if (root !== null) {
-					setExpanded((e) => (e[root] === undefined ? { ...e, [root]: true } : e));
-					fetchDir(root);
+				if (activeRoot) {
+					setExpanded((e) => (e[activeRoot] === undefined ? { ...e, [activeRoot]: true } : e));
+					fetchDir(activeRoot);
 				}
-			}, [root, nonce]);
+			}, [activeRoot, nonce]);
 
 			const toggle = (dirPath) => {
 				const next = !expanded[dirPath];
@@ -592,7 +608,7 @@ if (fs.existsSync(clientFile)) {
 				react.createElement("div", { key: "panel", className: "ft-panel" }, [
 					react.createElement("div", { key: "header", className: "ft-header" }, [
 						react.createElement("div", { key: "title", className: "ft-title" }, "File Tree"),
-						react.createElement("div", { key: "root", className: "ft-root", title: root ?? "" }, root ?? "(No session workspace)"),
+						react.createElement("div", { key: "root", className: "ft-root", title: activeRoot ?? "" }, activeRoot ?? "(No session workspace)"),
 						react.createElement("div", { key: "tools", className: "ft-tools" }, [
 							react.createElement("button", { key: "hidden", type: "button", className: "ft-btn", onClick: () => setShowHidden((v) => !v) },
 								showHidden ? "Hide hidden files" : "Show hidden files"),
@@ -601,9 +617,9 @@ if (fs.existsSync(clientFile)) {
 						])
 					]),
 					react.createElement("div", { key: "body", className: "ft-body" },
-						root === null
+						!activeRoot
 							? react.createElement("div", { className: "ft-hint" }, "Open a session to display its workspace file tree")
-							: react.createElement("div", { className: "ft-tree" }, renderLevel(root, 0))
+							: react.createElement("div", { className: "ft-tree" }, renderLevel(activeRoot, 0))
 					)
 				])
 			]);
@@ -622,10 +638,20 @@ if (fs.existsSync(clientFile)) {
 				treeActive = true;
 				const workspaces = ctx.get("workspaces");
 				const getRoot = () => {
-					if (workspaces === undefined) return null;
-					const snap = workspaces.getSnapshot();
-					if (snap.activeWorkspace === undefined) return null;
-					return snap.activeWorkspace.root.displayPath;
+					try {
+						if (workspaces && typeof workspaces.getSnapshot === "function") {
+							const snap = workspaces.getSnapshot();
+							if (snap && snap.activeWorkspace && snap.activeWorkspace.root) {
+								return snap.activeWorkspace.root.displayPath || snap.activeWorkspace.root.path || null;
+							}
+						}
+						if (workspaces && workspaces.activeWorkspace && workspaces.activeWorkspace.root) {
+							return workspaces.activeWorkspace.root.displayPath || workspaces.activeWorkspace.root.path || null;
+						}
+					} catch (e) {
+						console.warn("[filetree] getRoot error", e);
+					}
+					return null;
 				};
 
 				treeDisposer = slots.register(
@@ -667,5 +693,5 @@ if (fs.existsSync(clientFile)) {
 });
 `
   fs.writeFileSync(clientFile, fullClientJs, 'utf8')
-  console.log('[✓] Successfully built clean, fully verified dsh-local-filetree client.js bundle!')
+  console.log('[✓] Successfully built clean dsh-local-filetree client.js with safe getRoot + /filetree/root fallback!')
 }
