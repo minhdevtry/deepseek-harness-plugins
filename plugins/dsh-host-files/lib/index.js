@@ -322,6 +322,66 @@ function apply(ctx) {
 				} catch {}
 				return sendJson(res, 200, { ok: true, content });
 			}
+			if (req.method === "POST") {
+				let body;
+				try {
+					body = await readJsonBody(req, 12 * 1024 * 1024);
+				} catch (error) {
+					return sendJson(res, 400, { ok: false, error: error.message });
+				}
+				if (url.pathname === "/vscode-files/write") {
+					const writePath = body?.path || url.searchParams.get("path");
+					const content = typeof body?.content === "string" ? body.content : (typeof body === "string" ? body : "");
+					if (typeof writePath !== "string" || writePath.length === 0) {
+						return sendJson(res, 400, { ok: false, error: "body needs { path: string, content: string } or ?path= query" });
+					}
+					if (Buffer.byteLength(content, "utf8") > MAX_WRITE_BYTES) {
+						return sendJson(res, 400, { ok: false, error: "content too large" });
+					}
+					const info = await stat(writePath).catch(() => void 0);
+					if (info !== void 0 && info.isDirectory()) return sendJson(res, 400, { ok: false, error: "path is a directory" });
+					await writeFile(writePath, content, "utf8");
+					return sendJson(res, 200, { ok: true, size: Buffer.byteLength(content, "utf8") });
+				}
+				if (url.pathname === "/vscode-files/mkdir") {
+					const parent = body?.path;
+					if (typeof parent !== "string" || !validSegment(body?.name)) return sendJson(res, 400, { ok: false, error: "body needs { path: string, name: string }" });
+					const full = join(parent, body.name);
+					try {
+						await mkdir(full);
+					} catch (error) {
+						return sendJson(res, 409, { ok: false, error: "Already exists or cannot create directory: " + (error?.code ?? "unknown") });
+					}
+					return sendJson(res, 200, { ok: true, path: full });
+				}
+				if (url.pathname === "/vscode-files/mkfile") {
+					const parent = body?.path;
+					if (typeof parent !== "string" || !validSegment(body?.name)) return sendJson(res, 400, { ok: false, error: "body needs { path: string, name: string }" });
+					const full = join(parent, body.name);
+					try {
+						await writeFile(full, "", { flag: "wx" });
+					} catch (error) {
+						return sendJson(res, 409, { ok: false, error: "Already exists or cannot create file: " + (error?.code ?? "unknown") });
+					}
+					return sendJson(res, 200, { ok: true, path: full });
+				}
+				if (url.pathname === "/vscode-files/rename") {
+					const oldPath = body?.path;
+					if (typeof oldPath !== "string" || !validSegment(body?.newName)) return sendJson(res, 400, { ok: false, error: "body needs { path: string, newName: string }" });
+					const newPath = join(dirname(oldPath), body.newName);
+					await rename(oldPath, newPath);
+					return sendJson(res, 200, { ok: true, path: newPath });
+				}
+				if (url.pathname === "/vscode-files/delete") {
+					const delPath = body?.path;
+					if (typeof delPath !== "string" || delPath.length === 0) return sendJson(res, 400, { ok: false, error: "body needs { path: string }" });
+					const info = await stat(delPath).catch(() => void 0);
+					if (info === void 0) return sendJson(res, 404, { ok: false, error: "not found" });
+					await recycleBinDelete(delPath, info.isDirectory());
+					return sendJson(res, 200, { ok: true });
+				}
+			}
+
 			const rawTarget = url.searchParams.get("path");
 			if (typeof rawTarget !== "string" || rawTarget.length === 0) {
 				return sendJson(res, 400, { ok: false, error: "missing path" });
@@ -389,65 +449,6 @@ function apply(ctx) {
 						return sendJson(res, 200, { ok: true, html });
 					} catch (error) {
 						return sendJson(res, 200, { ok: false, error: error instanceof Error ? error.message : String(error) });
-					}
-				}
-				if (req.method === "POST") {
-					let body;
-					try {
-						body = await readJsonBody(req, 12 * 1024 * 1024);
-					} catch (error) {
-						return sendJson(res, 400, { ok: false, error: error.message });
-					}
-					if (url.pathname === "/vscode-files/write") {
-						const writePath = body?.path;
-						const content = body?.content;
-						if (typeof writePath !== "string" || writePath.length === 0 || typeof content !== "string") {
-							return sendJson(res, 400, { ok: false, error: "body needs { path: string, content: string }" });
-						}
-						if (Buffer.byteLength(content, "utf8") > MAX_WRITE_BYTES) {
-							return sendJson(res, 400, { ok: false, error: "content too large" });
-						}
-						const info = await stat(writePath).catch(() => void 0);
-						if (info !== void 0 && info.isDirectory()) return sendJson(res, 400, { ok: false, error: "path is a directory" });
-						await writeFile(writePath, content, "utf8");
-						return sendJson(res, 200, { ok: true, size: Buffer.byteLength(content, "utf8") });
-					}
-					if (url.pathname === "/vscode-files/mkdir") {
-						const parent = body?.path;
-						if (typeof parent !== "string" || !validSegment(body?.name)) return sendJson(res, 400, { ok: false, error: "body needs { path: string, name: string }" });
-						const full = join(parent, body.name);
-						try {
-							await mkdir(full);
-						} catch (error) {
-							return sendJson(res, 409, { ok: false, error: "Already exists or cannot create directory: " + (error?.code ?? "unknown") });
-						}
-						return sendJson(res, 200, { ok: true, path: full });
-					}
-					if (url.pathname === "/vscode-files/mkfile") {
-						const parent = body?.path;
-						if (typeof parent !== "string" || !validSegment(body?.name)) return sendJson(res, 400, { ok: false, error: "body needs { path: string, name: string }" });
-						const full = join(parent, body.name);
-						try {
-							await writeFile(full, "", { flag: "wx" });
-						} catch (error) {
-							return sendJson(res, 409, { ok: false, error: "Already exists or cannot create file: " + (error?.code ?? "unknown") });
-						}
-						return sendJson(res, 200, { ok: true, path: full });
-					}
-					if (url.pathname === "/vscode-files/rename") {
-						const oldPath = body?.path;
-						if (typeof oldPath !== "string" || !validSegment(body?.newName)) return sendJson(res, 400, { ok: false, error: "body needs { path: string, newName: string }" });
-						const newPath = join(dirname(oldPath), body.newName);
-						await rename(oldPath, newPath);
-						return sendJson(res, 200, { ok: true, path: newPath });
-					}
-					if (url.pathname === "/vscode-files/delete") {
-						const delPath = body?.path;
-						if (typeof delPath !== "string" || delPath.length === 0) return sendJson(res, 400, { ok: false, error: "body needs { path: string }" });
-						const info = await stat(delPath).catch(() => void 0);
-						if (info === void 0) return sendJson(res, 404, { ok: false, error: "not found" });
-						await recycleBinDelete(delPath, info.isDirectory());
-						return sendJson(res, 200, { ok: true });
 					}
 				}
 				return sendJson(res, 404, { ok: false, error: "unknown vscode-files endpoint" });

@@ -101,6 +101,34 @@ async function run() {
 		await page.waitForTimeout(1000);
 		console.log('[✓] Step 5 passed: Quick Open (Ctrl+P) verified!');
 
+		// 5b. Command Palette (Ctrl+Shift+P / F1)
+		console.log('[+] Step 5b: Testing Command Palette (Ctrl+Shift+P)...');
+		await page.keyboard.press('Control+Shift+P');
+		await page.waitForTimeout(500);
+
+		const cmdPalette = page.locator('.vk_quick_open_palette[data-vk-cmd-palette="true"]');
+		await cmdPalette.waitFor({ state: 'visible', timeout: 3000 });
+		const cmdItems = await cmdPalette.locator('.vk_quick_open_item').allInnerTexts();
+		console.log('[+] Command Palette items available:', cmdItems.length);
+
+		// Dismiss Command Palette
+		await page.keyboard.press('Escape');
+		await page.waitForTimeout(300);
+		console.log('[✓] Step 5b passed: Command Palette (Ctrl+Shift+P / F1) verified!');
+
+		// 5c. Breadcrumbs & Status Bar verification
+		console.log('[+] Step 5c: Testing Interactive Breadcrumbs & Status Bar...');
+		const breadcrumb = page.locator('.vk_breadcrumb[data-vk-breadcrumb="true"]').first();
+		await breadcrumb.waitFor({ state: 'visible', timeout: 3000 });
+		const breadcrumbText = await breadcrumb.innerText();
+		console.log('[+] Breadcrumb active path:', breadcrumbText);
+
+		const statusBar = page.locator('.vk_statusbar[data-vk-statusbar="true"]').first();
+		await statusBar.waitFor({ state: 'visible', timeout: 3000 });
+		const statusText = await statusBar.innerText();
+		console.log('[+] Status bar text:', statusText);
+		console.log('[✓] Step 5c passed: Breadcrumbs & Status Bar verified!');
+
 		// 5. TipTap Notion WYSIWYG Editing & Ctrl+S Saving
 		console.log('[+] Step 6: Testing TipTap Notion WYSIWYG editing & saving...');
 		const ttProse = page.locator('.tiptap, .vk_tiptap_wrapper').first();

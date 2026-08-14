@@ -64030,6 +64030,71 @@ const FILE_ICON_DIR_OPEN = "fti-FolderOpen";
 			.vk_diff_line_add .vk_diff_prefix { color: #16a34a; }
 			.vk_diff_line_del .vk_diff_prefix { color: #dc2626; }
 			.vk_diff_text { flex: 1; padding: 0 6px; overflow-x: auto; }
+
+			/* Breadcrumb navigation */
+			.vk_breadcrumb {
+				display: flex; align-items: center; gap: 4px; padding: 4px 12px;
+				font-size: 11.5px; color: #6b7280; background: var(--dsw-alias-bg-subtle, #f9fafb);
+				border-bottom: 1px solid var(--dsw-alias-border-l1, #f3f4f6); overflow-x: auto; flex-shrink: 0;
+			}
+			.vk_breadcrumb_item {
+				cursor: pointer; border-radius: 3px; padding: 1px 4px; transition: all 0.1s;
+				white-space: nowrap;
+			}
+			.vk_breadcrumb_item:hover {
+				background: var(--dsw-alias-interactive-bg-hover, rgba(0,0,0,0.06));
+				color: #2563eb;
+			}
+			.vk_breadcrumb_last {
+				font-weight: 600; color: var(--dsw-alias-label-primary, #111827); cursor: default;
+			}
+			.vk_breadcrumb_sep {
+				font-size: 12px; color: #9ca3af; user-select: none;
+			}
+
+			/* Status Bar */
+			.vk_statusbar {
+				display: flex; align-items: center; justify-content: space-between;
+				height: 24px; padding: 0 12px; font-size: 11px;
+				background: #0f172a; color: #94a3b8; border-top: 1px solid rgba(255,255,255,0.08);
+				flex-shrink: 0; user-select: none; z-index: 10;
+			}
+			.vk_statusbar_left, .vk_statusbar_right {
+				display: flex; align-items: center; gap: 12px;
+			}
+			.vk_status_item {
+				display: flex; align-items: center; gap: 4px; cursor: pointer; padding: 2px 5px; border-radius: 3px;
+			}
+			.vk_status_item:hover {
+				background: rgba(255,255,255,0.1); color: #ffffff;
+			}
+			.vk_status_badge {
+				background: rgba(37,99,235,0.3); color: #93c5fd; padding: 1px 5px; border-radius: 3px; font-weight: 600; font-size: 10.5px;
+			}
+
+			/* AI Assist Dropdown */
+			.vk_ai_assist_wrap { position: relative; display: inline-flex; }
+			.vk_ai_assist_btn {
+				background: linear-gradient(135deg, #2563eb, #7c3aed); color: #ffffff; border: none;
+				border-radius: 5px; padding: 3px 10px; font-size: 12px; font-weight: 600; cursor: pointer;
+				display: flex; align-items: center; gap: 5px; transition: opacity 0.15s;
+			}
+			.vk_ai_assist_btn:hover { opacity: 0.9; }
+			.vk_ai_dropdown {
+				position: absolute; top: calc(100% + 4px); right: 0; z-index: 9999;
+				width: 230px; background: var(--dsw-alias-bg-elevated, #ffffff);
+				border: 1px solid var(--dsw-alias-border-l2, #e5e7eb); border-radius: 8px;
+				box-shadow: 0 10px 30px rgba(0,0,0,0.2); padding: 4px; display: flex; flex-direction: column; gap: 2px;
+				animation: vk-pop-in 0.12s ease-out;
+			}
+			.vk_ai_dropdown_item {
+				display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 5px;
+				border: none; background: transparent; font-size: 12px; text-align: left; cursor: pointer;
+				color: var(--dsw-alias-label-primary, #374151); transition: background 0.1s;
+			}
+			.vk_ai_dropdown_item:hover {
+				background: #eff6ff; color: #1d4ed8;
+			}
 		`;
 
 		if (typeof document !== "undefined" && !document.getElementById("vk-tiptap-styles")) {
@@ -64037,6 +64102,184 @@ const FILE_ICON_DIR_OPEN = "fti-FolderOpen";
 			s.id = "vk-tiptap-styles";
 			s.textContent = tiptapStyles;
 			document.head.appendChild(s);
+		}
+
+		// ── Breadcrumb Navigation Component ──
+		function Breadcrumb({ path, onOpenFolder }) {
+			if (!path || path === TRAJECTORY_TAB_PATH) return null;
+			const parts = path.split(/[\/\\]/).filter(Boolean);
+			
+			return h("div", { className: "vk_breadcrumb", "data-vk-breadcrumb": true },
+				parts.map((part, idx) => {
+					const currentSubPath = parts.slice(0, idx + 1).join("/");
+					const isLast = idx === parts.length - 1;
+					return h(react.Fragment, { key: currentSubPath },
+						idx > 0 ? h("span", { className: "vk_breadcrumb_sep" }, "›") : null,
+						h("span", {
+							className: "vk_breadcrumb_item" + (isLast ? " vk_breadcrumb_last" : ""),
+							title: currentSubPath,
+							onClick: () => {
+								if (!isLast && onOpenFolder) onOpenFolder(currentSubPath);
+							}
+						}, part)
+					);
+				})
+			);
+		}
+
+		// ── Bottom Status Bar Component ──
+		function StatusBar({ active, isMarkdown, stats, lineCount, isDirty, onToggleDiff }) {
+			const activeName = active?.name || "";
+			const ext = activeName.includes(".") ? activeName.split(".").pop().toUpperCase() : "TEXT";
+
+			return h("div", { className: "vk_statusbar", "data-vk-statusbar": true },
+				h("div", { className: "vk_statusbar_left" },
+					h("span", { className: "vk_status_item" }, "🌿 main"),
+					active ? h("span", { className: "vk_status_item", title: active.path }, "📄 " + activeName) : null,
+					isDirty ? h("span", { className: "vk_status_badge" }, "● Unsaved") : null
+				),
+				h("div", { className: "vk_statusbar_right" },
+					isMarkdown && stats ? h("span", { className: "vk_status_item" }, stats.words + " words, " + stats.chars + " chars") : null,
+					lineCount ? h("span", { className: "vk_status_item" }, lineCount + " lines") : null,
+					h("span", { className: "vk_status_item" }, "UTF-8"),
+					h("span", { className: "vk_status_item vk_status_badge" }, isMarkdown ? "Markdown (TipTap)" : ext),
+					onToggleDiff ? h("span", { className: "vk_status_item", onClick: onToggleDiff, title: "Toggle Diff Changes" }, "⚡ Diff") : null
+				)
+			);
+		}
+
+		// ── AI Assist Quick Actions Dropdown Component ──
+		function AIAssistDropdown({ onAction }) {
+			const [open, setOpen] = react.useState(false);
+			const ref = react.useRef(null);
+
+			react.useEffect(() => {
+				if (!open) return;
+				const onDown = (e) => {
+					if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+				};
+				window.addEventListener("pointerdown", onDown);
+				return () => window.removeEventListener("pointerdown", onDown);
+			}, [open]);
+
+			const trigger = (type) => {
+				setOpen(false);
+				if (onAction) onAction(type);
+			};
+
+			return h("div", { ref, className: "vk_ai_assist_wrap" },
+				h("button", {
+					type: "button",
+					className: "vk_ai_assist_btn",
+					title: "AI Code Actions & Assistance",
+					onClick: () => setOpen(!open)
+				}, "🤖 AI Assist ▾"),
+				open ? h("div", { className: "vk_ai_dropdown", "data-vk-ai-menu": true },
+					h("button", { className: "vk_ai_dropdown_item", onClick: () => trigger("explain") }, "📖 Explain Code / File"),
+					h("button", { className: "vk_ai_dropdown_item", onClick: () => trigger("tests") }, "🧪 Generate Unit Tests"),
+					h("button", { className: "vk_ai_dropdown_item", onClick: () => trigger("refactor") }, "🔧 Refactor & Optimize"),
+					h("button", { className: "vk_ai_dropdown_item", onClick: () => trigger("docs") }, "📝 Generate JSDoc / Docs"),
+					h("button", { className: "vk_ai_dropdown_item", onClick: () => trigger("review") }, "🔍 Code Review & Bug Check")
+				) : null
+			);
+		}
+
+		// ── Command Palette (Ctrl+Shift+P / F1) ──
+		function CommandPaletteModal({ isOpen, onClose, onExecuteAction }) {
+			const [query, setQuery] = react.useState("");
+			const [selectedIndex, setSelectedIndex] = react.useState(0);
+			const inputRef = react.useRef(null);
+
+			const commands = [
+				{ id: "quick_open", title: "File: Quick Open File...", shortcut: "Ctrl+P", icon: "📄" },
+				{ id: "global_search", title: "Search: Find in Workspace Files", shortcut: "Ctrl+Shift+F", icon: "🔍" },
+				{ id: "save_file", title: "File: Save Current File", shortcut: "Ctrl+S", icon: "💾" },
+				{ id: "toggle_diff", title: "Diff: Toggle File Diff Viewer", icon: "⚡" },
+				{ id: "undo", title: "Edit: Undo", shortcut: "Ctrl+Z", icon: "↺" },
+				{ id: "redo", title: "Edit: Redo", shortcut: "Ctrl+Y", icon: "↻" },
+				{ id: "ai_explain", title: "AI Assist: Explain Current File", shortcut: "Ctrl+L", icon: "🤖" },
+				{ id: "ai_tests", title: "AI Assist: Generate Unit Tests", icon: "🧪" },
+				{ id: "ai_refactor", title: "AI Assist: Refactor & Optimize Code", icon: "🔧" },
+				{ id: "ai_docs", title: "AI Assist: Generate Documentation", icon: "📝" },
+				{ id: "toggle_chat", title: "View: Toggle AI Chat Panel", shortcut: "Ctrl+L", icon: "💬" },
+				{ id: "toggle_sidebar", title: "View: Toggle Left Sidebar", icon: "📁" },
+				{ id: "new_file", title: "Explorer: New File...", icon: "➕" },
+				{ id: "new_folder", title: "Explorer: New Folder...", icon: "📁" },
+				{ id: "refresh_explorer", title: "Explorer: Refresh Files", icon: "🔄" }
+			];
+
+			const filtered = react.useMemo(() => {
+				if (!query.trim()) return commands;
+				const q = query.toLowerCase().trim();
+				return commands.filter(c => c.title.toLowerCase().includes(q) || (c.shortcut && c.shortcut.toLowerCase().includes(q)));
+			}, [query]);
+
+			react.useEffect(() => {
+				if (isOpen) {
+					setQuery("");
+					setSelectedIndex(0);
+					setTimeout(() => { inputRef.current?.focus(); inputRef.current?.select(); }, 60);
+				}
+			}, [isOpen]);
+
+			react.useEffect(() => {
+				setSelectedIndex(0);
+			}, [query]);
+
+			if (!isOpen) return null;
+
+			const selectCommand = (cmd) => {
+				if (!cmd) return;
+				onClose();
+				if (onExecuteAction) onExecuteAction(cmd.id);
+			};
+
+			return h("div", {
+				className: "vk_quick_open_backdrop",
+				onClick: (e) => { if (e.target === e.currentTarget) onClose(); }
+			},
+				h("div", { className: "vk_quick_open_palette", "data-vk-cmd-palette": true },
+					h("div", { className: "vk_quick_open_input_wrap" },
+						h("span", { className: "vk_quick_open_icon" }, ">"),
+						h("input", {
+							ref: inputRef,
+							className: "vk_quick_open_input",
+							placeholder: "Type a command or action (e.g. Save, Diff, Explain, Search)...",
+							value: query,
+							onChange: (e) => setQuery(e.target.value),
+							onKeyDown: (e) => {
+								if (e.key === "ArrowDown") {
+									e.preventDefault();
+									setSelectedIndex((prev) => (prev + 1) % Math.max(1, filtered.length));
+								} else if (e.key === "ArrowUp") {
+									e.preventDefault();
+									setSelectedIndex((prev) => (prev - 1 + filtered.length) % Math.max(1, filtered.length));
+								} else if (e.key === "Enter") {
+									e.preventDefault();
+									if (filtered[selectedIndex]) selectCommand(filtered[selectedIndex]);
+								} else if (e.key === "Escape") {
+									e.preventDefault();
+									onClose();
+								}
+							}
+						}),
+						h("span", { className: "vk_quick_open_hint" }, "Esc")
+					),
+					h("div", { className: "vk_quick_open_list" },
+						filtered.length === 0 ? h("div", { className: "vk_quick_open_empty" }, "No matching commands") :
+						filtered.map((item, idx) => h("div", {
+							key: item.id,
+							className: "vk_quick_open_item" + (idx === selectedIndex ? " vk_quick_open_item_active" : ""),
+							onClick: () => selectCommand(item),
+							onMouseEnter: () => setSelectedIndex(idx)
+						},
+							h("span", { style: { fontSize: "14px" } }, item.icon),
+							h("span", { className: "vk_quick_open_name" }, item.title),
+							item.shortcut ? h("span", { className: "vk_quick_open_rel" }, item.shortcut) : null
+						))
+					)
+				)
+			);
 		}
 
 		// ── Sleek In-App Modal Dialog (Replacing Browser confirm/alert) ──
@@ -65290,6 +65533,29 @@ function Viewer({ file, rev, onStartEdit, onSaveDirect, onUpdateDirect, isDirect
 			const editing = currentPath !== null && edits[currentPath] !== void 0;
 			const isTraj = active !== null && active.path === TRAJECTORY_TAB_PATH;
 
+			const handleAIAssist = (actionType) => {
+				if (!active) return;
+				const promptMap = {
+					explain: 'Please analyze and explain the file "' + active.name + '" in detail, outlining its architecture, key functions, and data flow.',
+					tests: 'Please write a comprehensive suite of unit tests for the file "' + active.name + '" using modern testing best practices.',
+					refactor: 'Please analyze the file "' + active.name + '" and suggest clean refactorings, optimizations, and modern code improvements.',
+					docs: 'Please add comprehensive documentation, JSDoc comments, and clear markdown explanations for "' + active.name + '".',
+					review: 'Please perform a thorough code review on "' + active.name + '", identifying potential bugs, edge cases, security vulnerabilities, or performance bottlenecks.'
+				};
+				const prompt = promptMap[actionType] || ('Please assist me with ' + active.name);
+				const chatInput = document.querySelector('.vk_colRight textarea, .vk_colRight [contenteditable="true"], textarea, [contenteditable="true"]');
+				if (chatInput) {
+					if (chatInput.tagName === 'TEXTAREA' || chatInput.tagName === 'INPUT') {
+						chatInput.value = prompt;
+						chatInput.dispatchEvent(new Event('input', { bubbles: true }));
+					} else {
+						chatInput.innerText = prompt;
+						chatInput.dispatchEvent(new Event('input', { bubbles: true }));
+					}
+					chatInput.focus();
+				}
+			};
+
 			return h("div", { className: "vk_editor" },
 				h("div", { className: "vk_tabStrip" },
 					tabs.map((t) => {
@@ -65314,6 +65580,7 @@ function Viewer({ file, rev, onStartEdit, onSaveDirect, onUpdateDirect, isDirect
 						);
 					})
 				),
+				h(Breadcrumb, { path: active?.path }),
 				h(FindWidget, {
 					isOpen: findOpen,
 					isReplace: replaceOpen,
@@ -65348,6 +65615,7 @@ function Viewer({ file, rev, onStartEdit, onSaveDirect, onUpdateDirect, isDirect
 									h("button", { className: "vk_editBtn", disabled: busy, title: "Undo (Ctrl+Z)", onClick: handleUndo }, "↺ Undo"),
 									h("button", { className: "vk_editBtn", disabled: busy, title: "Redo (Ctrl+Y / Ctrl+Shift+Z)", onClick: handleRedo }, "↻ Redo"),
 									h("button", { className: "vk_editBtn" + (showDiff ? " vk_editBtnPrimary" : ""), disabled: busy, title: "Toggle Diff View", onClick: () => setShowDiff(!showDiff) }, "⚡ Diff"),
+									h(AIAssistDropdown, { onAction: handleAIAssist }),
 									h("button", { className: "vk_editBtn", disabled: busy, title: "Cancel Edit (Esc)", onClick: requestCancel }, "✕ Cancel"),
 									edits[active.path]?.dirty ? h("span", { className: "vk_dirtyDot", title: "Unsaved changes" }) : null,
 									saveMsg ? h("span", { className: "vk_saveMsg" }, saveMsg) : h("span", { className: "vk_saveMsg" }, "Edit Mode")
@@ -65383,12 +65651,19 @@ function Viewer({ file, rev, onStartEdit, onSaveDirect, onUpdateDirect, isDirect
 								file: active,
 								rev: revisions[active.path] ?? 0,
 								onStartEdit: startEdit,
-								onSaveDirect: (txt, p) => saveWithText(txt, p),
-								onUpdateDirect: (txt, p) => onEditText(txt, p),
+								onSaveDirect: (txt, p) => saveWithText(txt, p || active.path),
+								onUpdateDirect: (txt, p) => onEditText(txt, p || active.path),
 								isDirectDirty: edits[active.path]?.dirty === true,
 								saveMsg,
 								busy
 							}),
+				h(StatusBar, {
+					active,
+					isMarkdown,
+					isDirty: edits[active?.path]?.dirty === true,
+					lineCount: edits[active?.path]?.text ? edits[active?.path]?.text.split("\n").length : null,
+					onToggleDiff: editing && !isMarkdown ? () => setShowDiff(!showDiff) : null
+				}),
 				ctxMenu !== null ? h("div", {
 					className: "vk_menu",
 					"data-vk-menu": true,
@@ -65591,11 +65866,55 @@ function Viewer({ file, rev, onStartEdit, onSaveDirect, onUpdateDirect, isDirect
 			react.useEffect(() => { actions.setNarrow(narrow); }, [actions, narrow]);
 			const sidebarCollapsed = narrow ? !panels.narrowExpanded : panels.sidebar === 0;
 			const [quickOpen, setQuickOpen] = react.useState(false);
+			const [cmdPalette, setCmdPalette] = react.useState(false);
 
-			// Global Keyboard Shortcuts: Ctrl+P (Quick Open), Ctrl+L (Chat / Prompt), Ctrl+Shift+F (Global Search)
+			const handleCommandPaletteAction = (cmdId) => {
+				if (cmdId === "quick_open") setQuickOpen(true);
+				else if (cmdId === "global_search") {
+					setSidebarTab("search");
+					if (sidebarCollapsed) actions.toggleSidebar();
+					setTimeout(() => document.getElementById("global-search-input")?.focus(), 100);
+				} else if (cmdId === "toggle_chat") {
+					actions.setRight(panels.right === 0 ? 440 : 0);
+				} else if (cmdId === "toggle_sidebar") {
+					actions.toggleSidebar();
+				} else if (cmdId === "refresh_explorer") {
+					setSidebarTab("files");
+				} else if (cmdId.startsWith("ai_")) {
+					const type = cmdId.replace(/^ai_/, "");
+					const activeFile = tabsState && tabsState.active ? tabsState.active.split(/[\\/]/).pop() : "current file";
+					const promptMap = {
+						explain: 'Please analyze and explain ' + activeFile + ' in detail.',
+						tests: 'Please write comprehensive unit tests for ' + activeFile + '.',
+						refactor: 'Please refactor and optimize ' + activeFile + '.',
+						docs: 'Please add documentation and comments for ' + activeFile + '.'
+					};
+					const prompt = promptMap[type] || ('Please assist me with ' + activeFile);
+					if (panels.right === 0) actions.setRight(440);
+					if (panels.rightTab !== "conversation") actions.setRightTab("conversation");
+					setTimeout(() => {
+						const chatInput = document.querySelector('.vk_colRight textarea, .vk_colRight [contenteditable="true"], textarea, [contenteditable="true"]');
+						if (chatInput) {
+							if (chatInput.tagName === 'TEXTAREA' || chatInput.tagName === 'INPUT') {
+								chatInput.value = prompt;
+								chatInput.dispatchEvent(new Event('input', { bubbles: true }));
+							} else {
+								chatInput.innerText = prompt;
+								chatInput.dispatchEvent(new Event('input', { bubbles: true }));
+							}
+							chatInput.focus();
+						}
+					}, 120);
+				}
+			};
+
+			// Global Keyboard Shortcuts: Ctrl+P (Quick Open), Ctrl+Shift+P / F1 (Command Palette), Ctrl+L (Chat / Prompt), Ctrl+Shift+F (Global Search)
 			react.useEffect(() => {
 				const onKeyDown = (e) => {
-					if ((e.ctrlKey || e.metaKey) && (e.key === 'p' || e.key === 'P') && !e.shiftKey) {
+					if (((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'p' || e.key === 'P')) || e.key === 'F1') {
+						e.preventDefault();
+						setCmdPalette((prev) => !prev);
+					} else if ((e.ctrlKey || e.metaKey) && (e.key === 'p' || e.key === 'P') && !e.shiftKey) {
 						e.preventDefault();
 						setQuickOpen((prev) => !prev);
 					} else if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'f' || e.key === 'F')) {
@@ -65793,6 +66112,7 @@ function Viewer({ file, rev, onStartEdit, onSaveDirect, onUpdateDirect, isDirect
 				"data-dragging": dragging || void 0,
 				children: [
 					h(QuickOpenModal, { isOpen: quickOpen, onClose: () => setQuickOpen(false), root: fileRoot, onOpenFile: openFile }),
+					h(CommandPaletteModal, { isOpen: cmdPalette, onClose: () => setCmdPalette(false), onExecuteAction: handleCommandPaletteAction }),
 					showOpenChatBtn ? h("button", {
 						className: "vk_open_chat_float",
 						title: "Open AI Chat Panel (Ctrl+L)",

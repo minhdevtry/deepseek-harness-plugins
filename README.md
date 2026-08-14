@@ -14,6 +14,8 @@
 - **Center Workspace (Multi-Tab Editor)**:
   - Independent tabs with drag-and-drop reordering, active highlighting, and dirty state indicators (`•` unsaved dot).
   - High-performance server-side syntax highlighting powered by **Shiki** (`github-dark` / `github-light`).
+  - **Interactive Breadcrumb Navigation**: Clickable directory hierarchy above the editor for rapid folder navigation.
+  - **Bottom Status Bar**: Live Git branch (`🌿 main`), active file, line/word counters, UTF-8 encoding, language mode badge, and quick Diff toggle.
   - Right-click Tab Context Menu (`Close`, `Close Others`, `Close to the Left/Right`, `Close All`, `📋 Copy Path`).
 - **Right Column (AI Chat & Tool Trajectory)**:
   - Integrated chat assistant and real-time tool execution logs.
@@ -22,7 +24,13 @@
 
 ---
 
-### 2. ⚡ AI Code Assistant & Diff Viewer Integration
+### 2. ⚡ AI Code Assistant, Diff Viewer & AI Quick Actions
+- **AI Assist Quick Actions Menu (`🤖 AI Assist ▾`)**:
+  - `📖 Explain Code / File`: Injects deep architectural breakdown prompt.
+  - `🧪 Generate Unit Tests`: Generates comprehensive unit tests for current file.
+  - `🔧 Refactor & Optimize`: Suggests clean refactorings and modern optimizations.
+  - `📝 Generate JSDoc / Docs`: Creates documentation and inline comments.
+  - `🔍 Code Review & Bug Check`: Performs thorough review for edge cases and security.
 - **Click-to-Open from AI Chat**: Any file paths or tool outputs mentioned in chat (e.g. `src/app.js`, `package.json`, `note.md`) are automatically interactive and open directly in an editor tab upon click.
 - **Built-in Diff Viewer (`⚡ Diff`)**:
   - Compare unsaved changes or AI modifications side-by-side / unified with syntax-highlighted additions (`+ green`) and deletions (`- red`).
@@ -48,15 +56,16 @@
 - **Floating Selection Bubble Menu**: Highlight text to format: **Bold** (`B`), *Italic* (`I`), <u>Underline</u> (`U`), ~~Strikethrough~~ (`S`), `Inline Code` (`</>`), 🎨 Highlight (`Mark`), and `🤖 Ask AI`.
 - **Slash Menu (`/`)**: Type `/` anywhere to insert Headings (H1/H2/H3), Task Lists (`[ ]`), Tables, Notion Callouts (`💡`), Code Blocks with syntax highlighting, Blockquotes, YouTube Embeds, Images, and Dividers.
 - **Interactive Tables**: Add/delete rows and columns dynamically, toggle header row formatting.
-- **Document Statistics**: Live word count and character count in the editor footer.
+- **Document Statistics**: Live word count and character count in the editor footer and status bar.
 - **Safe Saving**: Press `Ctrl+S` or click `💾 Save` to serialize back to clean Markdown without losing formatting.
 
 ---
 
-### 5. ⚡ Power-User Keyboard Shortcuts & Quick Open
+### 5. ⚡ Power-User Keyboard Shortcuts & Command Palette
 
 | Shortcut | Action | Description |
 | :--- | :--- | :--- |
+| `Ctrl+Shift+P` / `F1` | **Command Palette** | Floating searchable palette for all editor commands and AI actions. |
 | `Ctrl+P` / `Cmd+P` | **Quick Open File** | Centered floating palette with fuzzy search across all workspace files. |
 | `Ctrl+Shift+F` | **Global Search** | Activates the Workspace Search panel with match case (`Aa`) and regex (`.*`). |
 | `Ctrl+F` | **Find in File** | In-editor search widget with match counter and previous/next navigation. |
@@ -66,7 +75,7 @@
 | `Ctrl+L` | **Chat / Selection to AI** | **With selection:** sends snippet + filename to AI chat.<br>**Without selection:** toggles AI panel open/closed. |
 | `Ctrl+S` / `Cmd+S` | **Save File** | Saves active code document or TipTap markdown document. |
 | `F2` | **Rename File** | Inline renaming in the File Explorer. |
-| `Escape` | **Dismiss Modal** | Closes Quick Open, Find Widget, or Context Menus. |
+| `Escape` | **Dismiss Modal** | Closes Command Palette, Quick Open, Find Widget, or Dialogs. |
 
 ---
 
@@ -141,7 +150,7 @@ dsh web
 
 ## 🧪 Automated Testing
 
-Run the full 10-step end-to-end Playwright test suite:
+Run the full end-to-end Playwright test suite:
 
 ```bash
 npm test
