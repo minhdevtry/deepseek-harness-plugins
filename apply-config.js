@@ -13,7 +13,15 @@ try {
   console.error('⚠️ Could not install dsh-local-filetree via CLI. Please check your network connection.')
 }
 
-// 2. Apply cordis.patch.yml
+// 2. Install dsh-at-file plugin
+try {
+  console.log('📦 Installing dsh-at-file plugin from upstream (omdsh-dev/dsh-at-file)...')
+  execSync('dsh plugin --profile web add github:omdsh-dev/dsh-at-file', { stdio: 'inherit' })
+} catch (err) {
+  console.error('⚠️ Could not install dsh-at-file via CLI. Please check your network connection.')
+}
+
+// 3. Apply cordis.patch.yml
 const patchSrc = path.join(process.cwd(), 'cordis.patch.yml')
 const patchDest = path.join(os.homedir(), '.dsh/profiles/web/cordis.patch.yml')
 
@@ -23,7 +31,7 @@ if (fs.existsSync(patchSrc)) {
   console.log(`[✓] Updated profile patch configuration at: ${patchDest}`)
 }
 
-// 3. Run English localization patch for dsh-local-filetree
+// 4. Run English localization patch for dsh-local-filetree
 try {
   console.log('🌐 Applying English UI localization patch for dsh-local-filetree...')
   execSync('node plugins/dsh-local-filetree/patch.js', { stdio: 'inherit' })

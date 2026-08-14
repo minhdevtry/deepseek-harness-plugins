@@ -10,14 +10,17 @@ deepseek-harness-plugins/
 ├── apply-config.js                  # Master setup script for all plugins & patches
 ├── cordis.patch.yml                 # Base profile patch configuration
 └── plugins/                         # Collection of individual plugins
-    └── dsh-local-filetree/          # Local File Tree Explorer plugin guide & patches
-        ├── README.md                # Installation & patch instructions
-        └── patch.js                 # English UI localization patch script
+    ├── dsh-local-filetree/          # Local File Tree Explorer plugin guide & patches
+    │   ├── README.md                # Installation & patch instructions
+    │   └── patch.js                 # English UI localization patch script
+    └── dsh-at-file/                 # @file mention autocomplete plugin guide
+        └── README.md                # Installation & feature instructions
 ```
 
 ## 🔌 Managed Plugins
 
 * 🌳 **[`plugins/dsh-local-filetree`](plugins/dsh-local-filetree)**: File Tree Explorer plugin (Upstream: `github:Mongfayi/dsh-local-filetree`), localized to **100% English**.
+* 📎 **[`plugins/dsh-at-file`](plugins/dsh-at-file)**: `@file` Mention Autocomplete plugin (Upstream: `github:omdsh-dev/dsh-at-file`) for mentioning & attaching workspace files directly in chat.
 * 🛠️ **Enabled Built-in Tools**:
   * `tool-bash`, `tool-fs`, `tool-fs-search`, `tool-str-replace-editor`
   * `tool-todo`, `tool-web`, `tool-skill`, `plan-mode`, `command-compact`
