@@ -12,7 +12,7 @@ const clientFile = path.join(baseDir, 'client.js')
 const tiptapBundleFile = path.join(__dirname, 'tiptap.bundle.js')
 
 // ==========================================
-// 1. PATCH SERVER (Add Read, Save & TipTap bundle API)
+// 1. PATCH SERVER (Read, Save, Create, Delete & TipTap bundle API)
 // ==========================================
 if (fs.existsSync(serverFile)) {
   let content = fs.readFileSync(serverFile, 'utf8')
@@ -52,6 +52,48 @@ if (fs.existsSync(serverFile)) {
 					});
 					return;
 				}
+				if (pathname === "/filetree/create" && req.method === "POST") {
+					let body = "";
+					req.on("data", (chunk) => { body += chunk; });
+					req.on("end", async () => {
+						try {
+							const data = JSON.parse(body);
+							if (!data.path) {
+								sendJson(res, 400, { ok: false, message: "missing path" });
+								return;
+							}
+							const target = await fs.resolve(data.path, {});
+							if (data.type === "dir") {
+								await fsPromises.mkdir(target.displayPath, { recursive: true });
+							} else {
+								await fsPromises.writeFile(target.displayPath, data.content || "", "utf8");
+							}
+							sendJson(res, 200, { ok: true, path: target.displayPath });
+						} catch (err) {
+							sendJson(res, 500, { ok: false, message: err.message });
+						}
+					});
+					return;
+				}
+				if (pathname === "/filetree/delete" && req.method === "POST") {
+					let body = "";
+					req.on("data", (chunk) => { body += chunk; });
+					req.on("end", async () => {
+						try {
+							const data = JSON.parse(body);
+							if (!data.path) {
+								sendJson(res, 400, { ok: false, message: "missing path" });
+								return;
+							}
+							const target = await fs.resolve(data.path, {});
+							await fsPromises.rm(target.displayPath, { recursive: true, force: true });
+							sendJson(res, 200, { ok: true, path: target.displayPath });
+						} catch (err) {
+							sendJson(res, 500, { ok: false, message: err.message });
+						}
+					});
+					return;
+				}
   `
 
   if (!content.includes('/filetree/read')) {
@@ -64,7 +106,7 @@ if (fs.existsSync(serverFile)) {
       'if (req.method !== "GET" && req.method !== "HEAD" && req.method !== "POST")'
     )
     fs.writeFileSync(serverFile, content, 'utf8')
-    console.log('[✓] Successfully patched filetree server with /filetree/read and /filetree/save APIs!')
+    console.log('[✓] Successfully patched filetree server with read, save, create, delete APIs!')
   }
 }
 
@@ -75,7 +117,7 @@ if (fs.existsSync(tiptapBundleFile)) {
 }
 
 // ==========================================
-// 2. PATCH CLIENT (Novel-Grade TipTap UI/UX & Precise Slash Commands)
+// 2. PATCH CLIENT (Multi-Tab Workbench, Bubble Menu, Notion Callouts, Explorer Toolbar, AI Bridge)
 // ==========================================
 if (fs.existsSync(clientFile)) {
   let content = fs.readFileSync(clientFile, 'utf8')
@@ -110,42 +152,58 @@ if (fs.existsSync(clientFile)) {
 
   const vscodeEditorStyles = `
 		.dsh-editor-panel-view {
-			position: fixed; top: 0; bottom: 0; left: 260px; right: 0; z-index: 50;
+			position: fixed; top: 0; bottom: 0; left: 260px; right: 360px; z-index: 40;
 			background: var(--dsw-alias-bg-base, #ffffff);
 			display: flex; flex-direction: column; overflow: hidden;
 			box-shadow: -3px 0 16px rgba(0,0,0,0.08);
+			border-right: 1px solid var(--dsw-alias-border-l1, #e5e7eb);
 		}
-		@media (max-width: 1024px) {
-			.dsh-editor-panel-view { left: 60px; right: 0; }
+		.dsh-editor-panel-view-maximized {
+			right: 0 !important; z-index: 60 !important;
+		}
+		@media (max-width: 1200px) {
+			.dsh-editor-panel-view { right: 0; left: 60px; }
 		}
 		.dsh-editor-topbar {
 			height: 42px; background: var(--dsw-alias-bg-subtle, #f9fafb);
 			border-bottom: 1px solid var(--dsw-alias-border-l2, #e5e7eb);
 			display: flex; align-items: center; justify-content: space-between;
-			padding: 0 14px; flex-shrink: 0;
+			padding: 0 14px 0 0; flex-shrink: 0; overflow: hidden;
 		}
-		.dsh-editor-tab-active {
-			background: var(--dsw-alias-bg-base, #ffffff);
-			height: 42px; padding: 0 16px; display: flex; align-items: center; gap: 8px;
+		.dsh-tabs-scroll {
+			display: flex; align-items: center; overflow-x: auto; height: 100%;
+			scrollbar-width: none; -ms-overflow-style: none;
+		}
+		.dsh-tabs-scroll::-webkit-scrollbar { display: none; }
+		.dsh-tab-item {
+			height: 42px; padding: 0 14px; display: flex; align-items: center; gap: 8px;
 			border-right: 1px solid var(--dsw-alias-border-l2, #e5e7eb);
-			border-top: 2.5px solid #3b82f6; font-size: 13px; font-weight: 600;
+			font-size: 13px; font-weight: 500; cursor: pointer; color: var(--dsw-alias-label-secondary, #6b7280);
+			background: transparent; border-top: 2.5px solid transparent; user-select: none;
+			white-space: nowrap; transition: background 0.1s;
+		}
+		.dsh-tab-item:hover { background: rgba(0,0,0,0.03); color: var(--dsw-alias-label-primary, #111827); }
+		.dsh-tab-active {
+			background: var(--dsw-alias-bg-base, #ffffff);
+			border-top-color: #3b82f6; font-weight: 600;
 			color: var(--dsw-alias-label-primary, #111827);
 		}
+		.dsh-tab-dirty { width: 7px; height: 7px; border-radius: 50%; background: #f59e0b; margin-left: 2px; }
 		.dsh-tab-close {
 			border: none; background: transparent; font-size: 12px; cursor: pointer;
-			color: var(--dsw-alias-label-tertiary, #9ca3af); border-radius: 4px; padding: 2px 5px;
+			color: var(--dsw-alias-label-tertiary, #9ca3af); border-radius: 4px; padding: 2px 4px;
 		}
 		.dsh-tab-close:hover { background: rgba(0,0,0,0.08); color: #ef4444; }
-		.dsh-editor-top-actions { display: flex; align-items: center; gap: 10px; }
+		.dsh-editor-top-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; padding-left: 8px; }
 		.dsh-mode-switch { display: flex; background: var(--dsw-alias-border-l1, #e5e7eb); border-radius: 6px; padding: 2px; }
 		.dsh-switch-btn {
-			border: none; background: transparent; padding: 4px 10px; font-size: 11.5px;
+			border: none; background: transparent; padding: 4px 9px; font-size: 11.5px;
 			font-weight: 600; border-radius: 4px; cursor: pointer; color: var(--dsw-alias-label-secondary, #4b5563);
 		}
 		.dsh-switch-btn-active { background: #fff; color: #2563eb; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
 		.dsh-save-btn {
 			background: #10b981; color: #fff; border: none; padding: 5px 12px; border-radius: 6px;
-			font-size: 12px; font-weight: 600; cursor: pointer; transition: background 0.15s;
+			font-size: 12px; font-weight: 600; cursor: pointer; transition: background 0.15s; display: flex; align-items: center; gap: 4px;
 		}
 		.dsh-save-btn:hover { background: #059669; }
 		.dsh-close-btn {
@@ -185,9 +243,9 @@ if (fs.existsSync(clientFile)) {
 		.dsh-strike { text-decoration: line-through; }
 		.dsh-underline { text-decoration: underline; }
 		.dsh-editor-canvas { flex: 1; overflow-y: auto; display: flex; flex-direction: column; position: relative; }
-		.dsh-tiptap-container { flex: 1; display: flex; flex-direction: column; padding: 28px 48px; max-width: 960px; margin: 0 auto; width: 100%; box-sizing: border-box; }
+		.dsh-tiptap-container { flex: 1; display: flex; flex-direction: column; padding: 28px 48px 60px; max-width: 960px; margin: 0 auto; width: 100%; box-sizing: border-box; }
 		.dsh-tiptap-prose {
-			outline: none; font-size: 15.5px; line-height: 1.75; min-height: 600px;
+			outline: none; font-size: 15.5px; line-height: 1.75; min-height: 500px;
 			color: var(--dsw-alias-label-primary, #111827); width: 100%;
 			font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 		}
@@ -198,7 +256,17 @@ if (fs.existsSync(clientFile)) {
 		.dsh-tiptap-prose h5 { font-size: 14.5px; font-weight: 600; margin: 12px 0 6px; color: #6b7280; }
 		.dsh-tiptap-prose h6 { font-size: 13.5px; font-weight: 600; margin: 10px 0 4px; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.5px; }
 		.dsh-tiptap-prose p { margin: 8px 0; }
-		.dsh-tiptap-prose blockquote { border-left: 4px solid #3b82f6; padding: 6px 16px; color: #4b5563; margin: 12px 0; font-style: italic; background: rgba(59,130,246,0.03); border-radius: 0 8px 8px 0; }
+		.dsh-tiptap-prose blockquote { border-left: 4px solid #3b82f6; padding: 8px 16px; color: #4b5563; margin: 12px 0; font-style: italic; background: rgba(59,130,246,0.03); border-radius: 0 8px 8px 0; }
+		
+		/* Notion Callout Box */
+		.dsh-tiptap-prose .dsh-callout-box {
+			border: 1.5px solid #bae6fd; background: #f0f9ff; border-radius: 10px;
+			padding: 12px 18px; margin: 16px 0; display: flex; align-items: flex-start; gap: 12px;
+			color: #0369a1; box-shadow: 0 2px 8px rgba(2,132,199,0.05);
+		}
+		.dsh-callout-icon { font-size: 20px; line-height: 1.3; flex-shrink: 0; }
+		.dsh-callout-body { flex: 1; font-size: 15px; }
+
 		.dsh-tiptap-prose pre { background: #0f172a; color: #f8fafc; padding: 16px; border-radius: 8px; font-family: 'Fira Code', Consolas, Monaco, monospace; font-size: 13.5px; line-height: 1.6; margin: 14px 0; overflow-x: auto; }
 		.dsh-tiptap-prose pre code { background: transparent; padding: 0; color: inherit; font-size: inherit; }
 		.dsh-tiptap-prose code { background: rgba(59,130,246,0.08); color: #2563eb; padding: 2px 6px; border-radius: 4px; font-family: monospace; font-size: 13px; }
@@ -238,6 +306,36 @@ if (fs.existsSync(clientFile)) {
 		.dsh-slash-icon { font-size: 15px; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.04); border-radius: 4px; flex-shrink: 0; }
 		.dsh-slash-desc { font-size: 11.5px; color: #6b7280; margin-left: auto; }
 		
+		/* Selection Floating Bubble Menu */
+		.dsh-bubble-menu {
+			position: absolute; z-index: 100; background: #1f2937; color: #ffffff;
+			border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+			padding: 4px; display: flex; align-items: center; gap: 2px;
+			animation: dsh-pop-in 0.12s ease-out;
+		}
+		@keyframes dsh-pop-in { from { opacity: 0; transform: scale(0.92); } to { opacity: 1; transform: scale(1); } }
+		.dsh-bubble-btn {
+			border: none; background: transparent; color: #f3f4f6; padding: 4px 8px;
+			border-radius: 4px; font-size: 12px; font-weight: 600; cursor: pointer;
+			display: flex; align-items: center; gap: 3px;
+		}
+		.dsh-bubble-btn:hover { background: #374151; color: #ffffff; }
+		.dsh-bubble-ai-btn {
+			background: linear-gradient(135deg, #6366f1, #8b5cf6); color: #ffffff;
+			padding: 4px 9px; border-radius: 5px; font-size: 11.5px; font-weight: 700;
+			border: none; cursor: pointer; display: flex; align-items: center; gap: 4px;
+		}
+		.dsh-bubble-ai-btn:hover { filter: brightness(1.15); }
+
+		/* Editor Footer Status Bar */
+		.dsh-editor-statusbar {
+			height: 28px; background: var(--dsw-alias-bg-subtle, #f9fafb);
+			border-top: 1px solid var(--dsw-alias-border-l1, #e5e7eb);
+			padding: 0 14px; display: flex; align-items: center; justify-content: space-between;
+			font-size: 11.5px; color: var(--dsw-alias-label-secondary, #6b7280); flex-shrink: 0;
+		}
+		.dsh-statusbar-badge { display: flex; align-items: center; gap: 8px; }
+
 		/* Sleek Embed Modal Dialog */
 		.dsh-modal-backdrop {
 			position: fixed; inset: 0; z-index: 1000;
@@ -300,22 +398,46 @@ if (fs.existsSync(clientFile)) {
 			font-size: 14px; line-height: 1.65; background: var(--dsw-alias-bg-base, #ffffff);
 			color: var(--dsw-alias-label-primary, #111827); resize: none;
 		}
+		
+		/* File Explorer Action Toolbar */
+		.dsh-ft-toolbar {
+			display: flex; align-items: center; justify-content: space-between;
+			padding: 6px 12px; background: var(--dsw-alias-bg-subtle, #f9fafb);
+			border-bottom: 1px solid var(--dsw-alias-border-l1, #e5e7eb); gap: 4px;
+		}
+		.dsh-ft-btn {
+			border: 1px solid var(--dsw-alias-border-l1, #e5e7eb); background: #ffffff;
+			padding: 3px 7px; border-radius: 4px; font-size: 11.5px; font-weight: 600;
+			cursor: pointer; color: var(--dsw-alias-label-secondary, #4b5563);
+			display: flex; align-items: center; gap: 3px;
+		}
+		.dsh-ft-btn:hover { background: #f3f4f6; color: #111827; }
 		.ft-name-file { cursor: pointer; }
 		.ft-name-file:hover { color: #3b82f6 !important; text-decoration: underline; }
 		.ft-row:hover { background: rgba(59, 130, 246, 0.08); border-radius: 4px; }
   `
 
   const officialTipTapComponent = `
-		function OfficialTipTapEditor({ filePath, initialContent, onClose, onSave }) {
-			const [isRichMode, setIsRichMode] = react.useState(filePath.endsWith('.md'));
-			const [rawContent, setRawContent] = react.useState(initialContent);
+		function OfficialTipTapWorkbench({ openTabs, activeTabPath, onSelectTab, onCloseTab, onUpdateContent, onSaveTab }) {
+			const activeTab = openTabs.find(t => t.path === activeTabPath) || openTabs[0];
+			if (!activeTab) return null;
+
+			const filePath = activeTab.path;
+			const isMarkdown = filePath.endsWith('.md');
+			const fileName = activeTab.name || filePath.split('/').pop() || filePath;
+			const isRichMode = activeTab.isRichMode ?? isMarkdown;
+
 			const [isSaving, setIsSaving] = react.useState(false);
 			const [savedToast, setSavedToast] = react.useState(false);
 			const [slashMenu, _setSlashMenu] = react.useState(null);
 			const [slashIdx, _setSlashIdx] = react.useState(0);
 			const [slashQuery, _setSlashQuery] = react.useState('');
+			const [bubbleMenu, setBubbleMenu] = react.useState(null);
 			const [isInTable, setIsInTable] = react.useState(false);
-			const [embedModal, setEmbedModal] = react.useState(null); // { type: 'youtube'|'image'|'table', ... }
+			const [isMaximized, setIsMaximized] = react.useState(false);
+			const [embedModal, setEmbedModal] = react.useState(null); // { type: 'youtube'|'image'|'table'|'newfile'|'newdir', ... }
+			const [stats, setStats] = react.useState({ words: 0, chars: 0, readingTime: 1 });
+
 			const editorRef = react.useRef(null);
 			const containerRef = react.useRef(null);
 			const canvasRef = react.useRef(null);
@@ -343,9 +465,6 @@ if (fs.existsSync(clientFile)) {
 				_setSlashIdx(slashStateRef.current.index);
 			};
 
-			const isMarkdown = filePath.endsWith('.md');
-			const fileName = filePath.split('/').pop() || filePath;
-
 			const slashItems = [
 				{ category: 'BASIC BLOCKS', label: 'Heading 1', desc: 'Large title (#)', icon: 'H1' },
 				{ category: 'BASIC BLOCKS', label: 'Heading 2', desc: 'Section title (##)', icon: 'H2' },
@@ -354,6 +473,7 @@ if (fs.existsSync(clientFile)) {
 				{ category: 'LISTS & TASKS', label: 'Bullet List', desc: 'Unordered list (*, -)', icon: '•' },
 				{ category: 'LISTS & TASKS', label: 'Numbered List', desc: 'Ordered list (1.)', icon: '1.' },
 				{ category: 'ADVANCED & MEDIA', label: 'Table', desc: 'Custom Rows x Columns', icon: '📊' },
+				{ category: 'ADVANCED & MEDIA', label: 'Callout Box', desc: 'Notion alert container', icon: '💡' },
 				{ category: 'ADVANCED & MEDIA', label: 'Code Block', desc: 'Syntax highlighting (\`\`\`)', icon: '</>' },
 				{ category: 'ADVANCED & MEDIA', label: 'Blockquote', desc: 'Capture quote (>)', icon: '❝' },
 				{ category: 'ADVANCED & MEDIA', label: 'YouTube Video', desc: 'Embed YouTube player', icon: '🎥' },
@@ -367,44 +487,57 @@ if (fs.existsSync(clientFile)) {
 				return slashItems.filter(item => item.label.toLowerCase().includes(q) || item.desc.toLowerCase().includes(q));
 			}, [slashQuery]);
 
-			const updateSlashFromDoc = (editor) => {
+			const updateDocState = (editor) => {
 				if (!editor || !canvasRef.current) return;
 				const { selection } = editor.state;
-				if (!selection.empty) {
-					setSlashMenu(null);
-					return;
+				const text = editor.getText();
+				const words = text.trim() ? text.trim().split(/\\s+/).length : 0;
+				const chars = text.length;
+				const readingTime = Math.max(1, Math.ceil(words / 200));
+				setStats({ words, chars, readingTime });
+
+				// Handle Selection Bubble Menu
+				if (!selection.empty && selection.from !== selection.to) {
+					const coordsFrom = editor.view.coordsAtPos(selection.from);
+					const coordsTo = editor.view.coordsAtPos(selection.to);
+					const containerRect = canvasRef.current.getBoundingClientRect();
+					const top = coordsFrom.top - containerRect.top + canvasRef.current.scrollTop - 44;
+					const left = Math.max(10, Math.min(((coordsFrom.left + coordsTo.left) / 2) - containerRect.left + canvasRef.current.scrollLeft - 120, containerRect.width - 340));
+					setBubbleMenu({ top, left, selectedText: editor.state.doc.textBetween(selection.from, selection.to) });
+				} else {
+					setBubbleMenu(null);
 				}
 
-				const { $from } = selection;
-				const blockText = $from.parent.textContent;
-				const offset = $from.parentOffset;
-				const textBefore = blockText.slice(0, offset);
+				// Handle Caret Slash Menu
+				if (selection.empty) {
+					const { $from } = selection;
+					const blockText = $from.parent.textContent;
+					const offset = $from.parentOffset;
+					const textBefore = blockText.slice(0, offset);
 
-				const slashPos = textBefore.lastIndexOf('/');
-				if (slashPos === -1) {
+					const slashPos = textBefore.lastIndexOf('/');
+					if (slashPos === -1 || (slashPos > 0 && !/\\s/.test(textBefore[slashPos - 1]))) {
+						setSlashMenu(null);
+						return;
+					}
+
+					const query = textBefore.slice(slashPos + 1);
+					if (query.includes(' ') || query.includes('\\n')) {
+						setSlashMenu(null);
+						return;
+					}
+
+					const containerRect = canvasRef.current.getBoundingClientRect();
+					const slashAbsPos = $from.pos - query.length - 1;
+					const coords = editor.view.coordsAtPos(slashAbsPos);
+					const top = coords.bottom - containerRect.top + canvasRef.current.scrollTop + 6;
+					const left = Math.min(coords.left - containerRect.left + canvasRef.current.scrollLeft, containerRect.width - 320);
+
+					setSlashMenu({ top, left });
+					setSlashQuery(query);
+				} else {
 					setSlashMenu(null);
-					return;
 				}
-
-				if (slashPos > 0 && !/\\s/.test(textBefore[slashPos - 1])) {
-					setSlashMenu(null);
-					return;
-				}
-
-				const query = textBefore.slice(slashPos + 1);
-				if (query.includes(' ') || query.includes('\\n')) {
-					setSlashMenu(null);
-					return;
-				}
-
-				const containerRect = canvasRef.current.getBoundingClientRect();
-				const slashAbsPos = $from.pos - query.length - 1;
-				const coords = editor.view.coordsAtPos(slashAbsPos);
-				const top = coords.bottom - containerRect.top + canvasRef.current.scrollTop + 6;
-				const left = Math.min(coords.left - containerRect.left + canvasRef.current.scrollLeft, containerRect.width - 320);
-
-				setSlashMenu({ top, left });
-				setSlashQuery(query);
 			};
 
 			const executeSlashItem = (item) => {
@@ -463,6 +596,8 @@ if (fs.existsSync(clientFile)) {
 					chain.toggleBulletList().run();
 				} else if (item.label === 'Numbered List') {
 					chain.toggleOrderedList().run();
+				} else if (item.label === 'Callout Box') {
+					chain.insertContent('<blockquote class="dsh-callout-box"><div class="dsh-callout-icon">💡</div><div class="dsh-callout-body"><p>Note: Type your highlighted callout here...</p></div></blockquote>').run();
 				} else if (item.label === 'Code Block') {
 					chain.toggleCodeBlock().run();
 				} else if (item.label === 'Blockquote') {
@@ -472,12 +607,28 @@ if (fs.existsSync(clientFile)) {
 				}
 			};
 
-			// Close slash menu on outside click
+			const sendSelectionToAI = (text) => {
+				const prompt = 'Please analyze and explain the following snippet from ' + fileName + ':\\n\\n\`\`\`\\n' + text + '\\n\`\`\`';
+				const chatInput = document.querySelector('textarea, [contenteditable="true"]');
+				if (chatInput) {
+					if (chatInput.tagName === 'TEXTAREA') {
+						chatInput.value = prompt;
+						chatInput.dispatchEvent(new Event('input', { bubbles: true }));
+					} else {
+						chatInput.innerText = prompt;
+					}
+					chatInput.focus();
+					alert('✓ Snippet sent to AI Chat input! Switch to chat to send.');
+				} else {
+					alert('Chat input not found.');
+				}
+			};
+
+			// Close slash & bubble menu on outside click
 			react.useEffect(() => {
 				const onPointerDown = (e) => {
-					if (!e.target.closest('.dsh-slash-menu')) {
-						setSlashMenu(null);
-					}
+					if (!e.target.closest('.dsh-slash-menu')) setSlashMenu(null);
+					if (!e.target.closest('.dsh-bubble-menu')) setBubbleMenu(null);
 				};
 				window.addEventListener('pointerdown', onPointerDown);
 				return () => window.removeEventListener('pointerdown', onPointerDown);
@@ -522,13 +673,17 @@ if (fs.existsSync(clientFile)) {
 								transformCopiedText: true
 							})
 						],
-						content: rawContent,
+						content: activeTab.content,
 						onUpdate: ({ editor: ed }) => {
-							updateSlashFromDoc(ed);
+							updateDocState(ed);
+							if (ed.storage && ed.storage.markdown) {
+								const md = ed.storage.markdown.getMarkdown();
+								onUpdateContent(filePath, md);
+							}
 						},
 						onSelectionUpdate: ({ editor: ed }) => {
 							setIsInTable(ed.isActive('table'));
-							updateSlashFromDoc(ed);
+							updateDocState(ed);
 						},
 						editorProps: {
 							attributes: {
@@ -578,10 +733,10 @@ if (fs.existsSync(clientFile)) {
 			}, [isRichMode, filePath]);
 
 			const handleSave = async () => {
-				let textToSave = rawContent;
+				let textToSave = activeTab.content;
 				if (isMarkdown && isRichMode && editorRef.current && editorRef.current.storage && editorRef.current.storage.markdown) {
 					textToSave = editorRef.current.storage.markdown.getMarkdown();
-					setRawContent(textToSave);
+					onUpdateContent(filePath, textToSave);
 				}
 				setIsSaving(true);
 				try {
@@ -594,7 +749,7 @@ if (fs.existsSync(clientFile)) {
 					if (data.ok) {
 						setSavedToast(true);
 						setTimeout(() => setSavedToast(false), 2000);
-						if (onSave) onSave(textToSave);
+						onSaveTab(filePath, textToSave);
 					} else {
 						alert('Save failed: ' + data.message);
 					}
@@ -639,34 +794,61 @@ if (fs.existsSync(clientFile)) {
 							setEmbedModal(null);
 							return;
 						}
-						if (!slashMenu) {
+						if (!slashMenu && !bubbleMenu) {
 							e.preventDefault();
-							onClose();
+							onCloseTab(filePath);
 						}
 					}
 				};
 				window.addEventListener('keydown', onKeyDown);
 				return () => window.removeEventListener('keydown', onKeyDown);
-			}, [rawContent, filePath, isRichMode, embedModal, slashMenu]);
+			}, [activeTab.content, filePath, isRichMode, embedModal, slashMenu, bubbleMenu]);
 
-			return react.createElement('div', { className: 'dsh-editor-panel-view' }, [
-				// Editor Top Tab Bar
+			return react.createElement('div', { className: 'dsh-editor-panel-view ' + (isMaximized ? 'dsh-editor-panel-view-maximized' : '') }, [
+				// Multi-Tab Top Bar
 				react.createElement('div', { key: 'topbar', className: 'dsh-editor-topbar' }, [
-					react.createElement('div', { key: 'tab', className: 'dsh-editor-tab-active' }, [
-						react.createElement('span', { key: 'icon', className: 'dsh-tab-icon' }, isMarkdown ? '📄' : '💻'),
-						react.createElement('span', { key: 'name', className: 'dsh-tab-name' }, fileName),
-						react.createElement('button', { key: 'close', className: 'dsh-tab-close', title: 'Close Editor', onClick: onClose }, '✕')
-					]),
+					react.createElement('div', { key: 'tabs-scroll', className: 'dsh-tabs-scroll' },
+						openTabs.map(tab => {
+							const isActive = tab.path === activeTabPath;
+							const icon = tab.path.endsWith('.md') ? '📄' : tab.path.endsWith('.json') ? '⚙️' : tab.path.endsWith('.py') ? '🐍' : '💻';
+							return react.createElement('div', {
+								key: tab.path,
+								className: 'dsh-tab-item ' + (isActive ? 'dsh-tab-active' : ''),
+								onClick: () => onSelectTab(tab.path)
+							}, [
+								react.createElement('span', { key: 'icon' }, icon),
+								react.createElement('span', { key: 'name' }, tab.name),
+								tab.isDirty ? react.createElement('span', { key: 'dirty', className: 'dsh-tab-dirty', title: 'Unsaved changes' }) : null,
+								react.createElement('button', {
+									key: 'close',
+									type: 'button',
+									className: 'dsh-tab-close',
+									title: 'Close Tab',
+									onClick: (e) => {
+										e.stopPropagation();
+										onCloseTab(tab.path);
+									}
+								}, '✕')
+							]);
+						})
+					),
 					react.createElement('div', { key: 'actions', className: 'dsh-editor-top-actions' }, [
+						react.createElement('button', {
+							key: 'max-btn',
+							type: 'button',
+							className: 'dsh-switch-btn',
+							title: isMaximized ? 'Restore Split View' : 'Maximize Zen Mode',
+							onClick: () => setIsMaximized(!isMaximized)
+						}, isMaximized ? '🗗 Split' : '⛶ Zen'),
 						isMarkdown ? react.createElement('div', { key: 'mode-switch', className: 'dsh-mode-switch' }, [
 							react.createElement('button', {
 								key: 'rich-btn',
 								type: 'button',
 								className: 'dsh-switch-btn ' + (isRichMode ? 'dsh-switch-btn-active' : ''),
 								onClick: () => {
-									if (!isRichMode) setIsRichMode(true);
+									if (!isRichMode) onUpdateContent(filePath, activeTab.content, true);
 								}
-							}, '✨ Ultimate TipTap Suite'),
+							}, '✨ TipTap Suite'),
 							react.createElement('button', {
 								key: 'raw-btn',
 								type: 'button',
@@ -674,9 +856,10 @@ if (fs.existsSync(clientFile)) {
 								onClick: () => {
 									if (isRichMode && editorRef.current && editorRef.current.storage && editorRef.current.storage.markdown) {
 										const md = editorRef.current.storage.markdown.getMarkdown();
-										setRawContent(md);
+										onUpdateContent(filePath, md, false);
+									} else {
+										onUpdateContent(filePath, activeTab.content, false);
 									}
-									setIsRichMode(false);
 								}
 							}, '💻 Code Source')
 						]) : null,
@@ -688,20 +871,20 @@ if (fs.existsSync(clientFile)) {
 							onClick: handleSave
 						}, isSaving ? 'Saving...' : (savedToast ? '✓ Saved!' : '💾 Save (Ctrl+S)')),
 						react.createElement('button', {
-							key: 'close-btn',
+							key: 'close-all-btn',
 							type: 'button',
 							className: 'dsh-close-btn',
-							title: 'Close Editor (Back to Chat)',
-							onClick: onClose
+							title: 'Close Active Tab',
+							onClick: () => onCloseTab(filePath)
 						}, '✕')
 					])
 				]),
 
 				// TipTap Toolbar (Driven directly by TipTap chain commands)
 				isMarkdown && isRichMode ? react.createElement('div', { key: 'toolbar', className: 'dsh-tiptap-toolbar' }, [
-					react.createElement('button', { key: 'h1', type: 'button', className: 'dsh-tb-tool', title: 'Heading 1 (or type /h1 or #)', onMouseDown: (e) => e.preventDefault(), onClick: () => runCommand(c => c.toggleHeading({ level: 1 })) }, 'H1'),
-					react.createElement('button', { key: 'h2', type: 'button', className: 'dsh-tb-tool', title: 'Heading 2 (or type /h2 or ##)', onMouseDown: (e) => e.preventDefault(), onClick: () => runCommand(c => c.toggleHeading({ level: 2 })) }, 'H2'),
-					react.createElement('button', { key: 'h3', type: 'button', className: 'dsh-tb-tool', title: 'Heading 3 (or type /h3 or ###)', onMouseDown: (e) => e.preventDefault(), onClick: () => runCommand(c => c.toggleHeading({ level: 3 })) }, 'H3'),
+					react.createElement('button', { key: 'h1', type: 'button', className: 'dsh-tb-tool', title: 'Heading 1 (or #)', onMouseDown: (e) => e.preventDefault(), onClick: () => runCommand(c => c.toggleHeading({ level: 1 })) }, 'H1'),
+					react.createElement('button', { key: 'h2', type: 'button', className: 'dsh-tb-tool', title: 'Heading 2 (or ##)', onMouseDown: (e) => e.preventDefault(), onClick: () => runCommand(c => c.toggleHeading({ level: 2 })) }, 'H2'),
+					react.createElement('button', { key: 'h3', type: 'button', className: 'dsh-tb-tool', title: 'Heading 3 (or ###)', onMouseDown: (e) => e.preventDefault(), onClick: () => runCommand(c => c.toggleHeading({ level: 3 })) }, 'H3'),
 					react.createElement('span', { key: 'sep1', className: 'dsh-tb-sep' }),
 					react.createElement('button', { key: 'b', type: 'button', className: 'dsh-tb-tool dsh-bold', title: 'Bold (Ctrl+B or **text**)', onMouseDown: (e) => e.preventDefault(), onClick: () => runCommand(c => c.toggleBold()) }, 'B'),
 					react.createElement('button', { key: 'i', type: 'button', className: 'dsh-tb-tool dsh-italic', title: 'Italic (Ctrl+I or *text*)', onMouseDown: (e) => e.preventDefault(), onClick: () => runCommand(c => c.toggleItalic()) }, 'I'),
@@ -713,7 +896,7 @@ if (fs.existsSync(clientFile)) {
 					react.createElement('button', { key: 'ol', type: 'button', className: 'dsh-tb-tool', title: 'Numbered List (1.)', onMouseDown: (e) => e.preventDefault(), onClick: () => runCommand(c => c.toggleOrderedList()) }, '1. List'),
 					react.createElement('button', { key: 'task', type: 'button', className: 'dsh-tb-tool', title: 'Task List ([ ] or [x])', onMouseDown: (e) => e.preventDefault(), onClick: () => runCommand(c => c.toggleTaskList()) }, '☑ Task'),
 					react.createElement('button', { key: 'table', type: 'button', className: 'dsh-tb-tool', title: 'Insert Custom Table', onMouseDown: (e) => e.preventDefault(), onClick: () => setEmbedModal({ type: 'table', rows: 3, cols: 3, withHeaderRow: true }) }, '📊 Table'),
-					react.createElement('button', { key: 'quote', type: 'button', className: 'dsh-tb-tool', title: 'Blockquote (>)', onMouseDown: (e) => e.preventDefault(), onClick: () => runCommand(c => c.toggleBlockquote()) }, '❝ Quote'),
+					react.createElement('button', { key: 'callout', type: 'button', className: 'dsh-tb-tool', title: 'Notion Callout Box', onMouseDown: (e) => e.preventDefault(), onClick: () => runCommand(c => c.insertContent('<blockquote class="dsh-callout-box"><div class="dsh-callout-icon">💡</div><div class="dsh-callout-body"><p>Note: Type your highlighted callout here...</p></div></blockquote>')) }, '💡 Callout'),
 					react.createElement('button', { key: 'code', type: 'button', className: 'dsh-tb-tool', title: 'Code Block (\`\`\`lang)', onMouseDown: (e) => e.preventDefault(), onClick: () => runCommand(c => c.toggleCodeBlock()) }, '</> Code'),
 					react.createElement('button', { key: 'yt', type: 'button', className: 'dsh-tb-tool', title: 'Embed YouTube Video', onMouseDown: (e) => e.preventDefault(), onClick: () => setEmbedModal({ type: 'youtube', url: '' }) }, '🎥 YouTube'),
 					react.createElement('button', { key: 'img', type: 'button', className: 'dsh-tb-tool', title: 'Insert Image URL', onMouseDown: (e) => e.preventDefault(), onClick: () => setEmbedModal({ type: 'image', url: '' }) }, '🖼️ Image'),
@@ -745,16 +928,16 @@ if (fs.existsSync(clientFile)) {
 						: react.createElement('div', { key: 'code-container', className: 'dsh-code-canvas' },
 							react.createElement('textarea', {
 								className: 'dsh-code-textarea',
-								value: rawContent,
+								value: activeTab.content,
 								spellCheck: false,
-								onChange: (e) => setRawContent(e.target.value),
+								onChange: (e) => onUpdateContent(filePath, e.target.value),
 								onKeyDown: (e) => {
 									if (e.key === 'Tab') {
 										e.preventDefault();
 										const start = e.target.selectionStart;
 										const end = e.target.selectionEnd;
-										const updated = rawContent.substring(0, start) + '  ' + rawContent.substring(end);
-										setRawContent(updated);
+										const updated = activeTab.content.substring(0, start) + '  ' + activeTab.content.substring(end);
+										onUpdateContent(filePath, updated);
 										setTimeout(() => {
 											e.target.selectionStart = e.target.selectionEnd = start + 2;
 										}, 0);
@@ -762,6 +945,27 @@ if (fs.existsSync(clientFile)) {
 								}
 							})
 						),
+
+					// Floating Selection Bubble Menu
+					bubbleMenu ? react.createElement('div', {
+						key: 'bubble-menu',
+						className: 'dsh-bubble-menu',
+						style: { top: bubbleMenu.top + 'px', left: bubbleMenu.left + 'px' }
+					}, [
+						react.createElement('button', { key: 'b', type: 'button', className: 'dsh-bubble-btn', onMouseDown: (e) => e.preventDefault(), onClick: () => runCommand(c => c.toggleBold()) }, 'B'),
+						react.createElement('button', { key: 'i', type: 'button', className: 'dsh-bubble-btn', onMouseDown: (e) => e.preventDefault(), onClick: () => runCommand(c => c.toggleItalic()) }, 'I'),
+						react.createElement('button', { key: 'u', type: 'button', className: 'dsh-bubble-btn', onMouseDown: (e) => e.preventDefault(), onClick: () => runCommand(c => c.toggleUnderline()) }, 'U'),
+						react.createElement('button', { key: 's', type: 'button', className: 'dsh-bubble-btn', onMouseDown: (e) => e.preventDefault(), onClick: () => runCommand(c => c.toggleStrike()) }, 'S'),
+						react.createElement('button', { key: 'hl', type: 'button', className: 'dsh-bubble-btn', onMouseDown: (e) => e.preventDefault(), onClick: () => runCommand(c => c.toggleHighlight()) }, '🎨 Mark'),
+						react.createElement('button', { key: 'code', type: 'button', className: 'dsh-bubble-btn', onMouseDown: (e) => e.preventDefault(), onClick: () => runCommand(c => c.toggleCode()) }, '</> Code'),
+						react.createElement('button', {
+							key: 'ai-btn',
+							type: 'button',
+							className: 'dsh-bubble-ai-btn',
+							onMouseDown: (e) => e.preventDefault(),
+							onClick: () => sendSelectionToAI(bubbleMenu.selectedText)
+						}, '🤖 Ask AI')
+					]) : null,
 
 					// Caret-Anchored Slash Command Popup Menu
 					slashMenu && filteredSlashItems.length > 0 ? react.createElement('div', {
@@ -782,6 +986,16 @@ if (fs.existsSync(clientFile)) {
 							react.createElement('span', { key: 'desc', className: 'dsh-slash-desc' }, item.desc)
 						]))
 					]) : null
+				]),
+
+				// Editor Footer Status Bar
+				react.createElement('div', { key: 'statusbar', className: 'dsh-editor-statusbar' }, [
+					react.createElement('span', { key: 'path' }, filePath),
+					react.createElement('div', { key: 'stats', className: 'dsh-statusbar-badge' }, [
+						react.createElement('span', { key: 'w' }, stats.words + ' words'),
+						react.createElement('span', { key: 'c' }, stats.chars + ' chars'),
+						react.createElement('span', { key: 'r' }, '⏱️ ' + stats.readingTime + ' min read')
+					])
 				]),
 
 				// Sleek Inline Modal Dialog for Table Configuration, YouTube & Image Embeds
@@ -869,7 +1083,7 @@ if (fs.existsSync(clientFile)) {
 		}
   `
 
-  if (!content.includes('OfficialTipTapEditor')) {
+  if (!content.includes('OfficialTipTapWorkbench')) {
     const codeToInject = tiptapBundleCode + '\n\n' + officialTipTapComponent + '\n\n' +
       'if (typeof document !== "undefined" && !document.getElementById("dsh-vscode-editor-css")) {\n\tconst s = document.createElement("style");\n\ts.id = "dsh-vscode-editor-css";\n\ts.textContent = ' + JSON.stringify(vscodeEditorStyles) + ';\n\tdocument.head.appendChild(s);\n}\n\n' +
       '// ── the right-column file tree panel ─────────────────────────────────────'
@@ -880,26 +1094,108 @@ if (fs.existsSync(clientFile)) {
     )
   }
 
-  // C. Update FileTreePanel to support Left-Sidebar Explorer & Center Editor
-  if (!content.includes('const [editingFile, setEditingFile]')) {
+  // C. Update FileTreePanel to support Multi-Tab Workbench & Explorer File Actions
+  if (!content.includes('const [openTabs, setOpenTabs]')) {
     content = content.replace(
       'const [showHidden, setShowHidden] = react.useState(false);',
       `const [showHidden, setShowHidden] = react.useState(false);
-			const [editingFile, setEditingFile] = react.useState(null);
-			const [fileContent, setFileContent] = react.useState('');
+			const [openTabs, setOpenTabs] = react.useState([]);
+			const [activeTabPath, setActiveTabPath] = react.useState(null);
+			const [newFileModal, setNewFileModal] = react.useState(null); // { type: 'file'|'dir', name: '' }
 
 			const openFile = async (filePath) => {
+				const existing = openTabs.find(t => t.path === filePath);
+				if (existing) {
+					setActiveTabPath(filePath);
+					return;
+				}
 				try {
 					const res = await fetch('/filetree/read?path=' + encodeURIComponent(filePath));
 					const data = await res.json();
 					if (data.ok) {
-						setEditingFile(data.path);
-						setFileContent(data.content || '');
+						const name = filePath.split('/').pop() || filePath;
+						const isMd = filePath.endsWith('.md');
+						const newTab = {
+							path: data.path,
+							name,
+							content: data.content || '',
+							initialContent: data.content || '',
+							isDirty: false,
+							isRichMode: isMd
+						};
+						setOpenTabs(prev => [...prev, newTab]);
+						setActiveTabPath(data.path);
 					} else {
 						alert('Cannot open file: ' + data.message);
 					}
 				} catch (err) {
 					alert('Error reading file: ' + err.message);
+				}
+			};
+
+			const handleCloseTab = (filePath) => {
+				setOpenTabs(prev => {
+					const next = prev.filter(t => t.path !== filePath);
+					if (activeTabPath === filePath) {
+						if (next.length > 0) {
+							setActiveTabPath(next[next.length - 1].path);
+						} else {
+							setActiveTabPath(null);
+						}
+					}
+					return next;
+				});
+			};
+
+			const handleUpdateContent = (filePath, newContent, newMode) => {
+				setOpenTabs(prev => prev.map(t => {
+					if (t.path === filePath) {
+						return {
+							...t,
+							content: newContent !== undefined ? newContent : t.content,
+							isDirty: newContent !== undefined ? (newContent !== t.initialContent) : t.isDirty,
+							isRichMode: newMode !== undefined ? newMode : t.isRichMode
+						};
+					}
+					return t;
+				}));
+			};
+
+			const handleSaveTab = (filePath, savedContent) => {
+				setOpenTabs(prev => prev.map(t => {
+					if (t.path === filePath) {
+						return {
+							...t,
+							content: savedContent,
+							initialContent: savedContent,
+							isDirty: false
+						};
+					}
+					return t;
+				}));
+			};
+
+			const handleCreateFileOrDir = async (e) => {
+				e.preventDefault();
+				if (!newFileModal || !newFileModal.name) return;
+				try {
+					const res = await fetch('/filetree/create', {
+						method: 'POST',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify({ path: newFileModal.name, type: newFileModal.type, content: newFileModal.type === 'file' ? '# ' + newFileModal.name + '\\n\\n' : undefined })
+					});
+					const data = await res.json();
+					if (data.ok) {
+						setNewFileModal(null);
+						refresh();
+						if (newFileModal.type === 'file') {
+							openFile(data.path);
+						}
+					} else {
+						alert('Create failed: ' + data.message);
+					}
+				} catch (err) {
+					alert('Error creating: ' + err.message);
 				}
 			};`
     )
@@ -909,7 +1205,7 @@ if (fs.existsSync(clientFile)) {
       `react.createElement("span", {
 							key: "name",
 							className: "ft-name ft-name-" + entry.type,
-							title: isDir ? entry.path : (entry.path + " (Click to open in TipTap Editor)"),
+							title: isDir ? entry.path : (entry.path + " (Click to open in Tab)"),
 							onClick: () => { if (!isDir) openFile(entry.path); }
 						}, entry.name),`
     )
@@ -917,14 +1213,52 @@ if (fs.existsSync(clientFile)) {
     content = content.replace(
       'return react.createElement("div", { className: "ft-panel" }, [',
       `return react.createElement(react.Fragment, null, [
-				editingFile ? react.createElement(OfficialTipTapEditor, {
-					key: "editor-canvas",
-					filePath: editingFile,
-					initialContent: fileContent,
-					onClose: () => setEditingFile(null),
-					onSave: (newContent) => setFileContent(newContent)
+				openTabs.length > 0 ? react.createElement(OfficialTipTapWorkbench, {
+					key: "workbench-canvas",
+					openTabs,
+					activeTabPath,
+					onSelectTab: (path) => setActiveTabPath(path),
+					onCloseTab: handleCloseTab,
+					onUpdateContent: handleUpdateContent,
+					onSaveTab: handleSaveTab
 				}) : null,
-				react.createElement("div", { key: "panel", className: "ft-panel" }, [`
+				newFileModal ? react.createElement('div', {
+					key: 'new-file-modal',
+					className: 'dsh-modal-backdrop',
+					onClick: (e) => { if (e.target === e.currentTarget) setNewFileModal(null); }
+				}, react.createElement('div', { className: 'dsh-modal-card' }, [
+					react.createElement('div', { key: 'head', className: 'dsh-modal-head' }, [
+						react.createElement('span', { key: 'title' }, newFileModal.type === 'file' ? '➕ Create New File' : '📁 Create New Folder'),
+						react.createElement('button', { key: 'close', className: 'dsh-tab-close', onClick: () => setNewFileModal(null) }, '✕')
+					]),
+					react.createElement('form', { key: 'form', onSubmit: handleCreateFileOrDir }, [
+						react.createElement('div', { key: 'body', className: 'dsh-modal-body' }, [
+							react.createElement('input', {
+								key: 'input',
+								type: 'text',
+								autoFocus: true,
+								required: true,
+								placeholder: newFileModal.type === 'file' ? 'notes.md or script.py' : 'folder-name',
+								value: newFileModal.name,
+								className: 'dsh-modal-input',
+								onChange: (e) => setNewFileModal({ ...newFileModal, name: e.target.value })
+							})
+						]),
+						react.createElement('div', { key: 'foot', className: 'dsh-modal-foot' }, [
+							react.createElement('button', { key: 'cancel', type: 'button', className: 'dsh-modal-btn-cancel', onClick: () => setNewFileModal(null) }, 'Cancel (Esc)'),
+							react.createElement('button', { key: 'submit', type: 'submit', className: 'dsh-modal-btn-submit' }, 'Create')
+						])
+					])
+				])) : null,
+				react.createElement("div", { key: "panel", className: "ft-panel" }, [
+					react.createElement('div', { key: 'ft-toolbar', className: 'dsh-ft-toolbar' }, [
+						react.createElement('span', { key: 'lbl', style: { fontSize: '11px', fontWeight: '700', color: '#6b7280' } }, 'EXPLORER'),
+						react.createElement('div', { key: 'btns', style: { display: 'flex', gap: '4px' } }, [
+							react.createElement('button', { key: 'new-f', type: 'button', className: 'dsh-ft-btn', title: 'New File', onClick: () => setNewFileModal({ type: 'file', name: '' }) }, '➕ File'),
+							react.createElement('button', { key: 'new-d', type: 'button', className: 'dsh-ft-btn', title: 'New Folder', onClick: () => setNewFileModal({ type: 'dir', name: '' }) }, '📁 Folder'),
+							react.createElement('button', { key: 'ref', type: 'button', className: 'dsh-ft-btn', title: 'Refresh', onClick: refresh }, '🔄')
+						])
+					]),`
     )
 
     content = content.replace(
@@ -941,5 +1275,5 @@ if (fs.existsSync(clientFile)) {
   }
 
   fs.writeFileSync(clientFile, content, 'utf8')
-  console.log('[✓] Successfully patched dsh-local-filetree with TipTap Typography and Markdown shortcuts!')
+  console.log('[✓] Successfully patched dsh-local-filetree with Multi-Tab Workbench and Explorer Features!')
 }
