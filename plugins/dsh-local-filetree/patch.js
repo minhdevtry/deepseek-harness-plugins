@@ -89,6 +89,7 @@ if (fs.existsSync(clientFile)) {
     ['"加载中…"', '"Loading..."'],
     ['"折叠"', '"Collapse"'],
     ['"展开"', '"Expand"'],
+    ['"（无会 session 工作区）"', '"(No session workspace)"'],
     ['"（无会话工作区）"', '"(No session workspace)"'],
     ['"隐藏隐藏文件"', '"Hide hidden files"'],
     ['"显示隐藏文件"', '"Show hidden files"'],
@@ -285,13 +286,36 @@ if (fs.existsSync(clientFile)) {
 			const [rawContent, setRawContent] = react.useState(initialContent);
 			const [isSaving, setIsSaving] = react.useState(false);
 			const [savedToast, setSavedToast] = react.useState(false);
-			const [slashMenu, setSlashMenu] = react.useState(null);
-			const [slashIdx, setSlashIdx] = react.useState(0);
-			const [slashQuery, setSlashQuery] = react.useState('');
+			const [slashMenu, _setSlashMenu] = react.useState(null);
+			const [slashIdx, _setSlashIdx] = react.useState(0);
+			const [slashQuery, _setSlashQuery] = react.useState('');
 			const [embedModal, setEmbedModal] = react.useState(null); // { type: 'youtube'|'image', url: '' }
 			const editorRef = react.useRef(null);
 			const containerRef = react.useRef(null);
 			const canvasRef = react.useRef(null);
+
+			const slashStateRef = react.useRef({ menu: null, query: '', index: 0 });
+
+			const setSlashMenu = (val) => {
+				slashStateRef.current.menu = val;
+				_setSlashMenu(val);
+			};
+			const setSlashQuery = (val) => {
+				if (typeof val === 'function') {
+					slashStateRef.current.query = val(slashStateRef.current.query);
+				} else {
+					slashStateRef.current.query = val;
+				}
+				_setSlashQuery(slashStateRef.current.query);
+			};
+			const setSlashIdx = (val) => {
+				if (typeof val === 'function') {
+					slashStateRef.current.index = val(slashStateRef.current.index);
+				} else {
+					slashStateRef.current.index = val;
+				}
+				_setSlashIdx(slashStateRef.current.index);
+			};
 
 			const isMarkdown = filePath.endsWith('.md');
 			const fileName = filePath.split('/').pop() || filePath;
@@ -369,7 +393,8 @@ if (fs.existsSync(clientFile)) {
 								class: 'dsh-tiptap-prose prose'
 							},
 							handleKeyDown: (view, event) => {
-								if (event.key === '/' && !slashMenu) {
+								const current = slashStateRef.current;
+								if (event.key === '/' && !current.menu) {
 									setTimeout(() => {
 										if (!canvasRef.current) return;
 										const containerRect = canvasRef.current.getBoundingClientRect();
@@ -381,29 +406,31 @@ if (fs.existsSync(clientFile)) {
 										setSlashQuery('');
 									}, 0);
 								}
-								if (slashMenu) {
+								if (current.menu) {
+									const q = current.query.toLowerCase();
+									const filtered = slashItems.filter(item => item.label.toLowerCase().includes(q) || item.desc.toLowerCase().includes(q));
+
 									if (event.key === 'ArrowDown') {
 										event.preventDefault();
-										setSlashIdx((i) => (i + 1) % Math.max(1, filteredSlashItems.length));
+										setSlashIdx((i) => (i + 1) % Math.max(1, filtered.length));
 										return true;
 									}
 									if (event.key === 'ArrowUp') {
 										event.preventDefault();
-										setSlashIdx((i) => (i - 1 + filteredSlashItems.length) % Math.max(1, filteredSlashItems.length));
+										setSlashIdx((i) => (i - 1 + filtered.length) % Math.max(1, filtered.length));
 										return true;
 									}
 									if (event.key === 'Enter') {
 										event.preventDefault();
-										const item = filteredSlashItems[slashIdx];
+										const item = filtered[current.index];
 										if (item) {
-											// Delete the slash trigger text
+											// Delete the slash trigger text including the query!
 											const sel = view.state.selection;
-											const textBefore = view.state.doc.textBetween(Math.max(0, sel.from - 10), sel.from, '\\n');
-											const slashOffset = textBefore.lastIndexOf('/');
-											if (slashOffset !== -1) {
-												const from = sel.from - (textBefore.length - slashOffset);
-												editorRef.current.chain().focus().deleteRange({ from, to: sel.from }).run();
-											}
+											const charsToDelete = 1 + current.query.length;
+											editorRef.current.chain().focus().deleteRange({
+												from: sel.from - charsToDelete,
+												to: sel.from
+											}).run();
 											item.action(editorRef.current.chain().focus());
 										}
 										setSlashMenu(null);
@@ -414,15 +441,17 @@ if (fs.existsSync(clientFile)) {
 										return true;
 									}
 									if (event.key.length === 1 && !event.ctrlKey && !event.metaKey) {
-										setSlashQuery(q => q + event.key);
+										setSlashQuery(query => query + event.key);
+										setSlashIdx(0);
 									} else if (event.key === 'Backspace') {
-										setSlashQuery(q => {
-											if (!q) {
+										setSlashQuery(query => {
+											if (!query) {
 												setSlashMenu(null);
 												return '';
 											}
-											return q.slice(0, -1);
+											return query.slice(0, -1);
 										});
+										setSlashIdx(0);
 									}
 								}
 								return false;
@@ -619,14 +648,12 @@ if (fs.existsSync(clientFile)) {
 							className: 'dsh-slash-item ' + (idx === slashIdx ? 'dsh-slash-item-selected' : ''),
 							onClick: () => {
 								if (editorRef.current) {
-									// Delete slash trigger
 									const sel = editorRef.current.state.selection;
-									const textBefore = editorRef.current.state.doc.textBetween(Math.max(0, sel.from - 10), sel.from, '\\n');
-									const slashOffset = textBefore.lastIndexOf('/');
-									if (slashOffset !== -1) {
-										const from = sel.from - (textBefore.length - slashOffset);
-										editorRef.current.chain().focus().deleteRange({ from, to: sel.from }).run();
-									}
+									const charsToDelete = 1 + slashStateRef.current.query.length;
+									editorRef.current.chain().focus().deleteRange({
+										from: sel.from - charsToDelete,
+										to: sel.from
+									}).run();
 									item.action(editorRef.current.chain().focus());
 								}
 								setSlashMenu(null);
