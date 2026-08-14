@@ -764,7 +764,7 @@ window.__ModuleLoader__.load({
 				if (dir === void 0) return h("div", { className: "vk_empty" }, "Loading files...");
 				if (dir.ok) {
 					const hiddenCount = showHidden ? 0 : dir.dirs.filter((d) => d.hidden).length + dir.files.filter((f) => f.hidden).length;
-					return [...rows(dir, 0), hiddenCount > 0 ? h("div", { key: "__hiddenHint", className: "vk_hiddenHint" }, "⋯ 已折叠 " + hiddenCount + " 个隐藏项（点 👁 显示）") : null];
+					return [...rows(dir, 0), hiddenCount > 0 ? h("div", { key: "__hiddenHint", className: "vk_hiddenHint" }, "⋯ " + hiddenCount + " hidden items collapsed (click 👁 to show)") : null];
 				}
 				return h("div", { className: "vk_err" }, dir.error || "Unable to read directory");
 			})();
@@ -63751,14 +63751,36 @@ const FILE_ICON_DIR_OPEN = "fti-FolderOpen";
 				border: none; cursor: pointer; display: flex; align-items: center; gap: 4px;
 			}
 			.vk_bubble_ai_btn:hover { filter: brightness(1.15); }
-			.vk_open_chat_float {
-				position: absolute; top: 8px; right: 12px; z-index: 50;
-				background: var(--dsw-alias-state-business-primary, #2563eb); color: #ffffff;
-				border: none; padding: 6px 14px; border-radius: 6px; font-size: 12.5px; font-weight: 600;
-				cursor: pointer; display: flex; align-items: center; gap: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-				transition: transform 0.1s, filter 0.1s;
+			.vk_tiptap_footer {
+				position: sticky; bottom: 0; display: flex; justify-content: flex-end; align-items: center;
+				padding: 6px 20px; font-size: 11.5px; color: var(--dsw-alias-label-secondary, #6b7280);
+				background: linear-gradient(to top, var(--dsw-alias-bg-base, #ffffff) 65%, transparent);
+				pointer-events: none; margin-top: auto; z-index: 10;
 			}
-			.vk_open_chat_float:hover { filter: brightness(1.1); transform: translateY(-1px); }
+			.vk_stat_pill {
+				background: var(--dsw-alias-bg-elevated, rgba(0,0,0,0.04));
+				border: 1px solid var(--dsw-alias-border-l1, #e5e7eb);
+				border-radius: 12px; padding: 2px 10px; font-weight: 500;
+				box-shadow: 0 1px 4px rgba(0,0,0,0.03); pointer-events: auto;
+			}
+			.vk_open_chat_float {
+				position: absolute; top: 10px; right: 14px; z-index: 50;
+				background: linear-gradient(135deg, #2563eb, #1d4ed8);
+				color: #ffffff; border: none; padding: 7px 16px; border-radius: 20px;
+				font-size: 12.5px; font-weight: 600; cursor: pointer;
+				display: flex; align-items: center; gap: 6px;
+				box-shadow: 0 4px 14px rgba(37,99,235,0.35);
+				backdrop-filter: blur(8px);
+				transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+			}
+			.vk_open_chat_float:hover {
+				transform: translateY(-2px);
+				box-shadow: 0 6px 20px rgba(37,99,235,0.45);
+				filter: brightness(1.1);
+			}
+			.vk_open_chat_float:active {
+				transform: translateY(0);
+			}
 		`;
 
 		if (typeof document !== "undefined" && !document.getElementById("vk-tiptap-styles")) {
@@ -64114,7 +64136,14 @@ const FILE_ICON_DIR_OPEN = "fti-FolderOpen";
 							react.createElement('span', { key: 'label' }, item.label),
 							react.createElement('span', { key: 'desc', className: 'vk_slash_desc' }, item.desc)
 						]))
-					]) : null
+					]) : null,
+
+					// Document Statistics Footer
+					react.createElement('div', { key: 'doc-footer', className: 'vk_tiptap_footer' }, [
+						react.createElement('span', { key: 'stat-pill', className: 'vk_stat_pill' },
+							(stats.words || 0) + ' words · ' + (stats.chars || 0) + ' chars'
+						)
+					])
 				]),
 
 				// Table / Media Modals
@@ -64431,7 +64460,7 @@ function Viewer({ file, rev, onStartEdit, onSaveDirect, onUpdateDirect, isDirect
 						},
 						onDragEnd: () => setDragged(null),
 						onDrop: (e) => e.preventDefault(),
-						onClick: () => onSelect(t.path),
+						onClick: () => onSelect(t.path), onAuxClick: (e) => { if (e.button === 1) { e.preventDefault(); closeTab(t.path); } },
 						onContextMenu: (e) => { e.preventDefault(); setCtxMenu({ x: e.clientX, y: e.clientY, path: t.path }); }
 					},
 						h(FileTypeIcon, { symbolId: fileIconId(t.name, "file", false) }),
