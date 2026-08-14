@@ -64095,6 +64095,121 @@ const FILE_ICON_DIR_OPEN = "fti-FolderOpen";
 			.vk_ai_dropdown_item:hover {
 				background: #eff6ff; color: #1d4ed8;
 			}
+
+			/* Inline AI Widget (Ctrl+K) */
+			.vk_inline_ai_backdrop {
+				position: fixed; inset: 0; z-index: 99998;
+				background: rgba(0,0,0,0.12); pointer-events: auto;
+			}
+			.vk_inline_ai_card {
+				position: fixed; top: 20%; left: 50%; transform: translateX(-50%);
+				width: min(540px, 90vw); z-index: 99999;
+				background: var(--dsw-alias-bg-elevated, #ffffff);
+				border: 1px solid var(--dsw-alias-border-l2, #d1d5db);
+				border-radius: 12px; box-shadow: 0 16px 40px rgba(0,0,0,0.22);
+				padding: 14px; display: flex; flex-direction: column; gap: 10px;
+				animation: vk-pop-in 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+				backdrop-filter: blur(8px);
+			}
+			.vk_inline_ai_header {
+				display: flex; align-items: center; justify-content: space-between;
+			}
+			.vk_inline_ai_title {
+				font-size: 13px; font-weight: 700; color: #2563eb; display: flex; align-items: center; gap: 6px;
+			}
+			.vk_inline_ai_close {
+				background: transparent; border: none; font-size: 16px; cursor: pointer; color: #9ca3af;
+				border-radius: 4px; padding: 2px 6px;
+			}
+			.vk_inline_ai_close:hover { background: #fee2e2; color: #ef4444; }
+			.vk_inline_ai_preview {
+				font-size: 11px; padding: 6px 10px; border-radius: 6px;
+				background: var(--dsw-alias-bg-subtle, #f3f4f6); color: #4b5563;
+				overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+			}
+			.vk_inline_ai_preview_label { font-weight: 700; color: #6b7280; }
+			.vk_inline_ai_input_wrap {
+				display: flex; align-items: center; gap: 8px; background: var(--dsw-alias-bg-base, #ffffff);
+				border: 1.5px solid #3b82f6; border-radius: 8px; padding: 4px 8px;
+				box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+			}
+			.vk_inline_ai_input {
+				flex: 1; border: none; outline: none; background: transparent; font-size: 13px;
+				color: var(--dsw-alias-label-primary, #111827);
+			}
+			.vk_inline_ai_submit {
+				background: #2563eb; color: #ffffff; border: none; border-radius: 5px;
+				width: 26px; height: 26px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center;
+			}
+			.vk_inline_ai_chips {
+				display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+			}
+			.vk_inline_ai_chip {
+				background: var(--dsw-alias-bg-subtle, #f3f4f6); border: 1px solid var(--dsw-alias-border-l1, #e5e7eb);
+				border-radius: 6px; padding: 3px 8px; font-size: 11px; color: var(--dsw-alias-label-secondary, #4b5563);
+				cursor: pointer; transition: all 0.1s;
+			}
+			.vk_inline_ai_chip:hover {
+				background: #eff6ff; border-color: #93c5fd; color: #1d4ed8;
+			}
+
+			/* @ Mention File Dropdown in Chat */
+			.vk_at_file_dropdown {
+				position: absolute; bottom: calc(100% + 8px); left: 16px; z-index: 9999;
+				width: 320px; max-height: 240px; overflow-y: auto;
+				background: var(--dsw-alias-bg-elevated, #ffffff);
+				border: 1px solid var(--dsw-alias-border-l2, #d1d5db); border-radius: 8px;
+				box-shadow: 0 10px 25px rgba(0,0,0,0.18); padding: 4px;
+			}
+			.vk_at_file_header {
+				font-size: 10.5px; font-weight: 700; color: #6b7280; padding: 4px 8px; text-transform: uppercase;
+			}
+			.vk_at_file_item {
+				display: flex; align-items: center; gap: 6px; padding: 5px 8px; border-radius: 5px;
+				cursor: pointer; font-size: 12px;
+			}
+			.vk_at_file_item:hover { background: #eff6ff; color: #1d4ed8; }
+			.vk_at_file_name { font-weight: 600; }
+			.vk_at_file_path { font-size: 10px; color: #9ca3af; margin-left: auto; overflow: hidden; text-overflow: ellipsis; max-width: 140px; }
+
+			/* Document Outline (TOC) */
+			.vk_toc_backdrop {
+				position: fixed; inset: 0; z-index: 99998; background: rgba(0,0,0,0.15);
+			}
+			.vk_toc_card {
+				position: fixed; top: 70px; right: 24px; width: 300px; max-height: 70vh;
+				background: var(--dsw-alias-bg-elevated, #ffffff);
+				border: 1px solid var(--dsw-alias-border-l2, #d1d5db); border-radius: 10px;
+				box-shadow: 0 12px 35px rgba(0,0,0,0.2); padding: 12px; display: flex; flex-direction: column; gap: 8px;
+				z-index: 99999; animation: vk-pop-in 0.15s ease-out;
+			}
+			.vk_toc_header {
+				display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--dsw-alias-border-l1, #f3f4f6); padding-bottom: 6px;
+			}
+			.vk_toc_title { font-size: 12.5px; font-weight: 700; color: var(--dsw-alias-label-primary, #111827); }
+			.vk_toc_close { background: transparent; border: none; font-size: 14px; cursor: pointer; color: #9ca3af; }
+			.vk_toc_list { display: flex; flex-direction: column; gap: 2px; overflow-y: auto; max-height: 55vh; }
+			.vk_toc_item {
+				display: flex; align-items: center; gap: 6px; padding: 4px 8px; border-radius: 4px;
+				cursor: pointer; font-size: 11.5px; color: var(--dsw-alias-label-secondary, #4b5563);
+			}
+			.vk_toc_item:hover { background: #eff6ff; color: #2563eb; }
+			.vk_toc_level_1 { font-weight: 600; padding-left: 6px; }
+			.vk_toc_level_2 { padding-left: 16px; }
+			.vk_toc_level_3 { padding-left: 26px; font-size: 11px; color: #6b7280; }
+			.vk_toc_badge { font-size: 9.5px; font-weight: 700; padding: 1px 4px; border-radius: 3px; background: rgba(37,99,235,0.15); color: #2563eb; }
+			.vk_toc_empty { font-size: 11.5px; color: #9ca3af; padding: 12px; text-align: center; }
+
+			/* Chat Code Block Action Buttons */
+			.vk_chat_code_bar {
+				display: flex; align-items: center; gap: 6px; margin-bottom: 4px; justify-content: flex-end;
+			}
+			.vk_code_action_btn {
+				display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 4px;
+				font-size: 11px; font-weight: 600; cursor: pointer; border: 1px solid rgba(255,255,255,0.15);
+				background: rgba(30, 41, 59, 0.85); color: #e2e8f0; transition: all 0.12s;
+			}
+			.vk_code_action_btn:hover { background: #2563eb; color: #ffffff; border-color: #2563eb; }
 		`;
 
 		if (typeof document !== "undefined" && !document.getElementById("vk-tiptap-styles")) {
@@ -64128,7 +64243,7 @@ const FILE_ICON_DIR_OPEN = "fti-FolderOpen";
 		}
 
 		// ── Bottom Status Bar Component ──
-		function StatusBar({ active, isMarkdown, stats, lineCount, isDirty, onToggleDiff }) {
+		function StatusBar({ active, isMarkdown, stats, lineCount, isDirty, onToggleDiff, autoSave, onToggleAutoSave }) {
 			const activeName = active?.name || "";
 			const ext = activeName.includes(".") ? activeName.split(".").pop().toUpperCase() : "TEXT";
 
@@ -64139,12 +64254,177 @@ const FILE_ICON_DIR_OPEN = "fti-FolderOpen";
 					isDirty ? h("span", { className: "vk_status_badge" }, "● Unsaved") : null
 				),
 				h("div", { className: "vk_statusbar_right" },
+					onToggleAutoSave ? h("span", {
+						className: "vk_status_item" + (autoSave ? " vk_status_badge" : ""),
+						onClick: onToggleAutoSave,
+						title: "Click to toggle Auto-Save (1.5s delay)"
+					}, "💾 Auto-Save: " + (autoSave ? "ON" : "OFF")) : null,
 					isMarkdown && stats ? h("span", { className: "vk_status_item" }, stats.words + " words, " + stats.chars + " chars") : null,
 					lineCount ? h("span", { className: "vk_status_item" }, lineCount + " lines") : null,
 					h("span", { className: "vk_status_item" }, "UTF-8"),
 					h("span", { className: "vk_status_item vk_status_badge" }, isMarkdown ? "Markdown (TipTap)" : ext),
 					onToggleDiff ? h("span", { className: "vk_status_item", onClick: onToggleDiff, title: "Toggle Diff Changes" }, "⚡ Diff") : null
 				)
+			);
+		}
+
+		// ── Inline AI Widget (Ctrl+K) ──
+		function InlineAIWidget({ isOpen, selectionText, onClose, onSubmit }) {
+			const [prompt, setPrompt] = react.useState("");
+			const inputRef = react.useRef(null);
+
+			react.useEffect(() => {
+				if (isOpen) {
+					setPrompt("");
+					setTimeout(() => inputRef.current?.focus(), 60);
+				}
+			}, [isOpen]);
+
+			if (!isOpen) return null;
+
+			const chips = [
+				{ label: "⚡ Polish Text", action: "Rewrite and polish this text to be clear, engaging, and professional." },
+				{ label: "📊 Format Table", action: "Convert this information into a clean, formatted Markdown table." },
+				{ label: "💡 Summarize", action: "Summarize the key takeaways and actionable points from this text." },
+				{ label: "🔧 Refactor Code", action: "Refactor this code to follow modern best practices, clean architecture, and type safety." }
+			];
+
+			const handleSubmit = (customInstruction) => {
+				const instruction = customInstruction || prompt.trim();
+				if (!instruction) return;
+				onSubmit(instruction, selectionText);
+				onClose();
+			};
+
+			return h("div", {
+				className: "vk_inline_ai_backdrop",
+				onClick: (e) => { if (e.target === e.currentTarget) onClose(); }
+			},
+				h("div", {
+					className: "vk_inline_ai_card",
+					"data-vk-inline-ai": true
+				},
+					h("div", { className: "vk_inline_ai_header" },
+						h("span", { className: "vk_inline_ai_title" }, "🤖 Inline AI Assist (Ctrl+K)"),
+						h("button", { className: "vk_inline_ai_close", onClick: onClose }, "×")
+					),
+					selectionText ? h("div", { className: "vk_inline_ai_preview" },
+						h("span", { className: "vk_inline_ai_preview_label" }, "Selection: "),
+						h("span", { className: "vk_inline_ai_preview_text" }, selectionText.slice(0, 120) + (selectionText.length > 120 ? "..." : ""))
+					) : null,
+					h("div", { className: "vk_inline_ai_input_wrap" },
+						h("input", {
+							ref: inputRef,
+							className: "vk_inline_ai_input",
+							placeholder: "Ask AI to rewrite, edit, convert, or refactor...",
+							value: prompt,
+							onChange: (e) => setPrompt(e.target.value),
+							onKeyDown: (e) => {
+								if (e.key === "Enter") {
+									e.preventDefault();
+									handleSubmit();
+								} else if (e.key === "Escape") {
+									e.preventDefault();
+									onClose();
+								}
+							}
+						}),
+						h("button", {
+							type: "button",
+							className: "vk_inline_ai_submit",
+							onClick: () => handleSubmit()
+						}, "↵")
+					),
+					h("div", { className: "vk_inline_ai_chips" },
+						chips.map((c) => h("button", {
+							key: c.label,
+							type: "button",
+							className: "vk_inline_ai_chip",
+							onClick: () => handleSubmit(c.action)
+						}, c.label))
+					)
+				)
+			);
+		}
+
+		// ── Document Outline TOC Component ──
+		function OutlineTocDropdown({ editor, isOpen, onClose }) {
+			const [headings, setHeadings] = react.useState([]);
+
+			react.useEffect(() => {
+				if (!isOpen || !editor) return;
+				const items = [];
+				editor.state.doc.descendants((node, pos) => {
+					if (node.type.name === "heading") {
+						items.push({
+							level: node.attrs.level,
+							text: node.textContent,
+							pos
+						});
+					}
+				});
+				setHeadings(items);
+			}, [isOpen, editor]);
+
+			if (!isOpen) return null;
+
+			const scrollToPos = (pos) => {
+				if (!editor) return;
+				editor.commands.setTextSelection(pos + 1);
+				editor.commands.scrollIntoView();
+				onClose();
+			};
+
+			return h("div", {
+				className: "vk_toc_backdrop",
+				onClick: (e) => { if (e.target === e.currentTarget) onClose(); }
+			},
+				h("div", { className: "vk_toc_card", "data-vk-toc": true },
+					h("div", { className: "vk_toc_header" },
+						h("span", { className: "vk_toc_title" }, "📑 Document Outline"),
+						h("button", { className: "vk_toc_close", onClick: onClose }, "×")
+					),
+					headings.length === 0
+						? h("div", { className: "vk_toc_empty" }, "No headings found. Add H1, H2, or H3 in TipTap to see outline.")
+						: h("div", { className: "vk_toc_list" },
+							headings.map((hItem, idx) => h("div", {
+								key: idx,
+								className: "vk_toc_item vk_toc_level_" + hItem.level,
+								onClick: () => scrollToPos(hItem.pos)
+							},
+								h("span", { className: "vk_toc_badge" }, "H" + hItem.level),
+								h("span", { className: "vk_toc_text" }, hItem.text || "Untitled Section")
+							))
+						)
+				)
+			);
+		}
+
+		// ── @ Mention File Dropdown Component ──
+		function AtFileMentionDropdown({ isOpen, query, onSelect, onClose }) {
+			const [files, setFiles] = react.useState([]);
+
+			react.useEffect(() => {
+				if (!isOpen) return;
+				fetch("/vscode-files/search?type=filename&q=" + encodeURIComponent(query || ""))
+					.then(r => r.json())
+					.then(d => { if (d && d.ok && d.results) setFiles(d.results.slice(0, 12)); })
+					.catch(() => {});
+			}, [isOpen, query]);
+
+			if (!isOpen || files.length === 0) return null;
+
+			return h("div", { className: "vk_at_file_dropdown", "data-vk-at-file": true },
+				h("div", { className: "vk_at_file_header" }, "Mention Workspace File (@)"),
+				files.map(f => h("div", {
+					key: f.path,
+					className: "vk_at_file_item",
+					onClick: () => onSelect(f)
+				},
+					h("span", { className: "vk_at_file_icon" }, "📄"),
+					h("span", { className: "vk_at_file_name" }, f.name),
+					h("span", { className: "vk_at_file_path" }, f.path)
+				))
 			);
 		}
 
@@ -64717,6 +64997,40 @@ const FILE_ICON_DIR_OPEN = "fti-FolderOpen";
 			const [isInTable, setIsInTable] = react.useState(false);
 			const [embedModal, setEmbedModal] = react.useState(null);
 			const [stats, setStats] = react.useState({ words: 0, chars: 0 });
+			const [tocOpen, setTocOpen] = react.useState(false);
+			const [inlineAIOpen, setInlineAIOpen] = react.useState(false);
+			const [inlineSelection, setInlineSelection] = react.useState("");
+			const [exportOpen, setExportOpen] = react.useState(false);
+
+			const handleInlineAISubmit = (instruction, selText) => {
+				const activeName = file?.name || "document.md";
+				const prompt = 'Please assist with the following section from ' + activeName + ':\n\n```markdown\n' + (selText || content || "") + '\n```\n\nInstruction: ' + instruction;
+				const chatInput = document.querySelector('.vk_colRight textarea, .vk_colRight [contenteditable="true"], textarea, [contenteditable="true"]');
+				if (chatInput) {
+					if (chatInput.tagName === 'TEXTAREA' || chatInput.tagName === 'INPUT') {
+						chatInput.value = prompt;
+						chatInput.dispatchEvent(new Event('input', { bubbles: true }));
+					} else {
+						chatInput.innerText = prompt;
+						chatInput.dispatchEvent(new Event('input', { bubbles: true }));
+					}
+					chatInput.focus();
+				}
+			};
+
+			const handleExport = (type) => {
+				setExportOpen(false);
+				if (!editorRef.current) return;
+				if (type === 'markdown') {
+					const md = editorRef.current.storage?.markdown?.getMarkdown() || content || "";
+					navigator.clipboard?.writeText(md);
+				} else if (type === 'html') {
+					const html = editorRef.current.getHTML();
+					navigator.clipboard?.writeText(html);
+				} else if (type === 'print') {
+					window.print();
+				}
+			};
 
 			const editorRef = react.useRef(null);
 			const containerRef = react.useRef(null);
@@ -64907,6 +65221,12 @@ const FILE_ICON_DIR_OPEN = "fti-FolderOpen";
 							onSave(editor.storage.markdown.getMarkdown());
 						}
 					}
+					if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'K')) {
+						e.preventDefault();
+						const sel = editor.state.doc.textBetween(editor.state.selection.from, editor.state.selection.to, ' ');
+						setInlineSelection(sel || editor.getText().slice(0, 300));
+						setInlineAIOpen(true);
+					}
 					if ((e.ctrlKey || e.metaKey) && (e.key === 'z' || e.key === 'Z') && !e.shiftKey) {
 						e.preventDefault();
 						runCommand(c => c.undo());
@@ -64982,6 +65302,17 @@ const FILE_ICON_DIR_OPEN = "fti-FolderOpen";
 					react.createElement('button', { key: 'code', type: 'button', className: 'vk_tb_tool', title: 'Code Block (```)', onMouseDown: (e) => e.preventDefault(), onClick: () => runCommand(c => c.toggleCodeBlock()) }, '</> Code'),
 					react.createElement('button', { key: 'yt', type: 'button', className: 'vk_tb_tool', title: 'Embed YouTube Video', onMouseDown: (e) => e.preventDefault(), onClick: () => setEmbedModal({ type: 'youtube', url: '' }) }, '🎥 YouTube'),
 					react.createElement('button', { key: 'img', type: 'button', className: 'vk_tb_tool', title: 'Insert Image URL', onMouseDown: (e) => e.preventDefault(), onClick: () => setEmbedModal({ type: 'image', url: '' }) }, '🖼️ Image'),
+					react.createElement('span', { key: 'sep3', className: 'vk_tb_sep' }),
+					react.createElement('button', { key: 'toc', type: 'button', className: 'vk_editBtn', title: 'Document Outline / Table of Contents', onClick: () => setTocOpen(true) }, '📑 Outline'),
+					react.createElement('div', { key: 'export-wrap', style: { position: 'relative', display: 'inline-flex' } }, [
+						react.createElement('button', { key: 'export-btn', type: 'button', className: 'vk_editBtn', title: 'Export Document', onClick: () => setExportOpen(!exportOpen) }, '📤 Export ▾'),
+						exportOpen ? react.createElement('div', { key: 'export-menu', className: 'vk_ai_dropdown', style: { width: '180px' } }, [
+							react.createElement('button', { key: 'exp-md', type: 'button', className: 'vk_ai_dropdown_item', onClick: () => handleExport('markdown') }, '📋 Copy Markdown'),
+							react.createElement('button', { key: 'exp-html', type: 'button', className: 'vk_ai_dropdown_item', onClick: () => handleExport('html') }, '📋 Copy HTML'),
+							react.createElement('button', { key: 'exp-print', type: 'button', className: 'vk_ai_dropdown_item', onClick: () => handleExport('print') }, '📄 Print / PDF Preview')
+						]) : null
+					]),
+					react.createElement('button', { key: 'inline-ai-btn', type: 'button', className: 'vk_ai_assist_btn', title: 'Inline AI Assist (Ctrl+K)', onClick: () => { setInlineSelection(editorRef.current?.getText()?.slice(0, 300) || ""); setInlineAIOpen(true); } }, '🤖 AI (Ctrl+K)'),
 					react.createElement('div', { key: 'spacer', style: { flex: 1 } }),
 					react.createElement('button', { key: 'raw-mode', type: 'button', className: 'vk_editBtn', title: 'Switch to Code / Shiki Source View', onClick: onToggleRawMode }, '💻 Code Source')
 				]),
@@ -65059,27 +65390,25 @@ const FILE_ICON_DIR_OPEN = "fti-FolderOpen";
 					className: 'dsh-modal-backdrop',
 					onClick: (e) => { if (e.target === e.currentTarget) setEmbedModal(null); }
 				}, react.createElement('div', { className: 'dsh-modal-card' }, [
-					react.createElement('div', { key: 'head', className: 'dsh-modal-head' }, [
-						react.createElement('span', { key: 'title' },
-							embedModal.type === 'youtube' ? '🎥 Embed YouTube Video' : embedModal.type === 'image' ? '🖼️ Insert Image URL' : '📊 Insert Table'
-						),
-						react.createElement('button', { key: 'close', type: 'button', className: 'dsh-modal-close', onClick: () => setEmbedModal(null) }, '✕')
+					react.createElement('div', { key: 'hdr', className: 'dsh-modal-header' }, [
+						react.createElement('span', { key: 'title', className: 'dsh-modal-title' }, embedModal.type === 'youtube' ? '🎥 Embed YouTube Video' : embedModal.type === 'image' ? '🖼️ Insert Image URL' : '📊 Insert Custom Table'),
+						react.createElement('button', { key: 'close', type: 'button', className: 'dsh-modal-close', onClick: () => setEmbedModal(null) }, '×')
 					]),
-					react.createElement('form', { key: 'body', onSubmit: submitEmbedModal }, [
-						react.createElement('div', { key: 'content', className: 'dsh-modal-body' },
+					react.createElement('form', { key: 'form', onSubmit: submitEmbedModal }, [
+						react.createElement('div', { key: 'body', className: 'dsh-modal-body' },
 							embedModal.type === 'table' ? [
-								react.createElement('div', { key: 'row-input', className: 'dsh-modal-row' }, [
+								react.createElement('div', { key: 'rows-input', className: 'dsh-modal-row' }, [
 									react.createElement('span', { key: 'lbl1', className: 'dsh-modal-label' }, 'Number of Rows:'),
 									react.createElement('input', {
 										key: 'inp-rows',
 										type: 'number',
-										min: 1, max: 30, required: true, autoFocus: true,
+										min: 1, max: 25, required: true,
 										className: 'dsh-modal-num-input',
 										value: embedModal.rows,
 										onChange: (e) => setEmbedModal({ ...embedModal, rows: e.target.value })
 									})
 								]),
-								react.createElement('div', { key: 'col-input', className: 'dsh-modal-row' }, [
+								react.createElement('div', { key: 'cols-input', className: 'dsh-modal-row' }, [
 									react.createElement('span', { key: 'lbl2', className: 'dsh-modal-label' }, 'Number of Columns:'),
 									react.createElement('input', {
 										key: 'inp-cols',
@@ -65117,7 +65446,22 @@ const FILE_ICON_DIR_OPEN = "fti-FolderOpen";
 							react.createElement('button', { key: 'submit', type: 'submit', className: 'dsh-modal-btn-submit' }, embedModal.type === 'youtube' ? 'Embed Video' : embedModal.type === 'image' ? 'Insert Image' : 'Insert Table')
 						])
 					])
-				])) : null
+				])) : null,
+
+				// Document Outline TOC Dialog
+				h(OutlineTocDropdown, {
+					editor: editorRef.current,
+					isOpen: tocOpen,
+					onClose: () => setTocOpen(false)
+				}),
+
+				// Inline AI Assist Dialog
+				h(InlineAIWidget, {
+					isOpen: inlineAIOpen,
+					selectionText: inlineSelection,
+					onClose: () => setInlineAIOpen(false),
+					onSubmit: handleInlineAISubmit
+				})
 			]);
 		}
 
@@ -65226,6 +65570,39 @@ function Viewer({ file, rev, onStartEdit, onSaveDirect, onUpdateDirect, isDirect
 			const [ctxMenu, setCtxMenu] = react.useState(null);
 			const [showDiff, setShowDiff] = react.useState(false);
 			const [pendingUnsaved, setPendingUnsaved] = react.useState(null);
+
+			// Auto-Save Engine (1.5s debounce, persisted in localStorage)
+			const [autoSave, setAutoSave] = react.useState(() => {
+				try { return localStorage.getItem("vk_autosave") !== "false"; } catch { return true; }
+			});
+
+			const toggleAutoSave = () => {
+				setAutoSave((prev) => {
+					const next = !prev;
+					try { localStorage.setItem("vk_autosave", String(next)); } catch {}
+					return next;
+				});
+			};
+
+			// Inline AI state for raw text editor
+			const [rawInlineAIOpen, setRawInlineAIOpen] = react.useState(false);
+			const [rawInlineSelection, setRawInlineSelection] = react.useState("");
+
+			const handleRawInlineAISubmit = (instruction, selText) => {
+				const activeName = active?.name || "code";
+				const prompt = 'Please assist with the following snippet from ' + activeName + ':\n\n```\n' + (selText || edits[currentPath]?.text || "") + '\n```\n\nInstruction: ' + instruction;
+				const chatInput = document.querySelector('.vk_colRight textarea, .vk_colRight [contenteditable="true"], textarea, [contenteditable="true"]');
+				if (chatInput) {
+					if (chatInput.tagName === 'TEXTAREA' || chatInput.tagName === 'INPUT') {
+						chatInput.value = prompt;
+						chatInput.dispatchEvent(new Event('input', { bubbles: true }));
+					} else {
+						chatInput.innerText = prompt;
+						chatInput.dispatchEvent(new Event('input', { bubbles: true }));
+					}
+					chatInput.focus();
+				}
+			};
 
 			// History stack for raw text editor
 			const historyStateRef = react.useRef({});
@@ -65360,6 +65737,17 @@ function Viewer({ file, rev, onStartEdit, onSaveDirect, onUpdateDirect, isDirect
 				if (edit === void 0 || typeof edit.text !== "string" || busy) return;
 				saveWithText(edit.text, currentPath);
 			}, [currentPath, edits, busy, saveWithText]);
+
+			// Auto-Save debounced effect (1.5s)
+			react.useEffect(() => {
+				if (!autoSave || currentPath === null) return;
+				const edit = edits[currentPath];
+				if (!edit || !edit.dirty || typeof edit.text !== "string" || busy) return;
+				const timer = setTimeout(() => {
+					saveWithText(edit.text, currentPath);
+				}, 1500);
+				return () => clearTimeout(timer);
+			}, [autoSave, edits, currentPath, busy, saveWithText]);
 
 			const doCancel = (path) => {
 				setEdits((prev) => {
@@ -65636,7 +66024,12 @@ function Viewer({ file, rev, onStartEdit, onSaveDirect, onUpdateDirect, isDirect
 											autoFocus: true,
 											onChange: (e) => onEditText(e.target.value),
 											onKeyDown: (e) => {
-												if ((e.ctrlKey || e.metaKey) && (e.key === "z" || e.key === "Z") && !e.shiftKey) {
+												if ((e.ctrlKey || e.metaKey) && (e.key === "k" || e.key === "K")) {
+													e.preventDefault();
+													const sel = e.target.value.substring(e.target.selectionStart, e.target.selectionEnd);
+													setRawInlineSelection(sel || edits[active.path]?.text?.slice(0, 300) || "");
+													setRawInlineAIOpen(true);
+												} else if ((e.ctrlKey || e.metaKey) && (e.key === "z" || e.key === "Z") && !e.shiftKey) {
 													e.preventDefault();
 													handleUndo();
 												} else if (((e.ctrlKey || e.metaKey) && (e.key === "z" || e.key === "Z") && e.shiftKey) || ((e.ctrlKey || e.metaKey) && (e.key === "y" || e.key === "Y"))) {
@@ -65662,7 +66055,15 @@ function Viewer({ file, rev, onStartEdit, onSaveDirect, onUpdateDirect, isDirect
 					isMarkdown,
 					isDirty: edits[active?.path]?.dirty === true,
 					lineCount: edits[active?.path]?.text ? edits[active?.path]?.text.split("\n").length : null,
+					autoSave,
+					onToggleAutoSave: toggleAutoSave,
 					onToggleDiff: editing && !isMarkdown ? () => setShowDiff(!showDiff) : null
+				}),
+				h(InlineAIWidget, {
+					isOpen: rawInlineAIOpen,
+					selectionText: rawInlineSelection,
+					onClose: () => setRawInlineAIOpen(false),
+					onSubmit: handleRawInlineAISubmit
 				}),
 				ctxMenu !== null ? h("div", {
 					className: "vk_menu",
@@ -66057,6 +66458,102 @@ function Viewer({ file, rev, onStartEdit, onSaveDirect, onUpdateDirect, isDirect
 			react.useEffect(() => {
 				if (!native && panels.rightTab === "details") actions.setRightTab("conversation");
 			}, [native, panels.rightTab, actions]);
+			// @ Mention File Autocomplete State in Chat
+			const [atFileOpen, setAtFileOpen] = react.useState(false);
+			const [atFileQuery, setAtFileQuery] = react.useState("");
+
+			react.useEffect(() => {
+				const onInput = (e) => {
+					const target = e.target;
+					if (!target || !(target.matches && (target.matches('.vk_colRight textarea') || target.matches('.vk_colRight [contenteditable="true"]') || target.matches('textarea')))) return;
+					const val = target.value || target.innerText || "";
+					const lastAt = val.lastIndexOf("@");
+					if (lastAt !== -1 && lastAt >= val.length - 25) {
+						const q = val.slice(lastAt + 1).split(/\s/)[0];
+						setAtFileQuery(q);
+						setAtFileOpen(true);
+					} else {
+						setAtFileOpen(false);
+					}
+				};
+				document.addEventListener("input", onInput);
+				return () => document.removeEventListener("input", onInput);
+			}, []);
+
+			const handleSelectAtFile = (fileObj) => {
+				setAtFileOpen(false);
+				const chatInput = document.querySelector('.vk_colRight textarea, .vk_colRight [contenteditable="true"], textarea, [contenteditable="true"]');
+				if (!chatInput) return;
+				const val = chatInput.value || chatInput.innerText || "";
+				const lastAt = val.lastIndexOf("@");
+				if (lastAt !== -1) {
+					const newVal = val.slice(0, lastAt) + "@" + fileObj.path + " ";
+					if (chatInput.tagName === 'TEXTAREA' || chatInput.tagName === 'INPUT') {
+						chatInput.value = newVal;
+						chatInput.dispatchEvent(new Event('input', { bubbles: true }));
+					} else {
+						chatInput.innerText = newVal;
+						chatInput.dispatchEvent(new Event('input', { bubbles: true }));
+					}
+				}
+				chatInput.focus();
+			};
+
+			// Enhance chat code blocks with ⚡ Apply & 📋 Copy
+			react.useEffect(() => {
+				const enhanceBlocks = () => {
+					const blocks = document.querySelectorAll('.vk_colRight pre:not(.vk_code_enhanced)');
+					blocks.forEach((pre) => {
+						pre.classList.add('vk_code_enhanced');
+						const bar = document.createElement('div');
+						bar.className = 'vk_chat_code_bar';
+
+						const copyBtn = document.createElement('button');
+						copyBtn.className = 'vk_code_action_btn';
+						copyBtn.innerHTML = '📋 Copy';
+						copyBtn.onclick = (e) => {
+							e.stopPropagation();
+							const codeEl = pre.querySelector('code') || pre;
+							navigator.clipboard?.writeText(codeEl.innerText);
+							copyBtn.innerHTML = '✓ Copied!';
+							setTimeout(() => { copyBtn.innerHTML = '📋 Copy'; }, 2000);
+						};
+
+						const applyBtn = document.createElement('button');
+						applyBtn.className = 'vk_code_action_btn';
+						applyBtn.innerHTML = '⚡ Apply to Tab';
+						applyBtn.title = 'Apply this code snippet to active tab';
+						applyBtn.onclick = (e) => {
+							e.stopPropagation();
+							const codeEl = pre.querySelector('code') || pre;
+							const codeText = codeEl.innerText;
+							if (tabsState && tabsState.active) {
+								openFile({ path: tabsState.active, name: tabsState.active.split(/[\\/]/).pop() });
+								setTimeout(() => {
+									const txtArea = document.querySelector('.vk_textarea');
+									if (txtArea) {
+										txtArea.value = codeText;
+										txtArea.dispatchEvent(new Event('input', { bubbles: true }));
+									}
+								}, 100);
+							}
+						};
+
+						bar.appendChild(applyBtn);
+						bar.appendChild(copyBtn);
+						pre.insertBefore(bar, pre.firstChild);
+					});
+				};
+
+				const obs = new MutationObserver(enhanceBlocks);
+				const col = document.querySelector('.vk_colRight');
+				if (col) {
+					obs.observe(col, { childList: true, subtree: true });
+					enhanceBlocks();
+				}
+				return () => obs.disconnect();
+			}, [tabsState, openFile]);
+
 			// Intercept clicks on file paths or tool badges in conversation / trajectory to open file directly in tab
 			react.useEffect(() => {
 				const onGlobalClick = (e) => {
@@ -66113,6 +66610,7 @@ function Viewer({ file, rev, onStartEdit, onSaveDirect, onUpdateDirect, isDirect
 				children: [
 					h(QuickOpenModal, { isOpen: quickOpen, onClose: () => setQuickOpen(false), root: fileRoot, onOpenFile: openFile }),
 					h(CommandPaletteModal, { isOpen: cmdPalette, onClose: () => setCmdPalette(false), onExecuteAction: handleCommandPaletteAction }),
+					h(AtFileMentionDropdown, { isOpen: atFileOpen, query: atFileQuery, onSelect: handleSelectAtFile, onClose: () => setAtFileOpen(false) }),
 					showOpenChatBtn ? h("button", {
 						className: "vk_open_chat_float",
 						title: "Open AI Chat Panel (Ctrl+L)",
