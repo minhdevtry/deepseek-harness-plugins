@@ -85903,15 +85903,19 @@ function Viewer({ file, rev, onStartEdit, onSaveDirect, onUpdateDirect, isDirect
 							const pEl = document.querySelector('.tiptap.ProseMirror p, .vk_tiptap_container .ProseMirror p, .tiptap p');
 							if (pEl) selectedText = pEl.textContent.trim();
 						}
-						const activeFile = tabsState && tabsState.active ? tabsState.active.split(/[\\/]/).pop() : "snippet";
+						const activeFile = tabsState && tabsState.active ? tabsState.active.split(/[\\/]/).pop() : "document.md";
 						if (panels.right === 0) actions.setRight(440);
 						if (panels.rightTab !== "conversation") actions.setRightTab("conversation");
 						if (selectedText.length > 0) {
 							const prompt = 'Please analyze and explain the following snippet from ' + activeFile + ':\n\n```\n' + selectedText + '\n```\n';
 							setChatInputValue(prompt);
 						} else {
-							const prompt = 'Please analyze and explain ' + activeFile + ' in detail.';
-							setChatInputValue(prompt);
+							setTimeout(() => {
+								const chatInput = document.querySelector('.vk_colRight textarea, .vk_colRight [contenteditable="true"], textarea, [contenteditable="true"]');
+								if (chatInput) {
+									chatInput.focus();
+								}
+							}, 80);
 						}
 					}
 				};
