@@ -21,7 +21,15 @@ try {
   console.error('⚠️ Could not install dsh-at-file via CLI. Please check your network connection.')
 }
 
-// 3. Apply cordis.patch.yml
+// 3. Install Kanban Task Board plugin
+try {
+  console.log('📦 Installing Task Board / Kanban plugin (@linxin666/dsh-client-ui-task-board)...')
+  execSync('dsh plugin --profile web add @linxin666/dsh-client-ui-task-board', { stdio: 'inherit' })
+} catch (err) {
+  console.error('⚠️ Could not install task board plugin via CLI. Please check your network connection.')
+}
+
+// 4. Apply cordis.patch.yml
 const patchSrc = path.join(process.cwd(), 'cordis.patch.yml')
 const patchDest = path.join(os.homedir(), '.dsh/profiles/web/cordis.patch.yml')
 
@@ -31,7 +39,7 @@ if (fs.existsSync(patchSrc)) {
   console.log(`[✓] Updated profile patch configuration at: ${patchDest}`)
 }
 
-// 4. Run English localization patch for dsh-local-filetree
+// 5. Run English localization patch for dsh-local-filetree
 try {
   console.log('🌐 Applying English UI localization patch for dsh-local-filetree...')
   execSync('node plugins/dsh-local-filetree/patch.js', { stdio: 'inherit' })

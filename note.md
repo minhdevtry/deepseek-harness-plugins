@@ -1,17 +1,20 @@
 1. 🎨 Giao diện UI, Chợ Plugin & Input Triggers
 Chợ quản lý Plugin (In-app Plugin Inventory): Tích hợp sẵn gói @deepseek-ai/dsh-ui-settings-plugins & ui-settings-plugin-inventory. Bạn có thể quản lý, xem danh sách và bật/tắt các plugin trực tiếp trên Web UI.
-Cú pháp @filename trong ô Chat: Đã tích hợp gói @deepseek-ai/dsh-client-ui-input-trigger & attachment-local. Khi gõ @ trong ô chat trên Web UI, hệ thống sẽ tự động hiện danh sách gợi ý tệp (filename), kho hội thoại cũ để bạn đính kèm trực tiếp vào prompt.
+
 Giao diện Kanban / Kế hoạch (UI Widgets): Đã tích hợp gói ui-plan, ui-sidebar, ui-trajectory, ui-jobs để theo dõi các bước thực thi kế hoạch trực quan.
+
 2. 🧠 Quản lý Bộ nhớ & Nén Ngữ cảnh (Memory & Compaction)
 Compaction & Pruning: Tích hợp sẵn gói:
 @deepseek-ai/dsh-compaction-basic: Tự động nén tóm tắt hội thoại.
 @deepseek-ai/dsh-compaction-tool-result-pruner: Tự động cắt tỉa (prune) các đầu ra Tool Call quá dài (vượt ngưỡng token) để tiết kiệm ngữ cảnh.
 @deepseek-ai/dsh-command-compact: Cho phép gõ lệnh thu gọn hội thoại chủ động.
+
 3. 🤖 Subagents & Phân nhánh Luồng (Multi-Agent & Session Forking)
 Subagent Forking: Tích hợp sẵn các gói:
 @deepseek-ai/dsh-subagent-fork-in-process: Tách nhánh agent con chạy ngầm xử lý tác vụ nhỏ mà không ảnh hưởng log chính.
 @deepseek-ai/dsh-subagent-spawn-in-process: Khởi tạo agent con hoàn toàn mới.
 @deepseek-ai/dsh-ui-subagent & @deepseek-ai/dsh-ui-jobs: Giao diện theo dõi danh sách các subagent đang chạy.
+
 4. 🔌 LLM Adapters & Giao thức (MCP & LSP)
 LLM Adapters: Tích hợp gói @deepseek-ai/dsh-llm-pi-ai & llm-deepseek. Hỗ trợ kết nối với nhiều nhà cung cấp mô hình như:
 DeepSeek API
@@ -63,3 +66,7 @@ Lỗi xuất hiện do plugin command-compact yêu cầu dịch vụ nền compa
 
 ✅ Cách khắc phục:
 Tôi đã cập nhật bổ sung - id: compaction-basic và - id: tool-result-pruner vào file cấu hình patch ~/.dsh/profiles/web/cordis.patch.yml để cung cấp đầy đủ dịch vụ nén bộ nhớ cho hệ thống.
+
+dsh plugin --profile web add github:omdsh-dev/dsh-at-file
+
+dsh plugin --profile web add github:Ericwong5021/dsh-kanban
