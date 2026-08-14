@@ -12,7 +12,7 @@ const clientFile = path.join(baseDir, 'client.js')
 const tiptapBundleFile = path.join(__dirname, 'tiptap.bundle.js')
 
 // ==========================================
-// 1. PATCH SERVER (Read, Save, Create, Delete & TipTap bundle API)
+// 1. CLEAN SERVER PATCH (Read, Save, Create, Delete APIs)
 // ==========================================
 if (fs.existsSync(serverFile)) {
   let content = fs.readFileSync(serverFile, 'utf8')
@@ -117,307 +117,349 @@ if (fs.existsSync(tiptapBundleFile)) {
 }
 
 // ==========================================
-// 2. PATCH CLIENT (Multi-Tab Workbench, Bubble Menu, Notion Callouts, Explorer Toolbar, AI Bridge)
+// 2. PRISTINE, PROFESSIONAL CLIENT SUITE
 // ==========================================
-if (fs.existsSync(clientFile)) {
-  let content = fs.readFileSync(clientFile, 'utf8')
+let tiptapBundleCode = ''
+if (fs.existsSync(tiptapBundleFile)) {
+  tiptapBundleCode = fs.readFileSync(tiptapBundleFile, 'utf8')
+}
 
-  // A. English Translations & Rename to File Explorer
-  const replacements = [
-    ['"aria-label": "文件树"', '"aria-label": "File Explorer"'],
-    ['title: "文件树"', 'title: "File Explorer"'],
-    ['"文件树"', '"File Explorer"'],
-    ['"等待加载…"', '"Waiting for load..."'],
-    ['"加载中…"', '"Loading..."'],
-    ['"折叠"', '"Collapse"'],
-    ['"展开"', '"Expand"'],
-    ['"（无会 session 工作区）"', '"(No session workspace)"'],
-    ['"（无会话工作区）"', '"(No session workspace)"'],
-    ['"隐藏隐藏文件"', '"Hide hidden files"'],
-    ['"显示隐藏文件"', '"Show hidden files"'],
-    ['"刷新"', '"Refresh"'],
-    ['"恢复工具详情"', '"Restore tool details"'],
-    ['"打开一个会话后显示其工作区文件树"', '"Open a session to display workspace files"']
-  ]
+const completeClientModule = `
+window.__ModuleLoader__.load({
+	id: "dsh-local-filetree",
+	factory: (require) => {
+		var module = { exports: {} };
+		var exports = module.exports;
+		Object.defineProperty(exports, Symbol.toStringTag, { value: "Module" });
+		let react = require("react");
 
-  for (const [from, to] of replacements) {
-    content = content.replaceAll(from, to)
-  }
+		// ── Ultimate TipTap Suite Bundle ──
+		${tiptapBundleCode}
 
-  // B. TipTap Bundle Loader & Component
-  let tiptapBundleCode = ''
-  if (fs.existsSync(tiptapBundleFile)) {
-    tiptapBundleCode = fs.readFileSync(tiptapBundleFile, 'utf8')
-  }
+		// ── Premium Stylesheet (Modern Linear / Notion / VSCode aesthetics) ──
+		const styles = \`
+			/* Root Panel */
+			.ft-panel {
+				box-sizing: border-box; height: 100%; display: flex; flex-direction: column; min-width: 0;
+				color: var(--dsw-alias-label-primary, #111827); background: var(--dsw-alias-bg-base, #ffffff);
+				font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+			}
+			.ft-header {
+				flex: none; border-bottom: 1px solid var(--dsw-alias-border-l1, #e5e7eb);
+				padding: 10px 14px; display: flex; flex-direction: column; gap: 8px;
+				background: var(--dsw-alias-bg-subtle, #f9fafb);
+			}
+			.ft-header-top { display: flex; align-items: center; justify-content: space-between; }
+			.ft-title { font-size: 13.5px; font-weight: 700; color: var(--dsw-alias-label-primary, #111827); display: flex; align-items: center; gap: 6px; }
+			.ft-header-actions { display: flex; align-items: center; gap: 4px; }
+			.ft-tool-btn {
+				border: 1px solid var(--dsw-alias-border-l1, #e5e7eb); background: #ffffff;
+				padding: 4px 8px; border-radius: 6px; font-size: 11.5px; font-weight: 600;
+				cursor: pointer; color: var(--dsw-alias-label-secondary, #4b5563);
+				display: flex; align-items: center; gap: 4px; transition: all 0.15s;
+			}
+			.ft-tool-btn:hover { background: #f3f4f6; color: #111827; border-color: #d1d5db; }
+			.ft-search-box {
+				width: 100%; border: 1px solid var(--dsw-alias-border-l1, #e5e7eb); border-radius: 6px;
+				padding: 5px 10px; font-size: 12px; outline: none; background: #ffffff;
+				color: var(--dsw-alias-label-primary, #111827); box-sizing: border-box;
+			}
+			.ft-search-box:focus { border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15); }
+			.ft-root { color: var(--dsw-alias-label-tertiary, #9ca3af); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-  const vscodeEditorStyles = `
-		.dsh-editor-panel-view {
-			position: fixed; top: 0; bottom: 0; left: 260px; right: 360px; z-index: 40;
-			background: var(--dsw-alias-bg-base, #ffffff);
-			display: flex; flex-direction: column; overflow: hidden;
-			box-shadow: -3px 0 16px rgba(0,0,0,0.08);
-			border-right: 1px solid var(--dsw-alias-border-l1, #e5e7eb);
-		}
-		.dsh-editor-panel-view-maximized {
-			right: 0 !important; z-index: 60 !important;
-		}
-		@media (max-width: 1200px) {
-			.dsh-editor-panel-view { right: 0; left: 60px; }
-		}
-		.dsh-editor-topbar {
-			height: 42px; background: var(--dsw-alias-bg-subtle, #f9fafb);
-			border-bottom: 1px solid var(--dsw-alias-border-l2, #e5e7eb);
-			display: flex; align-items: center; justify-content: space-between;
-			padding: 0 14px 0 0; flex-shrink: 0; overflow: hidden;
-		}
-		.dsh-tabs-scroll {
-			display: flex; align-items: center; overflow-x: auto; height: 100%;
-			scrollbar-width: none; -ms-overflow-style: none;
-		}
-		.dsh-tabs-scroll::-webkit-scrollbar { display: none; }
-		.dsh-tab-item {
-			height: 42px; padding: 0 14px; display: flex; align-items: center; gap: 8px;
-			border-right: 1px solid var(--dsw-alias-border-l2, #e5e7eb);
-			font-size: 13px; font-weight: 500; cursor: pointer; color: var(--dsw-alias-label-secondary, #6b7280);
-			background: transparent; border-top: 2.5px solid transparent; user-select: none;
-			white-space: nowrap; transition: background 0.1s;
-		}
-		.dsh-tab-item:hover { background: rgba(0,0,0,0.03); color: var(--dsw-alias-label-primary, #111827); }
-		.dsh-tab-active {
-			background: var(--dsw-alias-bg-base, #ffffff);
-			border-top-color: #3b82f6; font-weight: 600;
-			color: var(--dsw-alias-label-primary, #111827);
-		}
-		.dsh-tab-dirty { width: 7px; height: 7px; border-radius: 50%; background: #f59e0b; margin-left: 2px; }
-		.dsh-tab-close {
-			border: none; background: transparent; font-size: 12px; cursor: pointer;
-			color: var(--dsw-alias-label-tertiary, #9ca3af); border-radius: 4px; padding: 2px 4px;
-		}
-		.dsh-tab-close:hover { background: rgba(0,0,0,0.08); color: #ef4444; }
-		.dsh-editor-top-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; padding-left: 8px; }
-		.dsh-mode-switch { display: flex; background: var(--dsw-alias-border-l1, #e5e7eb); border-radius: 6px; padding: 2px; }
-		.dsh-switch-btn {
-			border: none; background: transparent; padding: 4px 9px; font-size: 11.5px;
-			font-weight: 600; border-radius: 4px; cursor: pointer; color: var(--dsw-alias-label-secondary, #4b5563);
-		}
-		.dsh-switch-btn-active { background: #fff; color: #2563eb; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-		.dsh-save-btn {
-			background: #10b981; color: #fff; border: none; padding: 5px 12px; border-radius: 6px;
-			font-size: 12px; font-weight: 600; cursor: pointer; transition: background 0.15s; display: flex; align-items: center; gap: 4px;
-		}
-		.dsh-save-btn:hover { background: #059669; }
-		.dsh-close-btn {
-			background: transparent; border: none; font-size: 16px; cursor: pointer;
-			color: var(--dsw-alias-label-secondary, #6b7280); padding: 4px 8px; border-radius: 4px;
-		}
-		.dsh-close-btn:hover { background: rgba(0,0,0,0.06); }
-		.dsh-tiptap-toolbar {
-			background: var(--dsw-alias-bg-base, #ffffff);
-			border-bottom: 1px solid var(--dsw-alias-border-l1, #e5e7eb);
-			padding: 6px 14px; display: flex; align-items: center; gap: 4px; flex-wrap: wrap; flex-shrink: 0;
-		}
-		.dsh-table-toolbar {
-			background: #f0fdf4; border-bottom: 1px solid #bbf7d0;
-			padding: 4px 14px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; flex-shrink: 0;
-			animation: dsh-slide-down 0.15s ease-out;
-		}
-		@keyframes dsh-slide-down { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
-		.dsh-tb-tool {
-			border: 1px solid transparent; background: transparent; padding: 4px 8px;
-			border-radius: 4px; font-size: 12px; font-weight: 600; cursor: pointer;
-			color: var(--dsw-alias-label-secondary, #374151); min-width: 26px; text-align: center;
-			display: inline-flex; align-items: center; gap: 4px;
-		}
-		.dsh-tb-tool:hover { background: var(--dsw-alias-interactive-bg-hover, #f3f4f6); border-color: var(--dsw-alias-border-l2, #d1d5db); }
-		.dsh-tb-table-btn {
-			border: 1px solid #86efac; background: #ffffff; padding: 3px 8px;
-			border-radius: 5px; font-size: 11.5px; font-weight: 600; cursor: pointer;
-			color: #166534; display: inline-flex; align-items: center; gap: 3px;
-		}
-		.dsh-tb-table-btn:hover { background: #dcfce7; border-color: #4ade80; }
-		.dsh-tb-table-btn-danger { color: #dc2626; border-color: #fca5a5; }
-		.dsh-tb-table-btn-danger:hover { background: #fee2e2; border-color: #f87171; }
-		.dsh-tb-sep { width: 1px; height: 16px; background: var(--dsw-alias-border-l2, #e5e7eb); margin: 0 4px; }
-		.dsh-bold { font-weight: 800; }
-		.dsh-italic { font-style: italic; }
-		.dsh-strike { text-decoration: line-through; }
-		.dsh-underline { text-decoration: underline; }
-		.dsh-editor-canvas { flex: 1; overflow-y: auto; display: flex; flex-direction: column; position: relative; }
-		.dsh-tiptap-container { flex: 1; display: flex; flex-direction: column; padding: 28px 48px 60px; max-width: 960px; margin: 0 auto; width: 100%; box-sizing: border-box; }
-		.dsh-tiptap-prose {
-			outline: none; font-size: 15.5px; line-height: 1.75; min-height: 500px;
-			color: var(--dsw-alias-label-primary, #111827); width: 100%;
-			font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-		}
-		.dsh-tiptap-prose h1 { font-size: 28px; font-weight: 800; margin: 24px 0 12px; color: #111827; border-bottom: 1px solid #f3f4f6; padding-bottom: 8px; line-height: 1.3; }
-		.dsh-tiptap-prose h2 { font-size: 22px; font-weight: 700; margin: 20px 0 10px; color: #1f2937; line-height: 1.35; }
-		.dsh-tiptap-prose h3 { font-size: 18px; font-weight: 600; margin: 16px 0 8px; color: #374151; }
-		.dsh-tiptap-prose h4 { font-size: 16px; font-weight: 600; margin: 14px 0 6px; color: #4b5563; }
-		.dsh-tiptap-prose h5 { font-size: 14.5px; font-weight: 600; margin: 12px 0 6px; color: #6b7280; }
-		.dsh-tiptap-prose h6 { font-size: 13.5px; font-weight: 600; margin: 10px 0 4px; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.5px; }
-		.dsh-tiptap-prose p { margin: 8px 0; }
-		.dsh-tiptap-prose blockquote { border-left: 4px solid #3b82f6; padding: 8px 16px; color: #4b5563; margin: 12px 0; font-style: italic; background: rgba(59,130,246,0.03); border-radius: 0 8px 8px 0; }
-		
-		/* Notion Callout Box */
-		.dsh-tiptap-prose .dsh-callout-box {
-			border: 1.5px solid #bae6fd; background: #f0f9ff; border-radius: 10px;
-			padding: 12px 18px; margin: 16px 0; display: flex; align-items: flex-start; gap: 12px;
-			color: #0369a1; box-shadow: 0 2px 8px rgba(2,132,199,0.05);
-		}
-		.dsh-callout-icon { font-size: 20px; line-height: 1.3; flex-shrink: 0; }
-		.dsh-callout-body { flex: 1; font-size: 15px; }
+			/* Tree view */
+			.ft-body { flex: 1 1 auto; overflow-y: auto; padding: 6px 0; }
+			.ft-row {
+				height: 28px; display: flex; align-items: center; padding: 0 10px; cursor: pointer;
+				user-select: none; gap: 6px; font-size: 12.5px; border-radius: 4px; margin: 1px 4px;
+				color: var(--dsw-alias-label-secondary, #4b5563); transition: background 0.1s;
+			}
+			.ft-row:hover { background: rgba(59, 130, 246, 0.08); color: var(--dsw-alias-label-primary, #111827); }
+			.ft-row-active { background: rgba(59, 130, 246, 0.12); color: #2563eb; font-weight: 600; }
+			.ft-twist {
+				border: none; background: transparent; width: 14px; height: 14px; padding: 0;
+				display: flex; align-items: center; justify-content: center; font-size: 10px;
+				color: #9ca3af; cursor: pointer; flex-shrink: 0;
+			}
+			.ft-twist-off { opacity: 0; pointer-events: none; }
+			.ft-file-icon { font-size: 14px; flex-shrink: 0; display: flex; align-items: center; }
+			.ft-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+			.ft-size { font-size: 11px; color: var(--dsw-alias-label-tertiary, #9ca3af); margin-left: auto; flex-shrink: 0; }
 
-		.dsh-tiptap-prose pre { background: #0f172a; color: #f8fafc; padding: 16px; border-radius: 8px; font-family: 'Fira Code', Consolas, Monaco, monospace; font-size: 13.5px; line-height: 1.6; margin: 14px 0; overflow-x: auto; }
-		.dsh-tiptap-prose pre code { background: transparent; padding: 0; color: inherit; font-size: inherit; }
-		.dsh-tiptap-prose code { background: rgba(59,130,246,0.08); color: #2563eb; padding: 2px 6px; border-radius: 4px; font-family: monospace; font-size: 13px; }
-		.dsh-tiptap-prose ul, .dsh-tiptap-prose ol { padding-left: 26px; margin: 8px 0; }
-		.dsh-tiptap-prose li { margin: 4px 0; }
-		.dsh-tiptap-prose ul[data-type="taskList"] { list-style: none; padding: 0; }
-		.dsh-tiptap-prose ul[data-type="taskList"] li { display: flex; align-items: center; gap: 10px; margin: 6px 0; }
-		.dsh-tiptap-prose ul[data-type="taskList"] li > label { display: flex; align-items: center; user-select: none; }
-		.dsh-tiptap-prose ul[data-type="taskList"] li > label input[type="checkbox"] { width: 17px; height: 17px; cursor: pointer; accent-color: #3b82f6; }
-		.dsh-tiptap-prose ul[data-type="taskList"] li[data-checked="true"] > div { text-decoration: line-through; opacity: 0.55; }
-		.dsh-tiptap-prose table { border-collapse: collapse; width: 100%; margin: 16px 0; overflow: hidden; border-radius: 8px; border: 1px solid #cbd5e1; }
-		.dsh-tiptap-prose th, .dsh-tiptap-prose td { border: 1px solid #cbd5e1; padding: 10px 14px; text-align: left; vertical-align: top; min-width: 80px; position: relative; }
-		.dsh-tiptap-prose th { background: #f1f5f9; font-weight: 700; color: #1e293b; }
-		.dsh-tiptap-prose iframe { width: 100%; aspect-ratio: 16/9; border-radius: 12px; margin: 16px 0; border: none; }
-		.dsh-tiptap-prose img { max-width: 100%; border-radius: 8px; margin: 14px 0; box-shadow: 0 4px 12px rgba(0,0,0,0.06); }
-		.dsh-tiptap-prose mark { background: #fef08a; padding: 2px 4px; border-radius: 3px; }
-		
-		/* Caret-Anchored Slash Commands Popup */
-		.dsh-slash-menu {
-			position: absolute; z-index: 100; background: var(--dsw-alias-bg-base, #ffffff);
-			border: 1px solid var(--dsw-alias-border-l2, #e5e7eb); border-radius: 10px;
-			box-shadow: 0 12px 32px rgba(0,0,0,0.15); width: 300px; max-height: 360px;
-			overflow-y: auto; padding: 6px; display: flex; flex-direction: column; gap: 2px;
-		}
-		.dsh-slash-header {
-			font-size: 11px; font-weight: 700; color: #9ca3af; padding: 6px 10px 2px;
-			text-transform: uppercase; letter-spacing: 0.5px;
-		}
-		.dsh-slash-item {
-			display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 6px;
-			cursor: pointer; font-size: 13px; color: var(--dsw-alias-label-primary, #1f2937);
-			border: none; background: transparent; width: 100%; text-align: left; transition: all 0.1s ease;
-		}
-		.dsh-slash-item:hover, .dsh-slash-item-selected {
-			background: #eff6ff; color: #2563eb; font-weight: 600;
-		}
-		.dsh-slash-icon { font-size: 15px; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.04); border-radius: 4px; flex-shrink: 0; }
-		.dsh-slash-desc { font-size: 11.5px; color: #6b7280; margin-left: auto; }
-		
-		/* Selection Floating Bubble Menu */
-		.dsh-bubble-menu {
-			position: absolute; z-index: 100; background: #1f2937; color: #ffffff;
-			border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.25);
-			padding: 4px; display: flex; align-items: center; gap: 2px;
-			animation: dsh-pop-in 0.12s ease-out;
-		}
-		@keyframes dsh-pop-in { from { opacity: 0; transform: scale(0.92); } to { opacity: 1; transform: scale(1); } }
-		.dsh-bubble-btn {
-			border: none; background: transparent; color: #f3f4f6; padding: 4px 8px;
-			border-radius: 4px; font-size: 12px; font-weight: 600; cursor: pointer;
-			display: flex; align-items: center; gap: 3px;
-		}
-		.dsh-bubble-btn:hover { background: #374151; color: #ffffff; }
-		.dsh-bubble-ai-btn {
-			background: linear-gradient(135deg, #6366f1, #8b5cf6); color: #ffffff;
-			padding: 4px 9px; border-radius: 5px; font-size: 11.5px; font-weight: 700;
-			border: none; cursor: pointer; display: flex; align-items: center; gap: 4px;
-		}
-		.dsh-bubble-ai-btn:hover { filter: brightness(1.15); }
+			/* Multi-Tab Workbench */
+			.dsh-editor-panel-view {
+				position: fixed; top: 0; bottom: 0; left: 260px; right: 360px; z-index: 40;
+				background: var(--dsw-alias-bg-base, #ffffff);
+				display: flex; flex-direction: column; overflow: hidden;
+				box-shadow: -4px 0 20px rgba(0,0,0,0.06);
+				border-right: 1px solid var(--dsw-alias-border-l1, #e5e7eb);
+			}
+			.dsh-editor-panel-view-maximized { right: 0 !important; z-index: 60 !important; }
+			@media (max-width: 1200px) { .dsh-editor-panel-view { right: 0; left: 60px; } }
 
-		/* Editor Footer Status Bar */
-		.dsh-editor-statusbar {
-			height: 28px; background: var(--dsw-alias-bg-subtle, #f9fafb);
-			border-top: 1px solid var(--dsw-alias-border-l1, #e5e7eb);
-			padding: 0 14px; display: flex; align-items: center; justify-content: space-between;
-			font-size: 11.5px; color: var(--dsw-alias-label-secondary, #6b7280); flex-shrink: 0;
-		}
-		.dsh-statusbar-badge { display: flex; align-items: center; gap: 8px; }
+			/* Top Tabs Bar */
+			.dsh-editor-topbar {
+				height: 42px; background: var(--dsw-alias-bg-subtle, #f9fafb);
+				border-bottom: 1px solid var(--dsw-alias-border-l2, #e5e7eb);
+				display: flex; align-items: center; justify-content: space-between;
+				padding: 0 12px 0 0; flex-shrink: 0; overflow: hidden;
+			}
+			.dsh-tabs-scroll {
+				display: flex; align-items: center; overflow-x: auto; height: 100%;
+				scrollbar-width: none; -ms-overflow-style: none;
+			}
+			.dsh-tabs-scroll::-webkit-scrollbar { display: none; }
+			.dsh-tab-item {
+				height: 42px; padding: 0 14px; display: flex; align-items: center; gap: 8px;
+				border-right: 1px solid var(--dsw-alias-border-l2, #e5e7eb);
+				font-size: 12.5px; font-weight: 500; cursor: pointer; color: var(--dsw-alias-label-secondary, #6b7280);
+				background: transparent; border-top: 2.5px solid transparent; user-select: none;
+				white-space: nowrap; transition: all 0.1s;
+			}
+			.dsh-tab-item:hover { background: rgba(0,0,0,0.03); color: var(--dsw-alias-label-primary, #111827); }
+			.dsh-tab-active {
+				background: var(--dsw-alias-bg-base, #ffffff);
+				border-top-color: #3b82f6; font-weight: 600;
+				color: var(--dsw-alias-label-primary, #111827);
+			}
+			.dsh-tab-dirty { width: 7px; height: 7px; border-radius: 50%; background: #f59e0b; margin-left: 2px; }
+			.dsh-tab-close {
+				border: none; background: transparent; font-size: 12px; cursor: pointer;
+				color: var(--dsw-alias-label-tertiary, #9ca3af); border-radius: 4px; padding: 2px 4px;
+			}
+			.dsh-tab-close:hover { background: rgba(0,0,0,0.08); color: #ef4444; }
 
-		/* Sleek Embed Modal Dialog */
-		.dsh-modal-backdrop {
-			position: fixed; inset: 0; z-index: 1000;
-			background: rgba(0,0,0,0.45); backdrop-filter: blur(3px);
-			display: flex; justify-content: center; align-items: center; padding: 20px;
-		}
-		.dsh-modal-card {
-			background: var(--dsw-alias-bg-base, #ffffff);
-			border: 1px solid var(--dsw-alias-border-l2, #e5e7eb);
-			border-radius: 12px; box-shadow: 0 20px 45px rgba(0,0,0,0.25);
-			width: min(480px, 95vw); display: flex; flex-direction: column; overflow: hidden;
-			animation: dsh-modal-pop 0.15s ease-out;
-		}
-		@keyframes dsh-modal-pop { 0% { opacity: 0; transform: scale(0.95); } 100% { opacity: 1; transform: scale(1); } }
-		.dsh-modal-head {
-			padding: 14px 18px; border-bottom: 1px solid var(--dsw-alias-border-l1, #e5e7eb);
-			display: flex; align-items: center; justify-content: space-between;
-			font-size: 15px; font-weight: 700; color: var(--dsw-alias-label-primary, #111827);
-		}
-		.dsh-modal-body { padding: 18px; display: flex; flex-direction: column; gap: 12px; }
-		.dsh-modal-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-		.dsh-modal-label { font-size: 13.5px; font-weight: 600; color: var(--dsw-alias-label-secondary, #374151); }
-		.dsh-modal-input {
-			width: 100%; border: 1.5px solid #3b82f6; border-radius: 8px; padding: 10px 14px;
-			font-size: 14px; outline: none; box-sizing: border-box; background: var(--dsw-alias-bg-base, #ffffff);
-			color: var(--dsw-alias-label-primary, #111827);
-		}
-		.dsh-modal-num-input {
-			width: 90px; border: 1.5px solid #d1d5db; border-radius: 6px; padding: 6px 10px;
-			font-size: 14px; outline: none; box-sizing: border-box; background: #fff; text-align: center;
-		}
-		.dsh-modal-num-input:focus { border-color: #3b82f6; }
-		.dsh-modal-checkbox { width: 18px; height: 18px; accent-color: #3b82f6; cursor: pointer; }
-		.dsh-modal-foot {
-			padding: 12px 18px; border-top: 1px solid var(--dsw-alias-border-l1, #e5e7eb);
-			background: var(--dsw-alias-bg-subtle, #f9fafb); display: flex; justify-content: flex-end; gap: 8px;
-		}
-		.dsh-modal-btn-cancel {
-			padding: 6px 14px; border-radius: 6px; border: 1px solid #d1d5db; background: #fff;
-			font-size: 13px; font-weight: 600; cursor: pointer; color: #4b5563;
-		}
-		.dsh-modal-btn-submit {
-			padding: 6px 16px; border-radius: 6px; border: none; background: #2563eb;
-			font-size: 13px; font-weight: 600; cursor: pointer; color: #fff;
-		}
-		.dsh-modal-btn-submit:hover { background: #1d4ed8; }
+			.dsh-editor-top-actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; padding-left: 8px; }
+			.dsh-mode-switch { display: flex; background: var(--dsw-alias-border-l1, #e5e7eb); border-radius: 6px; padding: 2px; }
+			.dsh-switch-btn {
+				border: none; background: transparent; padding: 4px 9px; font-size: 11.5px;
+				font-weight: 600; border-radius: 4px; cursor: pointer; color: var(--dsw-alias-label-secondary, #4b5563);
+			}
+			.dsh-switch-btn-active { background: #fff; color: #2563eb; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+			.dsh-save-btn {
+				background: #10b981; color: #fff; border: none; padding: 5px 12px; border-radius: 6px;
+				font-size: 12px; font-weight: 600; cursor: pointer; transition: background 0.15s; display: flex; align-items: center; gap: 4px;
+			}
+			.dsh-save-btn:hover { background: #059669; }
 
-		/* Code Syntax Highlighting colors */
-		.hljs-keyword, .hljs-selector-tag { color: #f43f5e; font-weight: 700; }
-		.hljs-string, .hljs-title { color: #10b981; }
-		.hljs-comment, .hljs-quote { color: #64748b; font-style: italic; }
-		.hljs-number, .hljs-literal { color: #fb923c; }
-		.hljs-function, .hljs-attr { color: #38bdf8; }
-		.hljs-built_in { color: #a855f7; }
+			/* TipTap Sticky Formatting Toolbar */
+			.dsh-tiptap-toolbar {
+				background: var(--dsw-alias-bg-base, #ffffff);
+				border-bottom: 1px solid var(--dsw-alias-border-l1, #e5e7eb);
+				padding: 6px 14px; display: flex; align-items: center; gap: 3px; flex-wrap: wrap; flex-shrink: 0;
+			}
+			.dsh-table-toolbar {
+				background: #f0fdf4; border-bottom: 1px solid #bbf7d0;
+				padding: 4px 14px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; flex-shrink: 0;
+				animation: dsh-slide-down 0.15s ease-out;
+			}
+			@keyframes dsh-slide-down { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+			.dsh-tb-tool {
+				border: 1px solid transparent; background: transparent; padding: 4px 8px;
+				border-radius: 5px; font-size: 12px; font-weight: 600; cursor: pointer;
+				color: var(--dsw-alias-label-secondary, #374151); min-width: 26px; text-align: center;
+				display: inline-flex; align-items: center; gap: 4px; transition: background 0.1s;
+			}
+			.dsh-tb-tool:hover { background: var(--dsw-alias-interactive-bg-hover, #f3f4f6); border-color: var(--dsw-alias-border-l2, #d1d5db); }
+			.dsh-tb-table-btn {
+				border: 1px solid #86efac; background: #ffffff; padding: 3px 8px;
+				border-radius: 5px; font-size: 11.5px; font-weight: 600; cursor: pointer;
+				color: #166534; display: inline-flex; align-items: center; gap: 3px;
+			}
+			.dsh-tb-table-btn:hover { background: #dcfce7; border-color: #4ade80; }
+			.dsh-tb-table-btn-danger { color: #dc2626; border-color: #fca5a5; }
+			.dsh-tb-table-btn-danger:hover { background: #fee2e2; border-color: #f87171; }
+			.dsh-tb-sep { width: 1px; height: 16px; background: var(--dsw-alias-border-l2, #e5e7eb); margin: 0 4px; }
+			.dsh-bold { font-weight: 800; }
+			.dsh-italic { font-style: italic; }
+			.dsh-strike { text-decoration: line-through; }
+			.dsh-underline { text-decoration: underline; }
 
-		.dsh-code-canvas { flex: 1; display: flex; }
-		.dsh-code-textarea {
-			width: 100%; height: 100%; min-height: 100%; border: none; outline: none; padding: 18px 24px;
-			font-family: 'Fira Code', 'Cascadia Code', Consolas, Monaco, monospace;
-			font-size: 14px; line-height: 1.65; background: var(--dsw-alias-bg-base, #ffffff);
-			color: var(--dsw-alias-label-primary, #111827); resize: none;
-		}
-		
-		/* File Explorer Action Toolbar */
-		.dsh-ft-toolbar {
-			display: flex; align-items: center; justify-content: space-between;
-			padding: 6px 12px; background: var(--dsw-alias-bg-subtle, #f9fafb);
-			border-bottom: 1px solid var(--dsw-alias-border-l1, #e5e7eb); gap: 4px;
-		}
-		.dsh-ft-btn {
-			border: 1px solid var(--dsw-alias-border-l1, #e5e7eb); background: #ffffff;
-			padding: 3px 7px; border-radius: 4px; font-size: 11.5px; font-weight: 600;
-			cursor: pointer; color: var(--dsw-alias-label-secondary, #4b5563);
-			display: flex; align-items: center; gap: 3px;
-		}
-		.dsh-ft-btn:hover { background: #f3f4f6; color: #111827; }
-		.ft-name-file { cursor: pointer; }
-		.ft-name-file:hover { color: #3b82f6 !important; text-decoration: underline; }
-		.ft-row:hover { background: rgba(59, 130, 246, 0.08); border-radius: 4px; }
-  `
+			/* TipTap Canvas & Prose Styling */
+			.dsh-editor-canvas { flex: 1; overflow-y: auto; display: flex; flex-direction: column; position: relative; }
+			.dsh-tiptap-container { flex: 1; display: flex; flex-direction: column; padding: 32px 52px 64px; max-width: 880px; margin: 0 auto; width: 100%; box-sizing: border-box; }
+			.dsh-tiptap-prose {
+				outline: none; font-size: 15.5px; line-height: 1.8; min-height: 500px;
+				color: var(--dsw-alias-label-primary, #111827); width: 100%;
+			}
+			.dsh-tiptap-prose h1 { font-size: 28px; font-weight: 800; margin: 26px 0 14px; color: #111827; border-bottom: 1px solid #f3f4f6; padding-bottom: 8px; line-height: 1.3; }
+			.dsh-tiptap-prose h2 { font-size: 22px; font-weight: 700; margin: 22px 0 12px; color: #1f2937; line-height: 1.35; }
+			.dsh-tiptap-prose h3 { font-size: 18px; font-weight: 600; margin: 18px 0 10px; color: #374151; }
+			.dsh-tiptap-prose h4 { font-size: 16px; font-weight: 600; margin: 14px 0 6px; color: #4b5563; }
+			.dsh-tiptap-prose h5 { font-size: 14.5px; font-weight: 600; margin: 12px 0 6px; color: #6b7280; }
+			.dsh-tiptap-prose h6 { font-size: 13.5px; font-weight: 600; margin: 10px 0 4px; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.5px; }
+			.dsh-tiptap-prose p { margin: 10px 0; }
+			.dsh-tiptap-prose blockquote { border-left: 4px solid #3b82f6; padding: 10px 18px; color: #4b5563; margin: 14px 0; font-style: italic; background: rgba(59,130,246,0.04); border-radius: 0 8px 8px 0; }
+			
+			/* Notion Callout Boxes */
+			.dsh-tiptap-prose .dsh-callout-box {
+				border: 1.5px solid #bae6fd; background: #f0f9ff; border-radius: 10px;
+				padding: 14px 18px; margin: 18px 0; display: flex; align-items: flex-start; gap: 12px;
+				color: #0369a1; box-shadow: 0 2px 8px rgba(2,132,199,0.05);
+			}
+			.dsh-callout-icon { font-size: 20px; line-height: 1.3; flex-shrink: 0; }
+			.dsh-callout-body { flex: 1; font-size: 15px; }
 
-  const officialTipTapComponent = `
+			.dsh-tiptap-prose pre { background: #0f172a; color: #f8fafc; padding: 18px 20px; border-radius: 10px; font-family: 'Fira Code', Consolas, Monaco, monospace; font-size: 13.5px; line-height: 1.65; margin: 16px 0; overflow-x: auto; }
+			.dsh-tiptap-prose pre code { background: transparent; padding: 0; color: inherit; font-size: inherit; }
+			.dsh-tiptap-prose code { background: rgba(59,130,246,0.08); color: #2563eb; padding: 2px 6px; border-radius: 4px; font-family: monospace; font-size: 13px; }
+			.dsh-tiptap-prose ul, .dsh-tiptap-prose ol { padding-left: 28px; margin: 10px 0; }
+			.dsh-tiptap-prose li { margin: 5px 0; }
+			.dsh-tiptap-prose ul[data-type="taskList"] { list-style: none; padding: 0; }
+			.dsh-tiptap-prose ul[data-type="taskList"] li { display: flex; align-items: center; gap: 10px; margin: 6px 0; }
+			.dsh-tiptap-prose ul[data-type="taskList"] li > label { display: flex; align-items: center; user-select: none; }
+			.dsh-tiptap-prose ul[data-type="taskList"] li > label input[type="checkbox"] { width: 17px; height: 17px; cursor: pointer; accent-color: #3b82f6; }
+			.dsh-tiptap-prose ul[data-type="taskList"] li[data-checked="true"] > div { text-decoration: line-through; opacity: 0.55; }
+			.dsh-tiptap-prose table { border-collapse: collapse; width: 100%; margin: 18px 0; overflow: hidden; border-radius: 8px; border: 1px solid #cbd5e1; }
+			.dsh-tiptap-prose th, .dsh-tiptap-prose td { border: 1px solid #cbd5e1; padding: 10px 14px; text-align: left; vertical-align: top; min-width: 80px; }
+			.dsh-tiptap-prose th { background: #f8fafc; font-weight: 700; color: #1e293b; }
+			.dsh-tiptap-prose iframe { width: 100%; aspect-ratio: 16/9; border-radius: 12px; margin: 18px 0; border: none; }
+			.dsh-tiptap-prose img { max-width: 100%; border-radius: 8px; margin: 16px 0; box-shadow: 0 4px 12px rgba(0,0,0,0.06); }
+			.dsh-tiptap-prose mark { background: #fef08a; padding: 2px 4px; border-radius: 3px; }
+
+			/* Caret-Anchored Slash Commands Popup */
+			.dsh-slash-menu {
+				position: absolute; z-index: 100; background: var(--dsw-alias-bg-base, #ffffff);
+				border: 1px solid var(--dsw-alias-border-l2, #e5e7eb); border-radius: 10px;
+				box-shadow: 0 12px 32px rgba(0,0,0,0.15); width: 300px; max-height: 360px;
+				overflow-y: auto; padding: 6px; display: flex; flex-direction: column; gap: 2px;
+			}
+			.dsh-slash-header {
+				font-size: 11px; font-weight: 700; color: #9ca3af; padding: 6px 10px 2px;
+				text-transform: uppercase; letter-spacing: 0.5px;
+			}
+			.dsh-slash-item {
+				display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 6px;
+				cursor: pointer; font-size: 13px; color: var(--dsw-alias-label-primary, #1f2937);
+				border: none; background: transparent; width: 100%; text-align: left; transition: all 0.1s ease;
+			}
+			.dsh-slash-item:hover, .dsh-slash-item-selected {
+				background: #eff6ff; color: #2563eb; font-weight: 600;
+			}
+			.dsh-slash-icon { font-size: 15px; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.04); border-radius: 4px; flex-shrink: 0; }
+			.dsh-slash-desc { font-size: 11.5px; color: #6b7280; margin-left: auto; }
+
+			/* Selection Floating Bubble Menu */
+			.dsh-bubble-menu {
+				position: absolute; z-index: 100; background: #1f2937; color: #ffffff;
+				border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+				padding: 4px; display: flex; align-items: center; gap: 2px;
+				animation: dsh-pop-in 0.12s ease-out;
+			}
+			@keyframes dsh-pop-in { from { opacity: 0; transform: scale(0.92); } to { opacity: 1; transform: scale(1); } }
+			.dsh-bubble-btn {
+				border: none; background: transparent; color: #f3f4f6; padding: 4px 8px;
+				border-radius: 4px; font-size: 12px; font-weight: 600; cursor: pointer;
+				display: flex; align-items: center; gap: 3px;
+			}
+			.dsh-bubble-btn:hover { background: #374151; color: #ffffff; }
+			.dsh-bubble-ai-btn {
+				background: linear-gradient(135deg, #6366f1, #8b5cf6); color: #ffffff;
+				padding: 4px 9px; border-radius: 5px; font-size: 11.5px; font-weight: 700;
+				border: none; cursor: pointer; display: flex; align-items: center; gap: 4px;
+			}
+			.dsh-bubble-ai-btn:hover { filter: brightness(1.15); }
+
+			/* Editor Footer Status Bar */
+			.dsh-editor-statusbar {
+				height: 28px; background: var(--dsw-alias-bg-subtle, #f9fafb);
+				border-top: 1px solid var(--dsw-alias-border-l1, #e5e7eb);
+				padding: 0 14px; display: flex; align-items: center; justify-content: space-between;
+				font-size: 11.5px; color: var(--dsw-alias-label-secondary, #6b7280); flex-shrink: 0;
+			}
+			.dsh-statusbar-badge { display: flex; align-items: center; gap: 8px; }
+
+			/* Modals */
+			.dsh-modal-backdrop {
+				position: fixed; inset: 0; z-index: 1000;
+				background: rgba(0,0,0,0.45); backdrop-filter: blur(4px);
+				display: flex; justify-content: center; align-items: center; padding: 20px;
+			}
+			.dsh-modal-card {
+				background: var(--dsw-alias-bg-base, #ffffff);
+				border: 1px solid var(--dsw-alias-border-l2, #e5e7eb);
+				border-radius: 12px; box-shadow: 0 20px 45px rgba(0,0,0,0.25);
+				width: min(480px, 95vw); display: flex; flex-direction: column; overflow: hidden;
+				animation: dsh-modal-pop 0.15s ease-out;
+			}
+			@keyframes dsh-modal-pop { 0% { opacity: 0; transform: scale(0.95); } 100% { opacity: 1; transform: scale(1); } }
+			.dsh-modal-head {
+				padding: 14px 18px; border-bottom: 1px solid var(--dsw-alias-border-l1, #e5e7eb);
+				display: flex; align-items: center; justify-content: space-between;
+				font-size: 15px; font-weight: 700; color: var(--dsw-alias-label-primary, #111827);
+			}
+			.dsh-modal-body { padding: 18px; display: flex; flex-direction: column; gap: 12px; }
+			.dsh-modal-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+			.dsh-modal-label { font-size: 13.5px; font-weight: 600; color: var(--dsw-alias-label-secondary, #374151); }
+			.dsh-modal-input {
+				width: 100%; border: 1.5px solid #3b82f6; border-radius: 8px; padding: 10px 14px;
+				font-size: 14px; outline: none; box-sizing: border-box; background: var(--dsw-alias-bg-base, #ffffff);
+				color: var(--dsw-alias-label-primary, #111827);
+			}
+			.dsh-modal-num-input {
+				width: 90px; border: 1.5px solid #d1d5db; border-radius: 6px; padding: 6px 10px;
+				font-size: 14px; outline: none; box-sizing: border-box; background: #fff; text-align: center;
+			}
+			.dsh-modal-num-input:focus { border-color: #3b82f6; }
+			.dsh-modal-checkbox { width: 18px; height: 18px; accent-color: #3b82f6; cursor: pointer; }
+			.dsh-modal-foot {
+				padding: 12px 18px; border-top: 1px solid var(--dsw-alias-border-l1, #e5e7eb);
+				background: var(--dsw-alias-bg-subtle, #f9fafb); display: flex; justify-content: flex-end; gap: 8px;
+			}
+			.dsh-modal-btn-cancel {
+				padding: 6px 14px; border-radius: 6px; border: 1px solid #d1d5db; background: #fff;
+				font-size: 13px; font-weight: 600; cursor: pointer; color: #4b5563;
+			}
+			.dsh-modal-btn-submit {
+				padding: 6px 16px; border-radius: 6px; border: none; background: #2563eb;
+				font-size: 13px; font-weight: 600; cursor: pointer; color: #fff;
+			}
+			.dsh-modal-btn-submit:hover { background: #1d4ed8; }
+
+			/* Code Syntax Highlighting colors */
+			.hljs-keyword, .hljs-selector-tag { color: #f43f5e; font-weight: 700; }
+			.hljs-string, .hljs-title { color: #10b981; }
+			.hljs-comment, .hljs-quote { color: #64748b; font-style: italic; }
+			.hljs-number, .hljs-literal { color: #fb923c; }
+			.hljs-function, .hljs-attr { color: #38bdf8; }
+			.hljs-built_in { color: #a855f7; }
+
+			.dsh-code-canvas { flex: 1; display: flex; }
+			.dsh-code-textarea {
+				width: 100%; height: 100%; min-height: 100%; border: none; outline: none; padding: 18px 24px;
+				font-family: 'Fira Code', 'Cascadia Code', Consolas, Monaco, monospace;
+				font-size: 14px; line-height: 1.65; background: var(--dsw-alias-bg-base, #ffffff);
+				color: var(--dsw-alias-label-primary, #111827); resize: none;
+			}
+		\`;
+
+		if (typeof document !== "undefined" && !document.getElementById("dsh-suite-styles")) {
+			const s = document.createElement("style");
+			s.id = "dsh-suite-styles";
+			s.textContent = styles;
+			document.head.appendChild(s);
+		}
+
+		// Helper: Get clean icon for file
+		function getFileIcon(name, isDir, isOpen) {
+			if (isDir) return isOpen ? '📂' : '📁';
+			if (name.endsWith('.md')) return '📝';
+			if (name.endsWith('.js') || name.endsWith('.ts') || name.endsWith('.jsx') || name.endsWith('.tsx')) return '⚡';
+			if (name.endsWith('.json') || name.endsWith('.yml') || name.endsWith('.yaml')) return '⚙️';
+			if (name.endsWith('.py')) return '🐍';
+			if (name.endsWith('.css') || name.endsWith('.html')) return '🎨';
+			if (name.endsWith('.sh') || name.endsWith('.bash')) return '💻';
+			return '📄';
+		}
+
+		function formatSize(bytes) {
+			if (bytes === null || bytes === undefined) return '';
+			if (bytes < 1024) return bytes + ' B';
+			if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+			return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+		}
+
+		// ── Official TipTap Workbench Component ──
 		function OfficialTipTapWorkbench({ openTabs, activeTabPath, onSelectTab, onCloseTab, onUpdateContent, onSaveTab }) {
 			const activeTab = openTabs.find(t => t.path === activeTabPath) || openTabs[0];
 			if (!activeTab) return null;
@@ -435,33 +477,21 @@ if (fs.existsSync(clientFile)) {
 			const [bubbleMenu, setBubbleMenu] = react.useState(null);
 			const [isInTable, setIsInTable] = react.useState(false);
 			const [isMaximized, setIsMaximized] = react.useState(false);
-			const [embedModal, setEmbedModal] = react.useState(null); // { type: 'youtube'|'image'|'table'|'newfile'|'newdir', ... }
+			const [embedModal, setEmbedModal] = react.useState(null);
 			const [stats, setStats] = react.useState({ words: 0, chars: 0, readingTime: 1 });
 
 			const editorRef = react.useRef(null);
 			const containerRef = react.useRef(null);
 			const canvasRef = react.useRef(null);
-
 			const slashStateRef = react.useRef({ menu: null, query: '', index: 0 });
 
-			const setSlashMenu = (val) => {
-				slashStateRef.current.menu = val;
-				_setSlashMenu(val);
-			};
+			const setSlashMenu = (val) => { slashStateRef.current.menu = val; _setSlashMenu(val); };
 			const setSlashQuery = (val) => {
-				if (typeof val === 'function') {
-					slashStateRef.current.query = val(slashStateRef.current.query);
-				} else {
-					slashStateRef.current.query = val;
-				}
+				slashStateRef.current.query = typeof val === 'function' ? val(slashStateRef.current.query) : val;
 				_setSlashQuery(slashStateRef.current.query);
 			};
 			const setSlashIdx = (val) => {
-				if (typeof val === 'function') {
-					slashStateRef.current.index = val(slashStateRef.current.index);
-				} else {
-					slashStateRef.current.index = val;
-				}
+				slashStateRef.current.index = typeof val === 'function' ? val(slashStateRef.current.index) : val;
 				_setSlashIdx(slashStateRef.current.index);
 			};
 
@@ -496,7 +526,6 @@ if (fs.existsSync(clientFile)) {
 				const readingTime = Math.max(1, Math.ceil(words / 200));
 				setStats({ words, chars, readingTime });
 
-				// Handle Selection Bubble Menu
 				if (!selection.empty && selection.from !== selection.to) {
 					const coordsFrom = editor.view.coordsAtPos(selection.from);
 					const coordsTo = editor.view.coordsAtPos(selection.to);
@@ -508,31 +537,26 @@ if (fs.existsSync(clientFile)) {
 					setBubbleMenu(null);
 				}
 
-				// Handle Caret Slash Menu
 				if (selection.empty) {
 					const { $from } = selection;
 					const blockText = $from.parent.textContent;
 					const offset = $from.parentOffset;
 					const textBefore = blockText.slice(0, offset);
-
 					const slashPos = textBefore.lastIndexOf('/');
 					if (slashPos === -1 || (slashPos > 0 && !/\\s/.test(textBefore[slashPos - 1]))) {
 						setSlashMenu(null);
 						return;
 					}
-
 					const query = textBefore.slice(slashPos + 1);
 					if (query.includes(' ') || query.includes('\\n')) {
 						setSlashMenu(null);
 						return;
 					}
-
 					const containerRect = canvasRef.current.getBoundingClientRect();
 					const slashAbsPos = $from.pos - query.length - 1;
 					const coords = editor.view.coordsAtPos(slashAbsPos);
 					const top = coords.bottom - containerRect.top + canvasRef.current.scrollTop + 6;
 					const left = Math.min(coords.left - containerRect.left + canvasRef.current.scrollLeft, containerRect.width - 320);
-
 					setSlashMenu({ top, left });
 					setSlashQuery(query);
 				} else {
@@ -543,68 +567,44 @@ if (fs.existsSync(clientFile)) {
 			const executeSlashItem = (item) => {
 				if (!editorRef.current) return;
 				const editor = editorRef.current;
-
 				setSlashMenu(null);
-
 				const { $from } = editor.state.selection;
 				const blockText = $from.parent.textContent;
 				const posInBlock = $from.parentOffset;
 				const textBeforeCursor = blockText.slice(0, posInBlock);
 				const slashIndex = textBeforeCursor.lastIndexOf('/');
-
 				let from = $from.pos - posInBlock + (slashIndex >= 0 ? slashIndex : 0);
 				let to = $from.pos;
 
 				if (item.label === 'Table') {
-					if (from < to) {
-						editor.chain().focus().deleteRange({ from, to }).run();
-					}
+					if (from < to) editor.chain().focus().deleteRange({ from, to }).run();
 					setEmbedModal({ type: 'table', rows: 3, cols: 3, withHeaderRow: true });
 					return;
 				}
-
 				if (item.label === 'YouTube Video') {
-					if (from < to) {
-						editor.chain().focus().deleteRange({ from, to }).run();
-					}
+					if (from < to) editor.chain().focus().deleteRange({ from, to }).run();
 					setEmbedModal({ type: 'youtube', url: '' });
 					return;
 				}
-
 				if (item.label === 'Image') {
-					if (from < to) {
-						editor.chain().focus().deleteRange({ from, to }).run();
-					}
+					if (from < to) editor.chain().focus().deleteRange({ from, to }).run();
 					setEmbedModal({ type: 'image', url: '' });
 					return;
 				}
 
 				const chain = editor.chain().focus();
-				if (from < to) {
-					chain.deleteRange({ from, to });
-				}
+				if (from < to) chain.deleteRange({ from, to });
 
-				if (item.label === 'Heading 1') {
-					chain.setNode('heading', { level: 1 }).run();
-				} else if (item.label === 'Heading 2') {
-					chain.setNode('heading', { level: 2 }).run();
-				} else if (item.label === 'Heading 3') {
-					chain.setNode('heading', { level: 3 }).run();
-				} else if (item.label === 'Task List') {
-					chain.toggleTaskList().run();
-				} else if (item.label === 'Bullet List') {
-					chain.toggleBulletList().run();
-				} else if (item.label === 'Numbered List') {
-					chain.toggleOrderedList().run();
-				} else if (item.label === 'Callout Box') {
-					chain.insertContent('<blockquote class="dsh-callout-box"><div class="dsh-callout-icon">💡</div><div class="dsh-callout-body"><p>Note: Type your highlighted callout here...</p></div></blockquote>').run();
-				} else if (item.label === 'Code Block') {
-					chain.toggleCodeBlock().run();
-				} else if (item.label === 'Blockquote') {
-					chain.toggleBlockquote().run();
-				} else if (item.label === 'Divider Line') {
-					chain.setHorizontalRule().run();
-				}
+				if (item.label === 'Heading 1') chain.setNode('heading', { level: 1 }).run();
+				else if (item.label === 'Heading 2') chain.setNode('heading', { level: 2 }).run();
+				else if (item.label === 'Heading 3') chain.setNode('heading', { level: 3 }).run();
+				else if (item.label === 'Task List') chain.toggleTaskList().run();
+				else if (item.label === 'Bullet List') chain.toggleBulletList().run();
+				else if (item.label === 'Numbered List') chain.toggleOrderedList().run();
+				else if (item.label === 'Callout Box') chain.insertContent('<blockquote class="dsh-callout-box"><div class="dsh-callout-icon">💡</div><div class="dsh-callout-body"><p>Note: Type your highlighted callout here...</p></div></blockquote>').run();
+				else if (item.label === 'Code Block') chain.toggleCodeBlock().run();
+				else if (item.label === 'Blockquote') chain.toggleBlockquote().run();
+				else if (item.label === 'Divider Line') chain.setHorizontalRule().run();
 			};
 
 			const sendSelectionToAI = (text) => {
@@ -624,7 +624,6 @@ if (fs.existsSync(clientFile)) {
 				}
 			};
 
-			// Close slash & bubble menu on outside click
 			react.useEffect(() => {
 				const onPointerDown = (e) => {
 					if (!e.target.closest('.dsh-slash-menu')) setSlashMenu(null);
@@ -634,10 +633,8 @@ if (fs.existsSync(clientFile)) {
 				return () => window.removeEventListener('pointerdown', onPointerDown);
 			}, []);
 
-			// Initialize Official TipTap 3 Suite
 			react.useEffect(() => {
 				if (!containerRef.current || !isMarkdown || !isRichMode) return;
-
 				if (window.TipTapBundle) {
 					const {
 						Editor, StarterKit, TaskList, TaskItem, Table, TableRow, TableCell, TableHeader,
@@ -647,31 +644,14 @@ if (fs.existsSync(clientFile)) {
 					const editor = new Editor({
 						element: containerRef.current,
 						extensions: [
-							StarterKit.configure({
-								heading: { levels: [1, 2, 3, 4, 5, 6] },
-								codeBlock: false
-							}),
-							TaskList,
-							TaskItem.configure({ nested: true }),
-							Table.configure({ resizable: true }),
-							TableRow,
-							TableCell,
-							TableHeader,
-							Image,
-							Youtube.configure({ inline: false, nocookie: true }),
-							Underline,
-							Highlight,
-							Typography,
-							TextAlign.configure({ types: ['heading', 'paragraph'] }),
-							Link.configure({ openOnClick: false }),
-							Color,
-							TextStyle,
+							StarterKit.configure({ heading: { levels: [1, 2, 3, 4, 5, 6] }, codeBlock: false }),
+							TaskList, TaskItem.configure({ nested: true }),
+							Table.configure({ resizable: true }), TableRow, TableCell, TableHeader,
+							Image, Youtube.configure({ inline: false, nocookie: true }),
+							Underline, Highlight, Typography, TextAlign.configure({ types: ['heading', 'paragraph'] }),
+							Link.configure({ openOnClick: false }), Color, TextStyle,
 							CodeBlockLowlight.configure({ lowlight }),
-							Markdown.configure({
-								html: true,
-								transformPastedText: true,
-								transformCopiedText: true
-							})
+							Markdown.configure({ html: true, transformPastedText: true, transformCopiedText: true })
 						],
 						content: activeTab.content,
 						onUpdate: ({ editor: ed }) => {
@@ -686,15 +666,12 @@ if (fs.existsSync(clientFile)) {
 							updateDocState(ed);
 						},
 						editorProps: {
-							attributes: {
-								class: 'dsh-tiptap-prose prose'
-							},
+							attributes: { class: 'dsh-tiptap-prose prose' },
 							handleKeyDown: (view, event) => {
 								const current = slashStateRef.current;
 								if (current.menu) {
 									const q = current.query.toLowerCase();
 									const filtered = slashItems.filter(item => item.label.toLowerCase().includes(q) || item.desc.toLowerCase().includes(q));
-
 									if (event.key === 'ArrowDown') {
 										event.preventDefault();
 										setSlashIdx((i) => (i + 1) % Math.max(1, filtered.length));
@@ -708,9 +685,7 @@ if (fs.existsSync(clientFile)) {
 									if (event.key === 'Enter') {
 										event.preventDefault();
 										const item = filtered[current.index] || filtered[0];
-										if (item) {
-											executeSlashItem(item);
-										}
+										if (item) executeSlashItem(item);
 										return true;
 									}
 									if (event.key === 'Escape') {
@@ -724,11 +699,7 @@ if (fs.existsSync(clientFile)) {
 					});
 
 					editorRef.current = editor;
-
-					return () => {
-						editor.destroy();
-						editorRef.current = null;
-					};
+					return () => { editor.destroy(); editorRef.current = null; };
 				}
 			}, [isRichMode, filePath]);
 
@@ -761,9 +732,7 @@ if (fs.existsSync(clientFile)) {
 			};
 
 			const runCommand = (action) => {
-				if (editorRef.current) {
-					action(editorRef.current.chain().focus()).run();
-				}
+				if (editorRef.current) action(editorRef.current.chain().focus()).run();
 			};
 
 			const handleEmbedSubmit = (e) => {
@@ -784,20 +753,10 @@ if (fs.existsSync(clientFile)) {
 
 			react.useEffect(() => {
 				const onKeyDown = (e) => {
-					if ((e.ctrlKey || e.metaKey) && e.key === 's') {
-						e.preventDefault();
-						handleSave();
-					}
+					if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); handleSave(); }
 					if (e.key === 'Escape') {
-						if (embedModal) {
-							e.preventDefault();
-							setEmbedModal(null);
-							return;
-						}
-						if (!slashMenu && !bubbleMenu) {
-							e.preventDefault();
-							onCloseTab(filePath);
-						}
+						if (embedModal) { e.preventDefault(); setEmbedModal(null); return; }
+						if (!slashMenu && !bubbleMenu) { e.preventDefault(); onCloseTab(filePath); }
 					}
 				};
 				window.addEventListener('keydown', onKeyDown);
@@ -805,12 +764,12 @@ if (fs.existsSync(clientFile)) {
 			}, [activeTab.content, filePath, isRichMode, embedModal, slashMenu, bubbleMenu]);
 
 			return react.createElement('div', { className: 'dsh-editor-panel-view ' + (isMaximized ? 'dsh-editor-panel-view-maximized' : '') }, [
-				// Multi-Tab Top Bar
+				// Top Tab Strip
 				react.createElement('div', { key: 'topbar', className: 'dsh-editor-topbar' }, [
 					react.createElement('div', { key: 'tabs-scroll', className: 'dsh-tabs-scroll' },
 						openTabs.map(tab => {
 							const isActive = tab.path === activeTabPath;
-							const icon = tab.path.endsWith('.md') ? '📄' : tab.path.endsWith('.json') ? '⚙️' : tab.path.endsWith('.py') ? '🐍' : '💻';
+							const icon = getFileIcon(tab.name || tab.path, false, false);
 							return react.createElement('div', {
 								key: tab.path,
 								className: 'dsh-tab-item ' + (isActive ? 'dsh-tab-active' : ''),
@@ -824,10 +783,7 @@ if (fs.existsSync(clientFile)) {
 									type: 'button',
 									className: 'dsh-tab-close',
 									title: 'Close Tab',
-									onClick: (e) => {
-										e.stopPropagation();
-										onCloseTab(tab.path);
-									}
+									onClick: (e) => { e.stopPropagation(); onCloseTab(tab.path); }
 								}, '✕')
 							]);
 						})
@@ -845,9 +801,7 @@ if (fs.existsSync(clientFile)) {
 								key: 'rich-btn',
 								type: 'button',
 								className: 'dsh-switch-btn ' + (isRichMode ? 'dsh-switch-btn-active' : ''),
-								onClick: () => {
-									if (!isRichMode) onUpdateContent(filePath, activeTab.content, true);
-								}
+								onClick: () => { if (!isRichMode) onUpdateContent(filePath, activeTab.content, true); }
 							}, '✨ TipTap Suite'),
 							react.createElement('button', {
 								key: 'raw-btn',
@@ -873,14 +827,15 @@ if (fs.existsSync(clientFile)) {
 						react.createElement('button', {
 							key: 'close-all-btn',
 							type: 'button',
-							className: 'dsh-close-btn',
+							className: 'dsh-tab-close',
+							style: { fontSize: '15px', padding: '4px 8px' },
 							title: 'Close Active Tab',
 							onClick: () => onCloseTab(filePath)
 						}, '✕')
 					])
 				]),
 
-				// TipTap Toolbar (Driven directly by TipTap chain commands)
+				// TipTap Sticky Toolbar
 				isMarkdown && isRichMode ? react.createElement('div', { key: 'toolbar', className: 'dsh-tiptap-toolbar' }, [
 					react.createElement('button', { key: 'h1', type: 'button', className: 'dsh-tb-tool', title: 'Heading 1 (or #)', onMouseDown: (e) => e.preventDefault(), onClick: () => runCommand(c => c.toggleHeading({ level: 1 })) }, 'H1'),
 					react.createElement('button', { key: 'h2', type: 'button', className: 'dsh-tb-tool', title: 'Heading 2 (or ##)', onMouseDown: (e) => e.preventDefault(), onClick: () => runCommand(c => c.toggleHeading({ level: 2 })) }, 'H2'),
@@ -903,7 +858,7 @@ if (fs.existsSync(clientFile)) {
 					react.createElement('button', { key: 'hr', type: 'button', className: 'dsh-tb-tool', title: 'Divider Line (---)', onMouseDown: (e) => e.preventDefault(), onClick: () => runCommand(c => c.setHorizontalRule()) }, '─ Line')
 				]) : null,
 
-				// Contextual Interactive Table Action Bar (Appears when cursor is inside any table)
+				// Contextual Table Bar
 				isMarkdown && isRichMode && isInTable ? react.createElement('div', { key: 'table-toolbar', className: 'dsh-table-toolbar' }, [
 					react.createElement('span', { key: 'tbl-label', style: { fontSize: '11px', fontWeight: '700', color: '#15803d', marginRight: '4px' } }, '📊 TABLE TOOLS:'),
 					react.createElement('button', { key: 'row-after', type: 'button', className: 'dsh-tb-table-btn', title: 'Add Row Below (+)', onMouseDown: (e) => e.preventDefault(), onClick: () => runCommand(c => c.addRowAfter()) }, '➕ Row Below'),
@@ -917,14 +872,10 @@ if (fs.existsSync(clientFile)) {
 					react.createElement('button', { key: 'del-tbl', type: 'button', className: 'dsh-tb-table-btn dsh-tb-table-btn-danger', title: 'Delete Entire Table', onMouseDown: (e) => e.preventDefault(), onClick: () => runCommand(c => c.deleteTable()) }, '🗑️ Delete Table')
 				]) : null,
 
-				// TipTap Canvas / Code Canvas
+				// Canvas
 				react.createElement('div', { key: 'workspace', ref: canvasRef, className: 'dsh-editor-canvas' }, [
 					isMarkdown && isRichMode
-						? react.createElement('div', {
-							key: 'tt-container',
-							ref: containerRef,
-							className: 'dsh-tiptap-container'
-						})
+						? react.createElement('div', { key: 'tt-container', ref: containerRef, className: 'dsh-tiptap-container' })
 						: react.createElement('div', { key: 'code-container', className: 'dsh-code-canvas' },
 							react.createElement('textarea', {
 								className: 'dsh-code-textarea',
@@ -938,9 +889,7 @@ if (fs.existsSync(clientFile)) {
 										const end = e.target.selectionEnd;
 										const updated = activeTab.content.substring(0, start) + '  ' + activeTab.content.substring(end);
 										onUpdateContent(filePath, updated);
-										setTimeout(() => {
-											e.target.selectionStart = e.target.selectionEnd = start + 2;
-										}, 0);
+										setTimeout(() => { e.target.selectionStart = e.target.selectionEnd = start + 2; }, 0);
 									}
 								}
 							})
@@ -967,7 +916,7 @@ if (fs.existsSync(clientFile)) {
 						}, '🤖 Ask AI')
 					]) : null,
 
-					// Caret-Anchored Slash Command Popup Menu
+					// Caret-Anchored Slash Popup
 					slashMenu && filteredSlashItems.length > 0 ? react.createElement('div', {
 						key: 'slash-popup',
 						className: 'dsh-slash-menu',
@@ -988,7 +937,7 @@ if (fs.existsSync(clientFile)) {
 					]) : null
 				]),
 
-				// Editor Footer Status Bar
+				// Footer Status Bar
 				react.createElement('div', { key: 'statusbar', className: 'dsh-editor-statusbar' }, [
 					react.createElement('span', { key: 'path' }, filePath),
 					react.createElement('div', { key: 'stats', className: 'dsh-statusbar-badge' }, [
@@ -998,7 +947,7 @@ if (fs.existsSync(clientFile)) {
 					])
 				]),
 
-				// Sleek Inline Modal Dialog for Table Configuration, YouTube & Image Embeds
+				// Embed Modals
 				embedModal ? react.createElement('div', {
 					key: 'embed-dialog-backdrop',
 					className: 'dsh-modal-backdrop',
@@ -1019,10 +968,7 @@ if (fs.existsSync(clientFile)) {
 									react.createElement('input', {
 										key: 'inp-rows',
 										type: 'number',
-										min: 1,
-										max: 30,
-										required: true,
-										autoFocus: true,
+										min: 1, max: 30, required: true, autoFocus: true,
 										className: 'dsh-modal-num-input',
 										value: embedModal.rows,
 										onChange: (e) => setEmbedModal({ ...embedModal, rows: e.target.value })
@@ -1033,9 +979,7 @@ if (fs.existsSync(clientFile)) {
 									react.createElement('input', {
 										key: 'inp-cols',
 										type: 'number',
-										min: 1,
-										max: 15,
-										required: true,
+										min: 1, max: 15, required: true,
 										className: 'dsh-modal-num-input',
 										value: embedModal.cols,
 										onChange: (e) => setEmbedModal({ ...embedModal, cols: e.target.value })
@@ -1055,8 +999,7 @@ if (fs.existsSync(clientFile)) {
 								react.createElement('input', {
 									key: 'input',
 									type: 'url',
-									autoFocus: true,
-									required: true,
+									autoFocus: true, required: true,
 									placeholder: embedModal.type === 'youtube' ? 'https://www.youtube.com/watch?v=...' : 'https://example.com/image.png',
 									value: embedModal.url,
 									className: 'dsh-modal-input',
@@ -1065,43 +1008,79 @@ if (fs.existsSync(clientFile)) {
 							]
 						),
 						react.createElement('div', { key: 'foot', className: 'dsh-modal-foot' }, [
-							react.createElement('button', {
-								key: 'cancel',
-								type: 'button',
-								className: 'dsh-modal-btn-cancel',
-								onClick: () => setEmbedModal(null)
-							}, 'Cancel (Esc)'),
-							react.createElement('button', {
-								key: 'submit',
-								type: 'submit',
-								className: 'dsh-modal-btn-submit'
-							}, embedModal.type === 'youtube' ? 'Embed Video' : embedModal.type === 'image' ? 'Insert Image' : 'Insert Table')
+							react.createElement('button', { key: 'cancel', type: 'button', className: 'dsh-modal-btn-cancel', onClick: () => setEmbedModal(null) }, 'Cancel (Esc)'),
+							react.createElement('button', { key: 'submit', type: 'submit', className: 'dsh-modal-btn-submit' }, embedModal.type === 'youtube' ? 'Embed Video' : embedModal.type === 'image' ? 'Insert Image' : 'Insert Table')
 						])
 					])
 				])) : null
 			]);
 		}
-  `
 
-  if (!content.includes('OfficialTipTapWorkbench')) {
-    const codeToInject = tiptapBundleCode + '\n\n' + officialTipTapComponent + '\n\n' +
-      'if (typeof document !== "undefined" && !document.getElementById("dsh-vscode-editor-css")) {\n\tconst s = document.createElement("style");\n\ts.id = "dsh-vscode-editor-css";\n\ts.textContent = ' + JSON.stringify(vscodeEditorStyles) + ';\n\tdocument.head.appendChild(s);\n}\n\n' +
-      '// ── the right-column file tree panel ─────────────────────────────────────'
-
-    content = content.replace(
-      '// ── the right-column file tree panel ─────────────────────────────────────',
-      () => codeToInject
-    )
-  }
-
-  // C. Update FileTreePanel to support Multi-Tab Workbench & Explorer File Actions
-  if (!content.includes('const [openTabs, setOpenTabs]')) {
-    content = content.replace(
-      'const [showHidden, setShowHidden] = react.useState(false);',
-      `const [showHidden, setShowHidden] = react.useState(false);
+		// ── File Tree Panel (Right Column) ──
+		function FileTreePanel({ useSessions, sessionId, onRestoreDetails }) {
+			const [root, setRoot] = react.useState(null);
+			const [dirs, setDirs] = react.useState({});
+			const [expanded, setExpanded] = react.useState({});
+			const [showHidden, setShowHidden] = react.useState(false);
+			const [searchQuery, setSearchQuery] = react.useState('');
 			const [openTabs, setOpenTabs] = react.useState([]);
 			const [activeTabPath, setActiveTabPath] = react.useState(null);
-			const [newFileModal, setNewFileModal] = react.useState(null); // { type: 'file'|'dir', name: '' }
+			const [newFileModal, setNewFileModal] = react.useState(null);
+			const controllersRef = react.useRef(new Map());
+
+			const cwd = typeof useSessions === "function"
+				? useSessions((list) => (list && list.byId && list.byId[sessionId] ? list.byId[sessionId].cwd ?? null : null))
+				: null;
+
+			react.useEffect(() => {
+				if (cwd !== null && cwd !== undefined) {
+					setRoot(cwd);
+					return;
+				}
+				let cancelled = false;
+				fetch("/filetree/root").then((res) => res.json()).then((body) => {
+					if (!cancelled && body && body.ok === true) setRoot(body.path);
+				}).catch(() => {});
+				return () => { cancelled = true; };
+			}, [cwd]);
+
+			const loadDir = react.useCallback((path) => {
+				setDirs((prev) => (prev[path] !== undefined ? prev : Object.assign({}, prev, { [path]: { status: "loading" } })));
+				const controller = new AbortController();
+				controllersRef.current.set(path, controller);
+				fetch("/filetree/list?path=" + encodeURIComponent(path), { signal: controller.signal })
+					.then((res) => res.json())
+					.then((body) => {
+						if (body && body.ok === true) {
+							setDirs((prev) => Object.assign({}, prev, { [path]: { status: "done", entries: body.entries } }));
+						} else {
+							const error = (body && (body.message || body.code)) || "unknown error";
+							setDirs((prev) => Object.assign({}, prev, { [path]: { status: "error", error: String(error) } }));
+						}
+					})
+					.catch((error) => {
+						if (error && error.name === "AbortError") return;
+						setDirs((prev) => Object.assign({}, prev, { [path]: { status: "error", error: String(error) } }));
+					})
+					.finally(() => { controllersRef.current.delete(path); });
+			}, []);
+
+			react.useEffect(() => { if (root !== null) loadDir(root); }, [root, loadDir]);
+			react.useEffect(() => () => {
+				for (const controller of controllersRef.current.values()) controller.abort();
+				controllersRef.current.clear();
+			}, []);
+
+			const refresh = react.useCallback(() => {
+				setDirs({});
+				setExpanded({});
+				if (root !== null) loadDir(root);
+			}, [root, loadDir]);
+
+			const toggle = react.useCallback((path) => {
+				setExpanded((prev) => Object.assign({}, prev, { [path]: !prev[path] }));
+				loadDir(path);
+			}, [loadDir]);
 
 			const openFile = async (filePath) => {
 				const existing = openTabs.find(t => t.path === filePath);
@@ -1137,11 +1116,7 @@ if (fs.existsSync(clientFile)) {
 				setOpenTabs(prev => {
 					const next = prev.filter(t => t.path !== filePath);
 					if (activeTabPath === filePath) {
-						if (next.length > 0) {
-							setActiveTabPath(next[next.length - 1].path);
-						} else {
-							setActiveTabPath(null);
-						}
+						setActiveTabPath(next.length > 0 ? next[next.length - 1].path : null);
 					}
 					return next;
 				});
@@ -1182,37 +1157,77 @@ if (fs.existsSync(clientFile)) {
 					const res = await fetch('/filetree/create', {
 						method: 'POST',
 						headers: { 'Content-Type': 'application/json' },
-						body: JSON.stringify({ path: newFileModal.name, type: newFileModal.type, content: newFileModal.type === 'file' ? '# ' + newFileModal.name + '\\n\\n' : undefined })
+						body: JSON.stringify({
+							path: newFileModal.name,
+							type: newFileModal.type,
+							content: newFileModal.type === 'file' ? '# ' + newFileModal.name + '\\n\\n' : undefined
+						})
 					});
 					const data = await res.json();
 					if (data.ok) {
 						setNewFileModal(null);
 						refresh();
-						if (newFileModal.type === 'file') {
-							openFile(data.path);
-						}
+						if (newFileModal.type === 'file') openFile(data.path);
 					} else {
 						alert('Create failed: ' + data.message);
 					}
 				} catch (err) {
 					alert('Error creating: ' + err.message);
 				}
-			};`
-    )
+			};
 
-    content = content.replace(
-      'react.createElement("span", { key: "name", className: "ft-name ft-name-" + entry.type, title: entry.path }, entry.name),',
-      `react.createElement("span", {
-							key: "name",
-							className: "ft-name ft-name-" + entry.type,
-							title: isDir ? entry.path : (entry.path + " (Click to open in Tab)"),
-							onClick: () => { if (!isDir) openFile(entry.path); }
-						}, entry.name),`
-    )
+			function renderLevel(path, depth) {
+				const state = dirs[path];
+				const pad = { paddingLeft: 8 + depth * 16 };
+				const rows = [];
+				if (state === undefined || state.status === "loading") {
+					rows.push(react.createElement("div", { key: path + ":state", className: "ft-row", style: Object.assign({}, pad, { color: '#9ca3af', fontStyle: 'italic' }) },
+						state === undefined ? "Waiting for load..." : "Loading..."));
+					return rows;
+				}
+				if (state.status === "error") {
+					rows.push(react.createElement("div", { key: path + ":state", className: "ft-row", style: Object.assign({}, pad, { color: '#ef4444' }) }, state.error));
+					return rows;
+				}
+				let entries = showHidden ? state.entries : state.entries.filter((e) => !e.name.startsWith("."));
+				if (searchQuery.trim()) {
+					const q = searchQuery.toLowerCase();
+					entries = entries.filter((e) => e.name.toLowerCase().includes(q));
+				}
+				const sorted = entries.slice().sort((a, b) => {
+					const da = a.type === "directory" ? 0 : 1;
+					const db = b.type === "directory" ? 0 : 1;
+					return da !== db ? da - db : a.name.localeCompare(b.name);
+				});
+				for (const entry of sorted) {
+					const isDir = entry.type === "directory";
+					const isOpen = expanded[entry.path] === true;
+					const isCurrent = activeTabPath === entry.path;
+					rows.push(react.createElement("div", {
+						key: entry.path,
+						className: "ft-row " + (isCurrent ? "ft-row-active" : ""),
+						style: pad,
+						onClick: () => { if (!isDir) openFile(entry.path); }
+					}, [
+						react.createElement("button", {
+							key: "twist",
+							type: "button",
+							className: "ft-twist" + (isDir ? "" : " ft-twist-off"),
+							disabled: !isDir,
+							onClick: (e) => { e.stopPropagation(); toggle(entry.path); }
+						}, isDir ? (isOpen ? "▼" : "▶") : ""),
+						react.createElement("span", { key: "icon", className: "ft-file-icon" }, getFileIcon(entry.name, isDir, isOpen)),
+						react.createElement("span", { key: "name", className: "ft-name", title: entry.path }, entry.name),
+						!isDir && entry.size !== null
+							? react.createElement("span", { key: "size", className: "ft-size" }, formatSize(entry.size))
+							: null
+					]));
+					if (isDir && isOpen) rows.push.apply(rows, renderLevel(entry.path, depth + 1));
+				}
+				return rows;
+			}
 
-    content = content.replace(
-      'return react.createElement("div", { className: "ft-panel" }, [',
-      `return react.createElement(react.Fragment, null, [
+			return react.createElement(react.Fragment, null, [
 				openTabs.length > 0 ? react.createElement(OfficialTipTapWorkbench, {
 					key: "workbench-canvas",
 					openTabs,
@@ -1222,6 +1237,7 @@ if (fs.existsSync(clientFile)) {
 					onUpdateContent: handleUpdateContent,
 					onSaveTab: handleSaveTab
 				}) : null,
+
 				newFileModal ? react.createElement('div', {
 					key: 'new-file-modal',
 					className: 'dsh-modal-backdrop',
@@ -1238,7 +1254,7 @@ if (fs.existsSync(clientFile)) {
 								type: 'text',
 								autoFocus: true,
 								required: true,
-								placeholder: newFileModal.type === 'file' ? 'notes.md or script.py' : 'folder-name',
+								placeholder: newFileModal.type === 'file' ? 'notes.md or app.py' : 'folder-name',
 								value: newFileModal.name,
 								className: 'dsh-modal-input',
 								onChange: (e) => setNewFileModal({ ...newFileModal, name: e.target.value })
@@ -1250,30 +1266,103 @@ if (fs.existsSync(clientFile)) {
 						])
 					])
 				])) : null,
+
 				react.createElement("div", { key: "panel", className: "ft-panel" }, [
-					react.createElement('div', { key: 'ft-toolbar', className: 'dsh-ft-toolbar' }, [
-						react.createElement('span', { key: 'lbl', style: { fontSize: '11px', fontWeight: '700', color: '#6b7280' } }, 'EXPLORER'),
-						react.createElement('div', { key: 'btns', style: { display: 'flex', gap: '4px' } }, [
-							react.createElement('button', { key: 'new-f', type: 'button', className: 'dsh-ft-btn', title: 'New File', onClick: () => setNewFileModal({ type: 'file', name: '' }) }, '➕ File'),
-							react.createElement('button', { key: 'new-d', type: 'button', className: 'dsh-ft-btn', title: 'New Folder', onClick: () => setNewFileModal({ type: 'dir', name: '' }) }, '📁 Folder'),
-							react.createElement('button', { key: 'ref', type: 'button', className: 'dsh-ft-btn', title: 'Refresh', onClick: refresh }, '🔄')
-						])
-					]),`
-    )
+					react.createElement("div", { key: "header", className: "ft-header" }, [
+						react.createElement("div", { key: "top", className: "ft-header-top" }, [
+							react.createElement("div", { key: "title", className: "ft-title" }, [
+								react.createElement("span", { key: "icon" }, "📁"),
+								react.createElement("span", { key: "txt" }, "Workspace Files")
+							]),
+							react.createElement("div", { key: "actions", className: "ft-header-actions" }, [
+								react.createElement("button", { key: "new-f", type: "button", className: "ft-tool-btn", title: "New File", onClick: () => setNewFileModal({ type: 'file', name: '' }) }, "➕ File"),
+								react.createElement("button", { key: "new-d", type: "button", className: "ft-tool-btn", title: "New Folder", onClick: () => setNewFileModal({ type: 'dir', name: '' }) }, "📁 Folder"),
+								react.createElement("button", { key: "ref", type: "button", className: "ft-tool-btn", title: "Refresh", onClick: refresh }, "🔄"),
+								react.createElement("button", { key: "hid", type: "button", className: "ft-tool-btn", title: showHidden ? "Hide dotfiles" : "Show dotfiles", onClick: () => setShowHidden(!showHidden) }, showHidden ? "👁️" : "🕶️"),
+								react.createElement("button", { key: "close", type: "button", className: "ft-tool-btn", title: "Close panel", onClick: onRestoreDetails }, "✕")
+							])
+						]),
+						react.createElement("input", {
+							key: "search",
+							type: "text",
+							placeholder: "🔍 Filter files...",
+							value: searchQuery,
+							className: "ft-search-box",
+							onChange: (e) => setSearchQuery(e.target.value)
+						}),
+						react.createElement("div", { key: "root", className: "ft-root", title: root ?? "" }, root ?? "(No session workspace)")
+					]),
+					react.createElement("div", { key: "body", className: "ft-body" },
+						root === null
+							? react.createElement("div", { className: "ft-row", style: { color: '#9ca3af', fontStyle: 'italic' } }, "Open a session to display workspace files")
+							: react.createElement("div", { className: "ft-tree" }, renderLevel(root, 0))
+					)
+				])
+			]);
+		}
 
-    content = content.replace(
-      'react.createElement("div", { key: "body", className: "ft-body" },\n\t\t\t\t\troot === null\n\t\t\t\t\t\t? react.createElement("div", { className: "ft-hint" }, "Open a session to display workspace files")\n\t\t\t\t\t\t: react.createElement("div", { className: "ft-tree" }, renderLevel(root, 0))\n\t\t\t\t)\n\t\t\t]);\n\t\t}',
-      `react.createElement("div", { key: "body", className: "ft-body" },
-					root === null
-						? react.createElement("div", { className: "ft-hint" }, "Open a session to display workspace files")
-						: react.createElement("div", { className: "ft-tree" }, renderLevel(root, 0))
-				)
-			])
-		]);
-	}`
-    )
-  }
+		// ── Plugin Entrypoint ──
+		function apply(ctx) {
+			const slots = ctx.get("slots");
+			if (slots === undefined) return;
 
-  fs.writeFileSync(clientFile, content, 'utf8')
-  console.log('[✓] Successfully patched dsh-local-filetree with Multi-Tab Workbench and Explorer Features!')
-}
+			let treeDisposer = null;
+			let treeActive = false;
+
+			const layout = () => ctx.get("layout");
+
+			const openTree = () => {
+				if (treeDisposer === null) {
+					treeDisposer = slots.register({
+						name: "details",
+						priority: -1,
+						inject: () => ({ onRestoreDetails: closeTree })
+					}, (props) => react.createElement(FileTreePanel, {
+						useSessions: props.useSessions,
+						sessionId: props.sessionId,
+						onRestoreDetails: props.onRestoreDetails
+					}));
+				}
+				treeActive = true;
+				const l = layout();
+				if (l !== undefined) l.openDetails();
+			};
+
+			const closeTree = () => {
+				if (treeDisposer !== null) {
+					treeDisposer();
+					treeDisposer = null;
+				}
+				treeActive = false;
+				const l = layout();
+				if (l !== undefined) l.closeDetails();
+			};
+
+			const toggleTree = () => (treeActive ? closeTree() : openTree());
+
+			slots.inject("sidebar.footer.action", () => slots.register(
+				{ name: "sidebar.footer.action", id: "filetree-toggle" },
+				(props) => react.createElement("button", {
+					className: "dsw-sidebar-action" + (treeActive ? " active" : ""),
+					title: "File Explorer",
+					onClick: toggleTree,
+					style: {
+						display: "flex", alignItems: "center", gap: "8px", width: "100%",
+						padding: "8px 12px", border: "none", background: "transparent",
+						cursor: "pointer", fontSize: "13px", color: "inherit", borderRadius: "6px"
+					}
+				}, [
+					react.createElement("span", { key: "icon", style: { fontSize: "16px" } }, "📁"),
+					props.wide === true ? react.createElement("span", { key: "label", style: { fontWeight: "500" } }, "File Explorer") : null
+				])
+			));
+		}
+
+		exports.apply = apply;
+		return module.exports;
+	}
+});
+`
+
+fs.writeFileSync(clientFile, completeClientModule, 'utf8')
+console.log('[✓] Successfully deployed pristine, professional Dual Notion / Code Workbench!')
