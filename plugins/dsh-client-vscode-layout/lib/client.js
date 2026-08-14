@@ -452,6 +452,7 @@ window.__ModuleLoader__.load({
 			const [searchQ, setSearchQ] = react.useState("");
 			const [searchResults, setSearchResults] = react.useState(null);
 			const [ctxMenu, setCtxMenu] = react.useState(null);
+			const [deleteModal, setDeleteModal] = react.useState(null);
 
 			react.useEffect(() => {
 				setGit(null);
@@ -516,8 +517,7 @@ window.__ModuleLoader__.load({
 				return { text: code, cls: "" };
 			}
 
-			async function doDelete(p, name) {
-				if (typeof confirm === "function" && !confirm('Move "' + name + '" to Trash?')) return;
+			async function executeDelete(p) {
 				try {
 					const r = await fetch("/vscode-files/delete", {
 						method: "POST",
@@ -534,6 +534,10 @@ window.__ModuleLoader__.load({
 				} catch (e) {
 					setError(String(e));
 				}
+			}
+
+			function doDelete(p, name) {
+				setDeleteModal({ path: p, name });
 			}
 
 			async function commitCreate() {
@@ -824,7 +828,21 @@ window.__ModuleLoader__.load({
 						menuItem("📁 New Folder...", () => { setCreating({ type: "dir", parentPath: typeof root === "string" ? root : "" }); setCreateName(""); setCreateErr(null); }),
 						menuItem("🔄 Refresh Explorer", () => { if (root) load(root); })
 					]
-				) : null
+				) : null,
+				h(UnsavedChangesModal, {
+					isOpen: !!deleteModal,
+					isDanger: true,
+					title: "Move to Trash?",
+					fileName: deleteModal?.name,
+					message: "Are you sure you want to move " + (deleteModal?.name || "this item") + " to Trash?",
+					dontSaveLabel: "Move to Trash",
+					onDontSave: () => {
+						const target = deleteModal;
+						setDeleteModal(null);
+						if (target) executeDelete(target.path);
+					},
+					onCancel: () => setDeleteModal(null)
+				})
 			);
 		}
 
@@ -63940,6 +63958,78 @@ const FILE_ICON_DIR_OPEN = "fti-FolderOpen";
 				white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 260px;
 			}
 			.vk_quick_open_empty { padding: 24px; text-align: center; font-size: 13px; color: #6b7280; }
+
+			/* In-App Modal Dialog (Unsaved Changes, Confirmations) */
+			.vk_modal_backdrop {
+				position: fixed; inset: 0; z-index: 999999;
+				background: rgba(0, 0, 0, 0.55); backdrop-filter: blur(5px);
+				display: flex; justify-content: center; align-items: center;
+				padding: 20px; animation: vk-pop-in 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+			}
+			.vk_dialog_card {
+				width: 440px; max-width: 92vw;
+				background: var(--dsw-alias-bg-elevated, #ffffff);
+				border: 1px solid var(--dsw-alias-border-l2, #e5e7eb);
+				border-radius: 12px; box-shadow: 0 20px 48px rgba(0, 0, 0, 0.32), 0 0 0 1px rgba(0, 0, 0, 0.04);
+				padding: 22px; display: flex; flex-direction: column; gap: 16px;
+			}
+			.vk_dialog_icon_wrap {
+				display: flex; align-items: center; justify-content: center;
+				width: 42px; height: 42px; border-radius: 50%;
+				background: rgba(245, 158, 11, 0.12); color: #f59e0b; font-size: 20px;
+			}
+			.vk_dialog_icon_danger {
+				background: rgba(239, 68, 68, 0.12); color: #dc2626;
+			}
+			.vk_dialog_body { display: flex; flex-direction: column; gap: 6px; }
+			.vk_dialog_title { font-size: 16px; font-weight: 700; color: var(--dsw-alias-label-primary, #111827); margin: 0; }
+			.vk_dialog_desc { font-size: 13.5px; color: var(--dsw-alias-label-primary, #374151); line-height: 1.5; margin: 0; }
+			.vk_dialog_sub { font-size: 12px; color: #6b7280; margin: 0; }
+			.vk_dialog_highlight { font-weight: 600; color: #2563eb; }
+			.vk_dialog_actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; margin-top: 4px; }
+			.vk_dialog_btn {
+				padding: 7px 15px; border-radius: 6px; font-size: 13px; font-weight: 600;
+				cursor: pointer; transition: all 0.12s ease; border: 1px solid transparent; outline: none;
+			}
+			.vk_dialog_btn_primary { background: #2563eb; color: #ffffff; }
+			.vk_dialog_btn_primary:hover { background: #1d4ed8; }
+			.vk_dialog_btn_danger { background: rgba(239, 68, 68, 0.1); color: #dc2626; border-color: rgba(239, 68, 68, 0.2); }
+			.vk_dialog_btn_danger:hover { background: #dc2626; color: #ffffff; }
+			.vk_dialog_btn_primary_danger { background: #dc2626; color: #ffffff; }
+			.vk_dialog_btn_primary_danger:hover { background: #b91c1c; }
+			.vk_dialog_btn_secondary { background: var(--dsw-alias-bg-subtle, #f3f4f6); color: var(--dsw-alias-label-primary, #374151); border-color: var(--dsw-alias-border-l1, #e5e7eb); }
+			.vk_dialog_btn_secondary:hover { background: var(--dsw-alias-interactive-bg-hover, #e5e7eb); }
+
+			/* Diff Viewer Styles */
+			.vk_diff_container {
+				display: flex; flex-direction: column; height: 100%; width: 100%;
+				background: var(--dsw-alias-bg-base, #ffffff); overflow: hidden; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+			}
+			.vk_diff_header {
+				display: flex; align-items: center; justify-content: space-between;
+				padding: 8px 16px; border-bottom: 1px solid var(--dsw-alias-border-l1, #e5e7eb);
+				background: var(--dsw-alias-bg-subtle, #f9fafb); flex-shrink: 0;
+			}
+			.vk_diff_info { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; }
+			.vk_diff_stat { padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: 700; }
+			.vk_diff_stat_add { background: rgba(34, 197, 94, 0.15); color: #16a34a; }
+			.vk_diff_stat_del { background: rgba(239, 68, 68, 0.15); color: #dc2626; }
+			.vk_diff_actions { display: flex; align-items: center; gap: 6px; }
+			.vk_diff_btn { padding: 4px 10px; border-radius: 5px; font-size: 12px; font-weight: 600; cursor: pointer; border: 1px solid var(--dsw-alias-border-l2, #d1d5db); background: var(--dsw-alias-bg-base, #ffffff); color: var(--dsw-alias-label-primary, #374151); }
+			.vk_diff_btn:hover { background: var(--dsw-alias-interactive-bg-hover, #f3f4f6); }
+			.vk_diff_btn_accept { background: #16a34a; color: #ffffff; border-color: #15803d; }
+			.vk_diff_btn_accept:hover { background: #15803d; }
+			.vk_diff_btn_discard { background: rgba(239, 68, 68, 0.1); color: #dc2626; border-color: rgba(239, 68, 68, 0.2); }
+			.vk_diff_btn_discard:hover { background: #dc2626; color: #ffffff; }
+			.vk_diff_body { flex: 1; overflow: auto; padding: 4px 0; font-size: 12.5px; line-height: 1.5; }
+			.vk_diff_line { display: flex; align-items: stretch; min-height: 20px; white-space: pre; }
+			.vk_diff_line_add { background: rgba(34, 197, 94, 0.12); }
+			.vk_diff_line_del { background: rgba(239, 68, 68, 0.12); }
+			.vk_diff_num { width: 36px; padding: 0 6px; text-align: right; color: #9ca3af; user-select: none; font-size: 11px; flex-shrink: 0; }
+			.vk_diff_prefix { width: 18px; text-align: center; color: #6b7280; user-select: none; flex-shrink: 0; font-weight: 700; }
+			.vk_diff_line_add .vk_diff_prefix { color: #16a34a; }
+			.vk_diff_line_del .vk_diff_prefix { color: #dc2626; }
+			.vk_diff_text { flex: 1; padding: 0 6px; overflow-x: auto; }
 		`;
 
 		if (typeof document !== "undefined" && !document.getElementById("vk-tiptap-styles")) {
@@ -63947,6 +64037,121 @@ const FILE_ICON_DIR_OPEN = "fti-FolderOpen";
 			s.id = "vk-tiptap-styles";
 			s.textContent = tiptapStyles;
 			document.head.appendChild(s);
+		}
+
+		// ── Sleek In-App Modal Dialog (Replacing Browser confirm/alert) ──
+		function UnsavedChangesModal({ isOpen, title, fileName, message, saveLabel, dontSaveLabel, cancelLabel, onSave, onDontSave, onCancel, isDanger }) {
+			react.useEffect(() => {
+				if (!isOpen) return;
+				const onKey = (e) => {
+					if (e.key === "Escape") {
+						e.preventDefault();
+						if (onCancel) onCancel();
+					}
+				};
+				window.addEventListener("keydown", onKey);
+				return () => window.removeEventListener("keydown", onKey);
+			}, [isOpen, onCancel]);
+
+			if (!isOpen) return null;
+
+			return h("div", {
+				className: "vk_modal_backdrop",
+				"data-vk-modal": true,
+				onClick: (e) => { if (e.target === e.currentTarget && onCancel) onCancel(); }
+			},
+				h("div", { className: "vk_dialog_card", "data-vk-dialog": true },
+					h("div", { className: "vk_dialog_icon_wrap" + (isDanger ? " vk_dialog_icon_danger" : "") },
+						h("span", { className: "vk_dialog_icon" }, isDanger ? "🗑️" : "⚠️")
+					),
+					h("div", { className: "vk_dialog_body" },
+						h("h3", { className: "vk_dialog_title" }, title || "Save changes?"),
+						h("p", { className: "vk_dialog_desc" },
+							message || (fileName ? [
+								"Do you want to save the changes you made to ",
+								h("strong", { key: "fn", className: "vk_dialog_highlight" }, fileName),
+								"?"
+							] : "Do you want to save changes?")
+						),
+						!isDanger ? h("p", { className: "vk_dialog_sub" }, "Your changes will be lost if you don't save them.") : null
+					),
+					h("div", { className: "vk_dialog_actions" },
+						onSave ? h("button", {
+							className: "vk_dialog_btn vk_dialog_btn_primary",
+							"data-vk-btn-save": true,
+							onClick: onSave,
+							autoFocus: true
+						}, saveLabel || "Save") : null,
+						onDontSave ? h("button", {
+							className: "vk_dialog_btn " + (isDanger ? "vk_dialog_btn_primary_danger" : "vk_dialog_btn_danger"),
+							"data-vk-btn-dontsave": true,
+							onClick: onDontSave
+						}, dontSaveLabel || (isDanger ? "Delete" : "Don't Save")) : null,
+						h("button", {
+							className: "vk_dialog_btn vk_dialog_btn_secondary",
+							"data-vk-btn-cancel": true,
+							onClick: onCancel
+						}, cancelLabel || "Cancel")
+					)
+				)
+			);
+		}
+
+		// ── Diff Viewer Component (Side-by-side or Unified Diff) ──
+		function DiffViewer({ oldText, newText, fileName, onAccept, onDiscard, onClose }) {
+			const diffLines = react.useMemo(() => {
+				const oldLines = (oldText || "").split("\n");
+				const newLines = (newText || "").split("\n");
+				const lines = [];
+				let added = 0;
+				let removed = 0;
+				
+				let i = 0, j = 0;
+				while (i < oldLines.length || j < newLines.length) {
+					if (i < oldLines.length && j < newLines.length && oldLines[i] === newLines[j]) {
+						lines.push({ type: "same", oldLine: i + 1, newLine: j + 1, text: oldLines[i] });
+						i++; j++;
+					} else if (j < newLines.length && (i >= oldLines.length || !oldLines.slice(i, i + 10).includes(newLines[j]))) {
+						lines.push({ type: "add", oldLine: null, newLine: j + 1, text: newLines[j] });
+						added++;
+						j++;
+					} else if (i < oldLines.length) {
+						lines.push({ type: "del", oldLine: i + 1, newLine: null, text: oldLines[i] });
+						removed++;
+						i++;
+					} else {
+						break;
+					}
+				}
+				return { lines, added, removed };
+			}, [oldText, newText]);
+
+			return h("div", { className: "vk_diff_container", "data-vk-diff": true },
+				h("div", { className: "vk_diff_header" },
+					h("div", { className: "vk_diff_info" },
+						h("span", { className: "vk_diff_icon" }, "⚡"),
+						h("span", { className: "vk_diff_filename" }, fileName || "Diff Comparison"),
+						h("span", { className: "vk_diff_stat vk_diff_stat_add" }, "+" + diffLines.added),
+						h("span", { className: "vk_diff_stat vk_diff_stat_del" }, "-" + diffLines.removed)
+					),
+					h("div", { className: "vk_diff_actions" },
+						onAccept ? h("button", { className: "vk_diff_btn vk_diff_btn_accept", onClick: onAccept }, "✓ Accept") : null,
+						onDiscard ? h("button", { className: "vk_diff_btn vk_diff_btn_discard", onClick: onDiscard }, "✕ Discard") : null,
+						onClose ? h("button", { className: "vk_diff_btn", onClick: onClose }, "Close") : null
+					)
+				),
+				h("div", { className: "vk_diff_body" },
+					diffLines.lines.map((l, idx) => h("div", {
+						key: idx,
+						className: "vk_diff_line vk_diff_line_" + l.type
+					},
+						h("span", { className: "vk_diff_num" }, l.oldLine || ""),
+						h("span", { className: "vk_diff_num" }, l.newLine || ""),
+						h("span", { className: "vk_diff_prefix" }, l.type === "add" ? "+" : l.type === "del" ? "-" : " "),
+						h("span", { className: "vk_diff_text" }, l.text)
+					))
+				)
+			);
 		}
 
 		// ── Quick Open File Modal (Ctrl+P) ──
@@ -64459,6 +64664,13 @@ const FILE_ICON_DIR_OPEN = "fti-FolderOpen";
 							onSave(editor.storage.markdown.getMarkdown());
 						}
 					}
+					if ((e.ctrlKey || e.metaKey) && (e.key === 'z' || e.key === 'Z') && !e.shiftKey) {
+						e.preventDefault();
+						runCommand(c => c.undo());
+					} else if (((e.ctrlKey || e.metaKey) && (e.key === 'z' || e.key === 'Z') && e.shiftKey) || ((e.ctrlKey || e.metaKey) && (e.key === 'y' || e.key === 'Y'))) {
+						e.preventDefault();
+						runCommand(c => c.redo());
+					}
 				};
 
 				containerRef.current.addEventListener('keydown', handleKeyDown, true);
@@ -64504,6 +64716,8 @@ const FILE_ICON_DIR_OPEN = "fti-FolderOpen";
 							onSave(content);
 						}
 					} }, busy ? 'Saving...' : '💾 Save (Ctrl+S)'),
+					react.createElement('button', { key: 'undo', type: 'button', className: 'vk_editBtn', title: 'Undo (Ctrl+Z)', onMouseDown: (e) => e.preventDefault(), onClick: () => runCommand(c => c.undo()) }, '↺ Undo'),
+					react.createElement('button', { key: 'redo', type: 'button', className: 'vk_editBtn', title: 'Redo (Ctrl+Y / Ctrl+Shift+Z)', onMouseDown: (e) => e.preventDefault(), onClick: () => runCommand(c => c.redo()) }, '↻ Redo'),
 					isDirty ? react.createElement('span', { key: 'dirty', className: 'vk_dirtyDot', title: 'Unsaved changes' }) : null,
 					saveMsg ? react.createElement('span', { key: 'msg', className: 'vk_saveMsg' }, saveMsg) : null,
 					react.createElement('span', { key: 'sep0', className: 'vk_tb_sep' }),
@@ -64762,10 +64976,43 @@ function Viewer({ file, rev, onStartEdit, onSaveDirect, onUpdateDirect, isDirect
 			const currentPath = active !== null ? active.path : null;
 			const [edits, setEdits] = react.useState({});
 			const [revisions, setRevisions] = react.useState({});
+			const [initialContent, setInitialContent] = react.useState({});
 			const [busy, setBusy] = react.useState(false);
 			const [saveMsg, setSaveMsg] = react.useState(null);
 			const [dragged, setDragged] = react.useState(null);
 			const [ctxMenu, setCtxMenu] = react.useState(null);
+			const [showDiff, setShowDiff] = react.useState(false);
+			const [pendingUnsaved, setPendingUnsaved] = react.useState(null);
+
+			// History stack for raw text editor
+			const historyStateRef = react.useRef({});
+
+			const getHistory = (p) => {
+				if (!historyStateRef.current[p]) {
+					historyStateRef.current[p] = { past: [], future: [] };
+				}
+				return historyStateRef.current[p];
+			};
+
+			const handleUndo = react.useCallback(() => {
+				if (!currentPath) return;
+				const h = getHistory(currentPath);
+				if (h.past.length === 0) return;
+				const prevText = h.past.pop();
+				const curText = edits[currentPath]?.text;
+				if (curText !== undefined) h.future.push(curText);
+				setEdits((prev) => ({ ...prev, [currentPath]: { text: prevText, dirty: true } }));
+			}, [currentPath, edits]);
+
+			const handleRedo = react.useCallback(() => {
+				if (!currentPath) return;
+				const h = getHistory(currentPath);
+				if (h.future.length === 0) return;
+				const nextText = h.future.pop();
+				const curText = edits[currentPath]?.text;
+				if (curText !== undefined) h.past.push(curText);
+				setEdits((prev) => ({ ...prev, [currentPath]: { text: nextText, dirty: true } }));
+			}, [currentPath, edits]);
 
 			// In-Editor Find & Replace state (Ctrl+F / Ctrl+H)
 			const [findOpen, setFindOpen] = react.useState(false);
@@ -64823,8 +65070,15 @@ function Viewer({ file, rev, onStartEdit, onSaveDirect, onUpdateDirect, isDirect
 			const onEditText = react.useCallback((text, explicitPath) => {
 				const targetPath = explicitPath || currentPath;
 				if (!targetPath || typeof text !== "string") return;
+				const curText = edits[targetPath]?.text;
+				if (curText !== undefined && curText !== text) {
+					const h = getHistory(targetPath);
+					h.past.push(curText);
+					if (h.past.length > 80) h.past.shift();
+					h.future = [];
+				}
 				setEdits((prev) => ({ ...prev, [targetPath]: { text, dirty: true } }));
-			}, [currentPath]);
+			}, [currentPath, edits]);
 
 			const saveWithText = react.useCallback(async (textToSave, explicitPath) => {
 				const targetPath = explicitPath || currentPath;
@@ -64844,6 +65098,7 @@ function Viewer({ file, rev, onStartEdit, onSaveDirect, onUpdateDirect, isDirect
 							delete next[targetPath];
 							return next;
 						});
+						setInitialContent((prev) => ({ ...prev, [targetPath]: textToSave }));
 						setRevisions((prev) => ({ ...prev, [targetPath]: (prev[targetPath] ?? 0) + 1 }));
 						setSaveMsg("Saved");
 						setTimeout(() => setSaveMsg(null), 2000);
@@ -64863,21 +65118,26 @@ function Viewer({ file, rev, onStartEdit, onSaveDirect, onUpdateDirect, isDirect
 				saveWithText(edit.text, currentPath);
 			}, [currentPath, edits, busy, saveWithText]);
 
-			const cancel = react.useCallback(() => {
-				if (currentPath === null) return;
-				const edit = edits[currentPath];
-				if (edit !== void 0 && edit.dirty && typeof confirm === "function" && !confirm("Discard unsaved changes?")) return;
+			const doCancel = (path) => {
 				setEdits((prev) => {
 					const next = { ...prev };
-					delete next[currentPath];
+					delete next[path];
 					return next;
 				});
 				setSaveMsg(null);
-			}, [currentPath, edits]);
+			};
 
-			const closeTab = react.useCallback((path) => {
-				const edit = edits[path];
-				if (edit !== void 0 && edit.dirty && typeof confirm === "function" && !confirm("This tab has unsaved changes. Discard and close?")) return;
+			const requestCancel = react.useCallback(() => {
+				if (currentPath === null) return;
+				const edit = edits[currentPath];
+				if (edit !== void 0 && edit.dirty) {
+					setPendingUnsaved({ type: "cancel", path: currentPath, name: active?.name || currentPath, text: edit.text });
+					return;
+				}
+				doCancel(currentPath);
+			}, [currentPath, edits, active]);
+
+			const doCloseTab = (path) => {
 				setEdits((prev) => {
 					if (!(path in prev)) return prev;
 					const next = { ...prev };
@@ -64885,21 +65145,66 @@ function Viewer({ file, rev, onStartEdit, onSaveDirect, onUpdateDirect, isDirect
 					return next;
 				});
 				onClose(path);
-			}, [edits, onClose]);
+			};
 
-			const closePaths = react.useCallback((paths) => {
-				const dirtyAny = paths.some((p) => edits[p]?.dirty);
-				if (dirtyAny && typeof confirm === "function" && !confirm("Some tabs have unsaved changes. Discard and close?")) return;
+			const requestCloseTab = react.useCallback((path) => {
+				const edit = edits[path];
+				if (edit !== void 0 && edit.dirty) {
+					const tab = tabs.find(t => t.path === path);
+					setPendingUnsaved({ type: "single", path, name: tab?.name || path, text: edit.text });
+					return;
+				}
+				doCloseTab(path);
+			}, [edits, onClose, tabs]);
+
+			const doClosePaths = (paths) => {
 				setEdits((prev) => {
 					const next = { ...prev };
 					for (const p of paths) delete next[p];
 					return next;
 				});
 				for (const p of paths) onClose(p);
-			}, [edits, onClose]);
+			};
+
+			const requestClosePaths = react.useCallback((paths) => {
+				const dirtyPaths = paths.filter(p => edits[p]?.dirty);
+				if (dirtyPaths.length > 0) {
+					const first = dirtyPaths[0];
+					const tab = tabs.find(t => t.path === first);
+					setPendingUnsaved({ type: "paths", path: first, paths, name: tab?.name || first, text: edits[first]?.text });
+					return;
+				}
+				doClosePaths(paths);
+			}, [edits, onClose, tabs]);
+
+			const handleModalSave = async () => {
+				if (!pendingUnsaved) return;
+				const target = pendingUnsaved;
+				if (target.text !== undefined) {
+					await saveWithText(target.text, target.path);
+				}
+				setPendingUnsaved(null);
+				if (target.type === "single") doCloseTab(target.path);
+				else if (target.type === "paths") doClosePaths(target.paths);
+				else if (target.type === "cancel") doCancel(target.path);
+			};
+
+			const handleModalDontSave = () => {
+				if (!pendingUnsaved) return;
+				const target = pendingUnsaved;
+				setPendingUnsaved(null);
+				if (target.type === "single") doCloseTab(target.path);
+				else if (target.type === "paths") doClosePaths(target.paths);
+				else if (target.type === "cancel") doCancel(target.path);
+			};
+
+			const handleModalCancel = () => {
+				setPendingUnsaved(null);
+			};
 
 			const startEdit = react.useCallback((text) => {
 				if (currentPath === null) return;
+				setInitialContent((prev) => ({ ...prev, [currentPath]: text }));
 				setEdits((prev) => ({ ...prev, [currentPath]: { text, dirty: false } }));
 			}, [currentPath]);
 
@@ -64999,13 +65304,13 @@ function Viewer({ file, rev, onStartEdit, onSaveDirect, onUpdateDirect, isDirect
 							onDragOver: (e) => { e.preventDefault(); },
 							onDrop: (e) => { e.preventDefault(); const from = e.dataTransfer.getData("text/plain"); if (from && from !== t.path) onMoveTab(from, t.path); },
 							onClick: () => onSelect(t.path),
-							onAuxClick: (e) => { if (e.button === 1) { e.preventDefault(); closeTab(t.path); } },
+							onAuxClick: (e) => { if (e.button === 1) { e.preventDefault(); requestCloseTab(t.path); } },
 							onContextMenu: (e) => { e.preventDefault(); setCtxMenu({ x: e.clientX, y: e.clientY, path: t.path }); }
 						},
 							h(FileTypeIcon, { symbolId: fileIconId(t.name, "file", false) }),
 							h("span", { className: "vk_tabName" }, t.name),
 							isDirty ? h("span", { className: "vk_dirtyDot vk_tabDot", title: "Unsaved changes" }) : null,
-							h("button", { className: "vk_tabClose", title: "Close Tab", onClick: (e) => { e.stopPropagation(); closeTab(t.path); } }, "×")
+							h("button", { className: "vk_tabClose", title: "Close Tab", onClick: (e) => { e.stopPropagation(); requestCloseTab(t.path); } }, "×")
 						);
 					})
 				),
@@ -65030,28 +65335,49 @@ function Viewer({ file, rev, onStartEdit, onSaveDirect, onUpdateDirect, isDirect
 							isDirty: edits[active.path].dirty === true,
 							onUpdateContent: onEditText,
 							onSave: (txt) => saveWithText(txt),
-							onCancel: cancel,
+							onCancel: requestCancel,
 							busy,
 							saveMsg,
-							onToggleRawMode: cancel
+							onToggleRawMode: requestCancel
 						})
 						: (editing && !isMarkdown)
 							? h(react.Fragment, null,
 								h("div", { className: "vk_bar" },
 									h("span", { className: "vk_barPath" }, active.path),
 									h("button", { className: "vk_editBtn vk_editBtnPrimary", disabled: busy, title: "Save (Ctrl+S)", onClick: save }, "💾 Save"),
-									h("button", { className: "vk_editBtn", disabled: busy, title: "Cancel Edit (Esc)", onClick: cancel }, "✕ Cancel"),
+									h("button", { className: "vk_editBtn", disabled: busy, title: "Undo (Ctrl+Z)", onClick: handleUndo }, "↺ Undo"),
+									h("button", { className: "vk_editBtn", disabled: busy, title: "Redo (Ctrl+Y / Ctrl+Shift+Z)", onClick: handleRedo }, "↻ Redo"),
+									h("button", { className: "vk_editBtn" + (showDiff ? " vk_editBtnPrimary" : ""), disabled: busy, title: "Toggle Diff View", onClick: () => setShowDiff(!showDiff) }, "⚡ Diff"),
+									h("button", { className: "vk_editBtn", disabled: busy, title: "Cancel Edit (Esc)", onClick: requestCancel }, "✕ Cancel"),
 									edits[active.path]?.dirty ? h("span", { className: "vk_dirtyDot", title: "Unsaved changes" }) : null,
 									saveMsg ? h("span", { className: "vk_saveMsg" }, saveMsg) : h("span", { className: "vk_saveMsg" }, "Edit Mode")
 								),
-								h("div", { className: "vk_editorBody" },
-									h("textarea", {
-										className: "vk_textarea",
-										value: edits[active.path].text,
-										autoFocus: true,
-										onChange: (e) => onEditText(e.target.value)
+								showDiff
+									? h(DiffViewer, {
+										oldText: initialContent[active.path] || "",
+										newText: edits[active.path]?.text || "",
+										fileName: active.name,
+										onAccept: () => { save(); setShowDiff(false); },
+										onDiscard: () => { requestCancel(); setShowDiff(false); },
+										onClose: () => setShowDiff(false)
 									})
-								)
+									: h("div", { className: "vk_editorBody" },
+										h("textarea", {
+											className: "vk_textarea",
+											value: edits[active.path].text,
+											autoFocus: true,
+											onChange: (e) => onEditText(e.target.value),
+											onKeyDown: (e) => {
+												if ((e.ctrlKey || e.metaKey) && (e.key === "z" || e.key === "Z") && !e.shiftKey) {
+													e.preventDefault();
+													handleUndo();
+												} else if (((e.ctrlKey || e.metaKey) && (e.key === "z" || e.key === "Z") && e.shiftKey) || ((e.ctrlKey || e.metaKey) && (e.key === "y" || e.key === "Y"))) {
+													e.preventDefault();
+													handleRedo();
+												}
+											}
+										})
+									)
 							)
 							: h(Viewer, {
 								file: active,
@@ -65068,19 +65394,27 @@ function Viewer({ file, rev, onStartEdit, onSaveDirect, onUpdateDirect, isDirect
 					"data-vk-menu": true,
 					style: { left: Math.min(ctxMenu.x, window.innerWidth - 180) + "px", top: Math.min(ctxMenu.y, window.innerHeight - 240) + "px" }
 				},
-					ctxMenu.path !== null ? menuItem("Close", () => closeTab(ctxMenu.path)) : null,
-					ctxMenu.path !== null ? menuItem("Close Others", () => closePaths(tabs.map((t) => t.path).filter((p) => p !== ctxMenu.path))) : null,
+					ctxMenu.path !== null ? menuItem("Close", () => requestCloseTab(ctxMenu.path)) : null,
+					ctxMenu.path !== null ? menuItem("Close Others", () => requestClosePaths(tabs.map((t) => t.path).filter((p) => p !== ctxMenu.path))) : null,
 					ctxMenu.path !== null ? menuItem("Close to the Left", () => {
 						const idx = tabs.findIndex((t) => t.path === ctxMenu.path);
-						if (idx > 0) closePaths(tabs.slice(0, idx).map((t) => t.path));
+						if (idx > 0) requestClosePaths(tabs.slice(0, idx).map((t) => t.path));
 					}) : null,
 					ctxMenu.path !== null ? menuItem("Close to the Right", () => {
 						const idx = tabs.findIndex((t) => t.path === ctxMenu.path);
-						if (idx !== -1 && idx < tabs.length - 1) closePaths(tabs.slice(idx + 1).map((t) => t.path));
+						if (idx !== -1 && idx < tabs.length - 1) requestClosePaths(tabs.slice(idx + 1).map((t) => t.path));
 					}) : null,
-					menuItem("Close All", () => closePaths(tabs.map((t) => t.path)), true),
+					menuItem("Close All", () => requestClosePaths(tabs.map((t) => t.path)), true),
 					ctxMenu.path !== null ? menuItem("📋 Copy Path", () => { navigator.clipboard?.writeText(ctxMenu.path); }) : null
-				) : null
+				) : null,
+				h(UnsavedChangesModal, {
+					isOpen: !!pendingUnsaved,
+					title: "Save changes?",
+					fileName: pendingUnsaved?.name,
+					onSave: handleModalSave,
+					onDontSave: handleModalDontSave,
+					onCancel: handleModalCancel
+				})
 			);
 		}
 
@@ -65404,6 +65738,25 @@ function Viewer({ file, rev, onStartEdit, onSaveDirect, onUpdateDirect, isDirect
 			react.useEffect(() => {
 				if (!native && panels.rightTab === "details") actions.setRightTab("conversation");
 			}, [native, panels.rightTab, actions]);
+			// Intercept clicks on file paths or tool badges in conversation / trajectory to open file directly in tab
+			react.useEffect(() => {
+				const onGlobalClick = (e) => {
+					const target = e.target;
+					if (!(target instanceof Element)) return;
+					const fileEl = target.closest('[data-file-path], .vk_file_link, a[href*="file://"], code');
+					if (!fileEl) return;
+					const pathAttr = fileEl.getAttribute('data-file-path') || fileEl.getAttribute('href');
+					const text = fileEl.textContent ? fileEl.textContent.trim() : "";
+					const candidate = pathAttr ? pathAttr.replace(/^file:\/\//, '') : text;
+					if (candidate && /\.(js|mjs|cjs|ts|tsx|jsx|json|md|html|css|py|rs|go|sh|yml|yaml|txt)$/i.test(candidate) && !candidate.includes('\n') && candidate.length < 200) {
+						const cleanPath = candidate.trim().replace(/^[`'"]|[`'"]$/g, '');
+						openFile({ path: cleanPath, name: cleanPath.split(/[\/\\]/).pop() });
+					}
+				};
+				document.addEventListener('click', onGlobalClick);
+				return () => document.removeEventListener('click', onGlobalClick);
+			}, [openFile]);
+
 			const fileRoot = tabsState.root != null ? tabsState.root : (sessionCwd || defaultCwd || ".");
 			const left = h(LeftPanel, {
 				tab: tabsState.sidebarTab,

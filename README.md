@@ -22,7 +22,28 @@
 
 ---
 
-## 2. 📝 TipTap Notion WYSIWYG Markdown Editor
+### 2. ⚡ AI Code Assistant & Diff Viewer Integration
+- **Click-to-Open from AI Chat**: Any file paths or tool outputs mentioned in chat (e.g. `src/app.js`, `package.json`, `note.md`) are automatically interactive and open directly in an editor tab upon click.
+- **Built-in Diff Viewer (`⚡ Diff`)**:
+  - Compare unsaved changes or AI modifications side-by-side / unified with syntax-highlighted additions (`+ green`) and deletions (`- red`).
+  - Change statistics counter (`+12 -4`).
+  - 1-Click `✓ Accept Changes` and `✕ Discard` actions.
+- **Robust Undo / Redo (`Ctrl+Z`, `Ctrl+Shift+Z` / `Ctrl+Y`)**:
+  - Full history stack in both raw code editor and TipTap WYSIWYG editor so you never lose typing history.
+  - Dedicated `↺ Undo` and `↻ Redo` buttons in the toolbar.
+
+---
+
+### 3. 🎨 Sleek In-App Modal Dialogs (No Ugly Browser Alerts)
+- **Unsaved Changes Dialog**: When closing dirty tabs or discarding unsaved work, a modern in-app dialog appears with 3 clear options:
+  - 💾 **Save** (`Enter`): Saves the file to disk and closes the tab.
+  - 🗑️ **Don't Save**: Discards unsaved modifications and closes the tab.
+  - ✕ **Cancel** (`Escape`): Keeps the file open.
+- **Trash Confirmation Dialog**: Clean modal confirmation when moving files or folders to Trash.
+
+---
+
+### 4. 📝 TipTap Notion WYSIWYG Markdown Editor
 - **Direct WYSIWYG Editing**: Markdown files (`.md`) render directly into rich interactive Notion-style blocks.
 - **Floating Selection Bubble Menu**: Highlight text to format: **Bold** (`B`), *Italic* (`I`), <u>Underline</u> (`U`), ~~Strikethrough~~ (`S`), `Inline Code` (`</>`), 🎨 Highlight (`Mark`), and `🤖 Ask AI`.
 - **Slash Menu (`/`)**: Type `/` anywhere to insert Headings (H1/H2/H3), Task Lists (`[ ]`), Tables, Notion Callouts (`💡`), Code Blocks with syntax highlighting, Blockquotes, YouTube Embeds, Images, and Dividers.
@@ -32,7 +53,7 @@
 
 ---
 
-## 3. ⚡ Power-User Keyboard Shortcuts & Quick Open
+### 5. ⚡ Power-User Keyboard Shortcuts & Quick Open
 
 | Shortcut | Action | Description |
 | :--- | :--- | :--- |
@@ -40,6 +61,8 @@
 | `Ctrl+Shift+F` | **Global Search** | Activates the Workspace Search panel with match case (`Aa`) and regex (`.*`). |
 | `Ctrl+F` | **Find in File** | In-editor search widget with match counter and previous/next navigation. |
 | `Ctrl+H` | **Find & Replace** | Expands in-editor find widget with single and replace-all controls. |
+| `Ctrl+Z` | **Undo** | Reverts recent typing/formatting in code and TipTap editors. |
+| `Ctrl+Y` / `Ctrl+Shift+Z` | **Redo** | Re-applies reverted typing/formatting. |
 | `Ctrl+L` | **Chat / Selection to AI** | **With selection:** sends snippet + filename to AI chat.<br>**Without selection:** toggles AI panel open/closed. |
 | `Ctrl+S` / `Cmd+S` | **Save File** | Saves active code document or TipTap markdown document. |
 | `F2` | **Rename File** | Inline renaming in the File Explorer. |
@@ -47,12 +70,12 @@
 
 ---
 
-## 4. 🖱️ Smart Right-Click Context Menus
+### 6. 🖱️ Smart Right-Click Context Menus
 - **File Explorer Row Context Menu**:
   - `📄 Open File`: Opens file in a new tab.
   - `📄 New File...` / `📁 New Folder...`: Directory-aware creation (right-clicking a subfolder targets that directory as parent).
   - `✏️ Rename (F2)`: Rename file/folder.
-  - `🗑️ Move to Trash`: Safely move file/folder to OS Recycle Bin / Trash (`gio trash` / `PowerShell`).
+  - `🗑️ Move to Trash`: Safely move file/folder to OS Recycle Bin / Trash with sleek confirmation.
   - `📋 Copy Path` & `📋 Copy Relative Path`: Copies absolute or workspace-relative path to clipboard.
   - `🤖 Ask AI About This File`: Auto-generates analysis prompt in chat.
 
@@ -94,7 +117,7 @@ dsh web
 
 1. **Install Dependencies**:
    ```bash
-   npm install
+   npm install --legacy-peer-deps
    ```
 
 2. **Build TipTap Bundle & Unified Layout**:
@@ -118,7 +141,7 @@ dsh web
 
 ## 🧪 Automated Testing
 
-Run the full end-to-end Playwright test suite to verify context menus, find/replace, global search, quick open, and TipTap editing:
+Run the full 10-step end-to-end Playwright test suite:
 
 ```bash
 npm test
