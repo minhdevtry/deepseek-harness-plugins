@@ -5,9 +5,9 @@ import { execSync } from 'child_process'
 
 console.log('🚀 Setting up DeepSeek Harness (dsh) plugins and configurations...')
 
-// 1. Install File Tree plugin
+// 1. Install dsh-local-filetree plugin
 try {
-  console.log('📦 Installing dsh-local-filetree plugin...')
+  console.log('📦 Installing dsh-local-filetree plugin from upstream (Mongfayi/dsh-local-filetree)...')
   execSync('dsh plugin --profile web add github:Mongfayi/dsh-local-filetree', { stdio: 'inherit' })
 } catch (err) {
   console.error('⚠️ Could not install dsh-local-filetree via CLI. Please check your network connection.')
@@ -23,12 +23,12 @@ if (fs.existsSync(patchSrc)) {
   console.log(`[✓] Updated profile patch configuration at: ${patchDest}`)
 }
 
-// 3. Run English localization patch
+// 3. Run English localization patch for dsh-local-filetree
 try {
-  console.log('🌐 Applying English UI localization...')
-  execSync('node patch-en.js', { stdio: 'inherit' })
+  console.log('🌐 Applying English UI localization patch for dsh-local-filetree...')
+  execSync('node plugins/dsh-local-filetree/patch.js', { stdio: 'inherit' })
 } catch (err) {
-  console.error('⚠️ Error running English localization patch.')
+  console.error('⚠️ Error running English localization patch for dsh-local-filetree.')
 }
 
 console.log('\n🎉 Setup completed! Run `dsh web` to start the web application.')

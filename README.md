@@ -1,32 +1,43 @@
-# DeepSeek Harness Plugins & Patches (`deepseek-harness-plugins`)
+# DeepSeek Harness Plugins & Patches Repository (`deepseek-harness-plugins`)
 
-Centralized configuration, English UI localizations, and automated setup scripts for **DeepSeek Harness (`dsh`)**.
+A organized multi-plugin repository for **DeepSeek Harness (`dsh`)** containing plugin guides, setup scripts, and localization patches.
 
-## 📌 Features & Configurations
-* 🌳 **`dsh-local-filetree`**: File Tree Explorer plugin localized to **100% English**.
-* 🛠️ **Enabled Built-in Tools (`disabled: false`)**:
-  * `tool-bash`, `tool-fs`, `tool-fs-search`
-  * `tool-str-replace-editor` (Precise code editing with UI Diff view)
-  * `tool-todo`, `tool-web`, `tool-skill`
-  * `plan-mode` & `command-compact`
-  * `compaction-basic` & `tool-result-pruner` (Context compaction services)
-  * `subagent-fork-in-process` & `tool-subagent` (Subagent process forking)
+## 📂 Repository Structure
+
+```text
+deepseek-harness-plugins/
+├── README.md
+├── apply-config.js                  # Master setup script for all plugins & patches
+├── cordis.patch.yml                 # Base profile patch configuration
+└── plugins/                         # Collection of individual plugins
+    └── dsh-local-filetree/          # Local File Tree Explorer plugin guide & patches
+        ├── README.md                # Installation & patch instructions
+        └── patch.js                 # English UI localization patch script
+```
+
+## 🔌 Managed Plugins
+
+* 🌳 **[`plugins/dsh-local-filetree`](plugins/dsh-local-filetree)**: File Tree Explorer plugin (Upstream: `github:Mongfayi/dsh-local-filetree`), localized to **100% English**.
+* 🛠️ **Enabled Built-in Tools**:
+  * `tool-bash`, `tool-fs`, `tool-fs-search`, `tool-str-replace-editor`
+  * `tool-todo`, `tool-web`, `tool-skill`, `plan-mode`, `command-compact`
+  * `compaction-basic`, `tool-result-pruner`, `subagent-fork-in-process`
 
 ## 🚀 Quickstart & Setup Guide
 
-When setting up a new environment or after updating `dsh`, clone this repository and run:
+To apply all plugin installations and localization patches:
 
 ```bash
-# 1. Automatically apply profile patches & English localizations
+# 1. Run master setup script
 node apply-config.js
 
 # 2. Launch dsh web
 dsh web
 ```
 
-### 🌐 Run English Localization Patch Only
+To run a specific plugin patch:
 ```bash
-node patch-en.js
+node plugins/dsh-local-filetree/patch.js
 ```
 
 ---

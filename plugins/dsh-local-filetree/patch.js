@@ -36,4 +36,4 @@ for (const [from, to] of replacements) {
 }
 
 fs.writeFileSync(pluginPath, content, 'utf8')
-console.log(`[✓] Successfully localized ${count} UI strings to English in File Tree plugin!`)
+console.log(`[✓] Successfully localized ${count} UI strings to English in dsh-local-filetree!`)
