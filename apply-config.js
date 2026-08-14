@@ -39,12 +39,19 @@ if (fs.existsSync(patchSrc)) {
   console.log(`[✓] Updated profile patch configuration at: ${patchDest}`)
 }
 
-// 5. Run English localization patch for dsh-local-filetree
+// 5. Run English localization patches
 try {
   console.log('🌐 Applying English UI localization patch for dsh-local-filetree...')
   execSync('node plugins/dsh-local-filetree/patch.js', { stdio: 'inherit' })
 } catch (err) {
   console.error('⚠️ Error running English localization patch for dsh-local-filetree.')
+}
+
+try {
+  console.log('🌐 Applying English UI localization patch for dsh-task-board...')
+  execSync('node plugins/dsh-task-board/patch.js', { stdio: 'inherit' })
+} catch (err) {
+  console.error('⚠️ Error running English localization patch for dsh-task-board.')
 }
 
 console.log('\n🎉 Setup completed! Run `dsh web` to start the web application.')

@@ -70,3 +70,13 @@ Tôi đã cập nhật bổ sung - id: compaction-basic và - id: tool-result-pr
 dsh plugin --profile web add github:omdsh-dev/dsh-at-file
 
 dsh plugin --profile web add github:Ericwong5021/dsh-kanban
+Nguyên nhân gây ra lỗi:
+Repo github:Ericwong5021/dsh-kanban trên GitHub là dạng mã nguồn thô chưa biên dịch (thiếu file build lib/index.js), khiến Node.js báo lỗi ERR_MODULE_NOT_FOUND khi khởi động dsh web.
+
+✅ Đã khắc phục & Thay thế bằng Plugin Kanban chính thức:
+Tôi đã gỡ bỏ repo thô đó và thay thế bằng gói Kanban chính thức đã được biên dịch hoàn chỉnh trên NPM: @linxin666/dsh-client-ui-task-board.
+
+bash
+# Đã thực hiện lệnh gỡ repo cũ và cài đặt gói chuẩn:
+dsh plugin --profile web remove dsh-kanban
+dsh plugin --profile web add @linxin666/dsh-client-ui-task-board
