@@ -207,16 +207,18 @@ const customComponentsCode = `
 			.vk_tiptap_container .ProseMirror tr td:last-child, .vk_tiptap_container .ProseMirror tr th:last-child { border-right: none !important; }
 			.tiptap.ProseMirror tr:hover td, .vk_tiptap_container .ProseMirror tr:hover td { background: rgba(241, 245, 249, 0.6) !important; }
 
-			/* Code Blocks & Inline Code */
+			/* Code Blocks & Inline Code in Notion Style */
 			.tiptap.ProseMirror pre, .vk_tiptap_container .ProseMirror pre {
-				background: #0f172a !important; color: #f8fafc !important;
-				padding: 16px 20px !important; border-radius: 10px !important;
-				font-family: 'Fira Code', 'Cascadia Code', Consolas, Monaco, monospace !important;
-				font-size: 13px !important; line-height: 1.7 !important; margin: 16px 0 !important;
-				box-shadow: 0 4px 16px rgba(15, 23, 42, 0.12) !important;
-				border: 1px solid #1e293b !important; overflow-x: auto !important;
+				background: #f8fafc !important; color: #1e293b !important;
+				padding: 14px 18px !important; border-radius: 8px !important;
+				font-family: 'Fira Code', 'Cascadia Code', ui-monospace, SFMono-Regular, Consolas, Monaco, monospace !important;
+				font-size: 13.5px !important; line-height: 1.65 !important; margin: 16px 0 !important;
+				box-shadow: 0 1px 3px rgba(0,0,0,0.04) !important;
+				border: 1px solid #e2e8f0 !important; overflow-x: auto !important;
 			}
-			.tiptap.ProseMirror pre code, .vk_tiptap_container .ProseMirror pre code { background: transparent !important; padding: 0 !important; color: inherit !important; font-size: inherit !important; }
+			.tiptap.ProseMirror pre code, .vk_tiptap_container .ProseMirror pre code {
+				background: transparent !important; padding: 0 !important; color: #1e293b !important; font-size: inherit !important;
+			}
 			.tiptap.ProseMirror code:not(pre code), .vk_tiptap_container .ProseMirror code:not(pre code) {
 				background: rgba(59, 130, 246, 0.08) !important; color: #2563eb !important;
 				padding: 2px 6px !important; border-radius: 5px !important;
@@ -228,6 +230,18 @@ const customComponentsCode = `
 				background: #fef08a !important; color: #854d0e !important;
 				padding: 2px 5px !important; border-radius: 4px !important;
 			}
+
+			/* Notion Callout Box */
+			.tiptap.ProseMirror blockquote.vk_callout_box, .vk_tiptap_container .ProseMirror blockquote.vk_callout_box {
+				display: flex !important; align-items: flex-start !important; gap: 12px !important;
+				background: #f8fafc !important; border: 1px solid #e2e8f0 !important;
+				border-left: 4px solid #3b82f6 !important; border-radius: 8px !important;
+				padding: 14px 16px !important; margin: 16px 0 !important; color: #1e293b !important;
+			}
+			.vk_callout_icon { font-size: 20px !important; line-height: 1 !important; flex-shrink: 0 !important; margin-top: 2px !important; }
+			.vk_callout_body { flex: 1 !important; min-width: 0 !important; }
+			.vk_callout_body p { margin: 0 !important; line-height: 1.6 !important; }
+
 			.tiptap.ProseMirror ul:not([data-type="taskList"]), .tiptap.ProseMirror ol,
 			.vk_tiptap_container .ProseMirror ul:not([data-type="taskList"]), .vk_tiptap_container .ProseMirror ol { padding-left: 28px; margin: 10px 0; }
 			.tiptap.ProseMirror li:not([data-type="taskItem"]), .vk_tiptap_container .ProseMirror li:not([data-type="taskItem"]) { margin: 5px 0; }
@@ -251,22 +265,24 @@ const customComponentsCode = `
 			.vk_slash_desc { font-size: 11.5px; color: #6b7280; margin-left: auto; }
 
 			.vk_bubble_menu {
-				position: absolute; z-index: 100; background: #1f2937; color: #ffffff;
-				border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.25);
-				padding: 4px; display: flex; align-items: center; gap: 2px;
+				position: absolute; z-index: 100; background: rgba(15, 23, 42, 0.94);
+				backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.15);
+				color: #ffffff; border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+				padding: 4px 6px; display: flex; align-items: center; gap: 3px;
 				animation: vk-pop-in 0.12s ease-out;
 			}
 			@keyframes vk-pop-in { from { opacity: 0; transform: scale(0.92); } to { opacity: 1; transform: scale(1); } }
 			.vk_bubble_btn {
-				border: none; background: transparent; color: #f3f4f6; padding: 4px 8px;
-				border-radius: 4px; font-size: 12px; font-weight: 600; cursor: pointer;
-				display: flex; align-items: center; gap: 3px;
+				border: none; background: transparent; color: #f1f5f9; padding: 4px 7px;
+				border-radius: 5px; font-size: 12px; font-weight: 600; cursor: pointer;
+				display: flex; align-items: center; gap: 3px; transition: background 0.1s;
 			}
-			.vk_bubble_btn:hover { background: #374151; color: #ffffff; }
+			.vk_bubble_btn:hover { background: rgba(255, 255, 255, 0.15); color: #ffffff; }
 			.vk_bubble_ai_btn {
-				background: linear-gradient(135deg, #6366f1, #8b5cf6); color: #ffffff;
-				padding: 4px 9px; border-radius: 5px; font-size: 11.5px; font-weight: 700;
+				background: linear-gradient(135deg, #3b82f6, #6366f1); color: #ffffff;
+				padding: 4px 10px; border-radius: 6px; font-size: 11.5px; font-weight: 700;
 				border: none; cursor: pointer; display: flex; align-items: center; gap: 4px;
+				box-shadow: 0 2px 6px rgba(59, 130, 246, 0.4);
 			}
 			.vk_bubble_ai_btn:hover { filter: brightness(1.15); }
 			.vk_tiptap_footer {
@@ -1257,26 +1273,43 @@ const customComponentsCode = `
 			const [headings, setHeadings] = react.useState([]);
 
 			react.useEffect(() => {
-				if (!isOpen || !editor) return;
+				if (!isOpen) return;
 				const items = [];
-				editor.state.doc.descendants((node, pos) => {
-					if (node.type.name === "heading") {
+				if (editor && editor.state && editor.state.doc) {
+					editor.state.doc.descendants((node, pos) => {
+						if (node.type.name === "heading") {
+							items.push({
+								level: node.attrs.level,
+								text: node.textContent,
+								pos
+							});
+						}
+					});
+				}
+				if (items.length === 0) {
+					const domHeadings = document.querySelectorAll('.tiptap.ProseMirror h1, .tiptap.ProseMirror h2, .tiptap.ProseMirror h3, .vk_tiptap_container h1, .vk_tiptap_container h2, .vk_tiptap_container h3');
+					domHeadings.forEach((el, idx) => {
+						const lvl = el.tagName === 'H1' ? 1 : (el.tagName === 'H2' ? 2 : 3);
 						items.push({
-							level: node.attrs.level,
-							text: node.textContent,
-							pos
+							level: lvl,
+							text: el.textContent || ('Heading ' + (idx + 1)),
+							pos: idx,
+							domEl: el
 						});
-					}
-				});
+					});
+				}
 				setHeadings(items);
 			}, [isOpen, editor]);
 
 			if (!isOpen) return null;
 
-			const scrollToPos = (pos) => {
-				if (!editor) return;
-				editor.commands.setTextSelection(pos + 1);
-				editor.commands.scrollIntoView();
+			const scrollToPos = (hItem) => {
+				if (hItem.domEl && hItem.domEl.scrollIntoView) {
+					hItem.domEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+				} else if (editor && typeof hItem.pos === 'number') {
+					editor.commands.setTextSelection(hItem.pos + 1);
+					editor.commands.scrollIntoView();
+				}
 				onClose();
 			};
 
@@ -1295,7 +1328,7 @@ const customComponentsCode = `
 							headings.map((hItem, idx) => h("div", {
 								key: idx,
 								className: "vk_toc_item vk_toc_level_" + hItem.level,
-								onClick: () => scrollToPos(hItem.pos)
+								onClick: () => scrollToPos(hItem)
 							},
 								h("span", { className: "vk_toc_badge" }, "H" + hItem.level),
 								h("span", { className: "vk_toc_text" }, hItem.text || "Untitled Section")
@@ -2122,6 +2155,7 @@ const customComponentsCode = `
 			const [inlineAIOpen, setInlineAIOpen] = react.useState(false);
 			const [inlineSelection, setInlineSelection] = react.useState("");
 			const [exportOpen, setExportOpen] = react.useState(false);
+			const [statsModalOpen, setStatsModalOpen] = react.useState(false);
 			const [collaborators, setCollaborators] = react.useState([]);
 			const [collabConnected, setCollabConnected] = react.useState(false);
 
@@ -2144,8 +2178,14 @@ const customComponentsCode = `
 			const handleExport = (type) => {
 				setExportOpen(false);
 				if (!editorRef.current) return;
-				if (type === 'markdown') {
-					const md = editorRef.current.storage?.markdown?.getMarkdown() || content || "";
+				const md = editorRef.current.storage?.markdown?.getMarkdown() || content || "";
+				if (type === 'download') {
+					const blob = new Blob([md], { type: "text/markdown;charset=utf-8" });
+					const a = document.createElement("a");
+					a.href = URL.createObjectURL(blob);
+					a.download = (file?.name || "document.md");
+					a.click();
+				} else if (type === 'markdown') {
 					navigator.clipboard?.writeText(md);
 				} else if (type === 'html') {
 					const html = editorRef.current.getHTML();
@@ -2510,7 +2550,8 @@ const customComponentsCode = `
 					react.createElement('button', { key: 'toc', type: 'button', className: 'vk_editBtn', title: 'Document Outline / Table of Contents', onClick: () => setTocOpen(true) }, '📑 Outline'),
 					react.createElement('div', { key: 'export-wrap', style: { position: 'relative', display: 'inline-flex' } }, [
 						react.createElement('button', { key: 'export-btn', type: 'button', className: 'vk_editBtn', title: 'Export Document', onClick: () => setExportOpen(!exportOpen) }, '📤 Export ▾'),
-						exportOpen ? react.createElement('div', { key: 'export-menu', className: 'vk_ai_dropdown', style: { width: '180px' } }, [
+						exportOpen ? react.createElement('div', { key: 'export-menu', className: 'vk_ai_dropdown', style: { width: '190px' } }, [
+							react.createElement('button', { key: 'exp-dl', type: 'button', className: 'vk_ai_dropdown_item', onClick: () => handleExport('download') }, '📥 Download .md File'),
 							react.createElement('button', { key: 'exp-md', type: 'button', className: 'vk_ai_dropdown_item', onClick: () => handleExport('markdown') }, '📋 Copy Markdown'),
 							react.createElement('button', { key: 'exp-html', type: 'button', className: 'vk_ai_dropdown_item', onClick: () => handleExport('html') }, '📋 Copy HTML'),
 							react.createElement('button', { key: 'exp-print', type: 'button', className: 'vk_ai_dropdown_item', onClick: () => handleExport('print') }, '📄 Print / PDF Preview')
@@ -2589,8 +2630,14 @@ const customComponentsCode = `
 
 					// Document Statistics Footer
 					react.createElement('div', { key: 'doc-footer', className: 'vk_tiptap_footer' }, [
-						react.createElement('span', { key: 'stat-pill', className: 'vk_stat_pill' },
-							(stats.words || 0) + ' words · ' + (stats.chars || 0) + ' chars'
+						react.createElement('span', {
+							key: 'stat-pill',
+							className: 'vk_stat_pill',
+							style: { cursor: 'pointer' },
+							title: 'Click to view detailed reading metrics',
+							onClick: () => setStatsModalOpen(true)
+						},
+							'📖 ' + (Math.max(1, Math.ceil((stats.words || 0) / 200))) + ' min read · ' + (stats.words || 0) + ' words · ' + (stats.chars || 0) + ' chars'
 						)
 					])
 				]),
@@ -2664,6 +2711,15 @@ const customComponentsCode = `
 					editor: editorRef.current,
 					isOpen: tocOpen,
 					onClose: () => setTocOpen(false)
+				}),
+
+				// Document Reading Metrics Dialog
+				h(DocumentStatsModal, {
+					isOpen: statsModalOpen,
+					stats: stats,
+					fileName: file?.name,
+					content: editorRef.current?.storage?.markdown?.getMarkdown() || content || "",
+					onClose: () => setStatsModalOpen(false)
 				}),
 
 				// Inline AI Assist Dialog
