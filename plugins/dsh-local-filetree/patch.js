@@ -64,16 +64,16 @@ if (fs.existsSync(serverFile)) {
 }
 
 // ==========================================
-// 2. PATCH CLIENT (English translation + Editor)
+// 2. PATCH CLIENT (VSCode-like Editor & TipTap Markdown)
 // ==========================================
 if (fs.existsSync(clientFile)) {
   let content = fs.readFileSync(clientFile, 'utf8')
 
-  // A. English Translations
+  // A. English Translations & Rename to File Explorer
   const replacements = [
-    ['"aria-label": "文件树"', '"aria-label": "File Tree"'],
-    ['title: "文件树"', 'title: "File Tree"'],
-    ['"文件树"', '"File Tree"'],
+    ['"aria-label": "文件树"', '"aria-label": "File Explorer"'],
+    ['title: "文件树"', 'title: "File Explorer"'],
+    ['"文件树"', '"File Explorer"'],
     ['"等待加载…"', '"Waiting for load..."'],
     ['"加载中…"', '"Loading..."'],
     ['"折叠"', '"Collapse"'],
@@ -83,125 +83,119 @@ if (fs.existsSync(clientFile)) {
     ['"显示隐藏文件"', '"Show hidden files"'],
     ['"刷新"', '"Refresh"'],
     ['"恢复工具详情"', '"Restore tool details"'],
-    ['"打开一个会话后显示其工作区文件树"', '"Open a session to display its workspace file tree"']
+    ['"打开一个会话后显示其工作区文件树"', '"Open a session to display workspace files"']
   ]
 
   for (const [from, to] of replacements) {
     content = content.replaceAll(from, to)
   }
 
-  // B. Inject Editor styles
-  const editorStyles = `
-		.dsh-editor-backdrop {
-			position: fixed; inset: 0; z-index: 9999;
-			background: rgba(0,0,0,0.55); backdrop-filter: blur(4px);
-			display: flex; justify-content: center; align-items: center; padding: 24px;
-		}
-		.dsh-editor-modal {
-			background: var(--dsw-alias-bg-base, #ffffff);
-			color: var(--dsw-alias-label-primary, #1a1a1a);
-			border: 1px solid var(--dsw-alias-border-l2, #e5e7eb);
-			border-radius: 12px; box-shadow: 0 20px 45px rgba(0,0,0,0.25);
-			width: min(960px, 95vw); height: min(85vh, 900px);
-			display: flex; flex-direction: column; overflow: hidden;
-		}
-		.dsh-editor-header {
-			padding: 12px 18px; border-bottom: 1px solid var(--dsw-alias-separator-primary, #e5e7eb);
-			display: flex; align-items: center; justify-content: space-between; gap: 12px;
-			background: var(--dsw-alias-bg-subtle, #f9fafb);
-		}
-		.dsh-editor-title-box { display: flex; align-items: center; gap: 10px; min-width: 0; }
-		.dsh-editor-badge {
-			background: #3b82f6; color: #fff; font-size: 10px; font-weight: 700;
-			padding: 2px 6px; border-radius: 4px; letter-spacing: 0.5px;
-		}
-		.dsh-editor-filename { font-weight: 700; font-size: 14px; white-space: nowrap; }
-		.dsh-editor-filepath { font-size: 12px; color: var(--dsw-alias-label-tertiary, #6b7280); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-		.dsh-editor-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
-		.dsh-editor-btn {
-			padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; border: none;
-			transition: all 0.15s ease;
-		}
-		.dsh-editor-mode-btn { background: #e0e7ff; color: #4338ca; }
-		.dsh-editor-mode-btn:hover { background: #c7d2fe; }
-		.dsh-editor-save-btn { background: #10b981; color: #fff; }
-		.dsh-editor-save-btn:hover { background: #059669; }
-		.dsh-editor-close-btn { background: #f3f4f6; color: #4b5563; font-size: 14px; padding: 6px 10px; }
-		.dsh-editor-close-btn:hover { background: #e5e7eb; color: #111827; }
-		.dsh-editor-body { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; }
-		.dsh-code-editor-container { flex: 1; display: flex; }
-		.dsh-code-editor-textarea {
-			width: 100%; height: 100%; min-height: 500px;
-			font-family: 'Fira Code', 'Cascadia Code', Consolas, Monaco, monospace;
-			font-size: 13.5px; line-height: 1.6; padding: 12px;
-			background: var(--dsw-alias-bg-base, #ffffff);
-			color: var(--dsw-alias-label-primary, #1a1a1a);
-			border: 1px solid var(--dsw-alias-border-l1, #e5e7eb); border-radius: 8px; outline: none; resize: none;
-		}
-		.dsh-blocknote-container { display: flex; flex-direction: column; gap: 6px; max-width: 800px; margin: 0 auto; width: 100%; }
-		.dsh-bn-block { display: flex; align-items: center; gap: 8px; padding: 2px 0; border-radius: 4px; }
-		.dsh-bn-block:hover { background: rgba(0,0,0,0.02); }
-		.dsh-bn-tag { font-size: 10px; font-weight: 700; color: #9ca3af; width: 24px; text-align: right; flex-shrink: 0; }
-		.dsh-bn-input {
-			flex: 1; border: none; outline: none; background: transparent;
-			color: inherit; font-size: 14px; line-height: 1.6; font-family: inherit; padding: 4px 6px;
-		}
-		.dsh-bn-input:focus { background: rgba(59, 130, 246, 0.05); border-radius: 4px; }
-		.dsh-bn-h1-inp { font-size: 22px; font-weight: 800; color: #111827; }
-		.dsh-bn-h2-inp { font-size: 18px; font-weight: 700; color: #1f2937; }
-		.dsh-bn-h3-inp { font-size: 15px; font-weight: 600; color: #374151; }
-		.dsh-bn-checkbox { width: 16px; height: 16px; cursor: pointer; accent-color: #3b82f6; margin-left: 28px; }
-		.dsh-bn-todo-done { text-decoration: line-through; opacity: 0.55; }
-		.dsh-bn-bullet-dot { margin-left: 32px; font-size: 18px; color: #6b7280; line-height: 1; }
-		.dsh-bn-quote { border-left: 3px solid #3b82f6; padding-left: 12px; margin-left: 24px; }
-		.dsh-bn-quote-inp { font-style: italic; color: #4b5563; }
-		.dsh-bn-code { flex-direction: column; background: #1e293b; color: #f8fafc; border-radius: 8px; overflow: hidden; margin: 6px 0 6px 24px; }
-		.dsh-bn-code-header { background: #0f172a; padding: 4px 12px; font-size: 11px; color: #94a3b8; font-family: monospace; }
-		.dsh-bn-code-textarea {
-			width: 100%; border: none; outline: none; background: transparent; color: #f8fafc;
-			font-family: monospace; font-size: 12.5px; line-height: 1.5; padding: 10px 12px; resize: vertical;
-		}
-		.ft-name-file { cursor: pointer; }
-		.ft-name-file:hover { color: #3b82f6 !important; text-decoration: underline; }
-		.ft-row:hover { background: rgba(59, 130, 246, 0.08); border-radius: 4px; }
-  `
+  // B. TipTap-style Markdown Parser & Rich Editor Component
+  const tiptapEditorCode = `
+		// ── TipTap Markdown Parser & Converter ──────────────────────────────────
+		function markdownToHtml(md) {
+			if (!md) return '<p><br></p>';
+			let html = md
+				.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+				.replace(/^### (.*$)/gim, '<h3>$1</h3>')
+				.replace(/^## (.*$)/gim, '<h2>$1</h2>')
+				.replace(/^# (.*$)/gim, '<h1>$1</h1>')
+				.replace(/^\\> (.*$)/gim, '<blockquote>$1</blockquote>')
+				.replace(/\\*\\*(.*?)\\*\\*/gim, '<b>$1</b>')
+				.replace(/\\*(.*?)\\*/gim, '<i>$1</i>')
+				.replace(/~~(.*?)~~/gim, '<strike>$1</strike>')
+				.replace(/\`\`\`([a-z0-9_-]*)\\n([\\s\\S]*?)\`\`\`/gim, '<pre data-lang="$1"><code>$2</code></pre>')
+				.replace(/\`([^\\n\`]+)\`/gim, '<code>$1</code>')
+				.replace(/^- \\[x\\] (.*$)/gim, '<div class="dsh-task-item"><input type="checkbox" checked disabled /> <span>$1</span></div>')
+				.replace(/^- \\[ \\] (.*$)/gim, '<div class="dsh-task-item"><input type="checkbox" disabled /> <span>$1</span></div>')
+				.replace(/^- (.*$)/gim, '<li>$1</li>');
 
-  if (!content.includes('dsh-file-editor-css')) {
-    content = content.replace(
-      'function formatSize(bytes) {',
-      `if (typeof document !== "undefined" && !document.getElementById("dsh-file-editor-css")) {
-			const s = document.createElement("style");
-			s.id = "dsh-file-editor-css";
-			s.textContent = ${JSON.stringify(editorStyles)};
-			document.head.appendChild(s);
-		}\n\n\t\tfunction formatSize(bytes) {`
-    )
-  }
+			html = html.replace(/(<li>[\\s\\S]*?<\\/li>)/gim, '<ul>$1</ul>');
+			const lines = html.split('\\n');
+			return lines.map(line => {
+				const trimmed = line.trim();
+				if (!trimmed) return '<p><br></p>';
+				if (trimmed.startsWith('<h') || trimmed.startsWith('<ul') || trimmed.startsWith('<blockquote') || trimmed.startsWith('<pre') || trimmed.startsWith('<div')) return line;
+				return '<p>' + line + '</p>';
+			}).join('');
+		}
 
-  // C. Inject BlockNoteMarkdownEditor Component
-  const editorComponent = `
-		function BlockNoteMarkdownEditor({ filePath, initialContent, onClose, onSave }) {
+		function htmlToMarkdown(element) {
+			if (!element) return '';
+			let md = '';
+			element.childNodes.forEach(node => {
+				if (node.nodeType === Node.TEXT_NODE) {
+					md += node.textContent;
+				} else if (node.nodeType === Node.ELEMENT_NODE) {
+					const tag = node.tagName.toLowerCase();
+					if (tag === 'h1') md += '# ' + node.textContent.trim() + '\\n\\n';
+					else if (tag === 'h2') md += '## ' + node.textContent.trim() + '\\n\\n';
+					else if (tag === 'h3') md += '### ' + node.textContent.trim() + '\\n\\n';
+					else if (tag === 'p') {
+						const text = node.textContent.trim();
+						md += (text ? text : '') + '\\n\\n';
+					}
+					else if (tag === 'blockquote') md += '> ' + node.textContent.trim() + '\\n\\n';
+					else if (tag === 'pre') {
+						const lang = node.getAttribute('data-lang') || '';
+						md += '\`\`\`' + lang + '\\n' + node.textContent + '\\n\`\`\`\\n\\n';
+					}
+					else if (tag === 'ul') {
+						node.childNodes.forEach(li => {
+							if (li.nodeType === Node.ELEMENT_NODE && li.tagName.toLowerCase() === 'li') {
+								md += '- ' + li.textContent.trim() + '\\n';
+							}
+						});
+						md += '\\n';
+					}
+					else if (node.classList && node.classList.contains('dsh-task-item')) {
+						const chk = node.querySelector('input[type="checkbox"]');
+						const checked = chk && chk.checked;
+						md += (checked ? '- [x] ' : '- [ ] ') + node.textContent.trim() + '\\n';
+					}
+					else {
+						md += node.textContent;
+					}
+				}
+			});
+			return md.trim();
+		}
+
+		// ── TipTap Markdown & Code Editor Component ──────────────────────────────
+		function TipTapMarkdownEditor({ filePath, initialContent, onClose, onSave }) {
 			const [content, setContent] = react.useState(initialContent);
-			const [isBlockMode, setIsBlockMode] = react.useState(filePath.endsWith('.md'));
+			const [isRichMode, setIsRichMode] = react.useState(filePath.endsWith('.md'));
 			const [isSaving, setIsSaving] = react.useState(false);
 			const [savedToast, setSavedToast] = react.useState(false);
+			const richRef = react.useRef(null);
 
 			const isMarkdown = filePath.endsWith('.md');
 			const fileName = filePath.split('/').pop() || filePath;
 
+			react.useEffect(() => {
+				if (richRef.current && isRichMode) {
+					richRef.current.innerHTML = markdownToHtml(content);
+				}
+			}, [isRichMode]);
+
 			const handleSave = async () => {
+				let textToSave = content;
+				if (isMarkdown && isRichMode && richRef.current) {
+					textToSave = htmlToMarkdown(richRef.current);
+					setContent(textToSave);
+				}
 				setIsSaving(true);
 				try {
 					const res = await fetch('/filetree/save', {
 						method: 'POST',
 						headers: { 'Content-Type': 'application/json' },
-						body: JSON.stringify({ path: filePath, content })
+						body: JSON.stringify({ path: filePath, content: textToSave })
 					});
 					const data = await res.json();
 					if (data.ok) {
 						setSavedToast(true);
 						setTimeout(() => setSavedToast(false), 2000);
-						if (onSave) onSave(content);
+						if (onSave) onSave(textToSave);
 					} else {
 						alert('Save failed: ' + data.message);
 					}
@@ -210,6 +204,16 @@ if (fs.existsSync(clientFile)) {
 				} finally {
 					setIsSaving(false);
 				}
+			};
+
+			const execFormat = (command, value = null) => {
+				document.execCommand(command, false, value);
+				if (richRef.current) richRef.current.focus();
+			};
+
+			const formatBlock = (tag) => {
+				document.execCommand('formatBlock', false, tag);
+				if (richRef.current) richRef.current.focus();
 			};
 
 			react.useEffect(() => {
@@ -225,238 +229,213 @@ if (fs.existsSync(clientFile)) {
 				};
 				window.addEventListener('keydown', onKeyDown);
 				return () => window.removeEventListener('keydown', onKeyDown);
-			}, [content, filePath]);
+			}, [content, filePath, isRichMode]);
 
-			const blocks = react.useMemo(() => {
-				if (!content) return [];
-				const lines = content.split('\\n');
-				const result = [];
-				let inCode = false;
-				let codeBuffer = [];
-				let codeLang = '';
-
-				lines.forEach((line, idx) => {
-					if (line.startsWith('\`\`\`')) {
-						if (inCode) {
-							result.push({ type: 'code', content: codeBuffer.join('\\n'), lang: codeLang, startLine: idx - codeBuffer.length });
-							codeBuffer = [];
-							inCode = false;
-						} else {
-							inCode = true;
-							codeLang = line.slice(3).trim();
-						}
-						return;
-					}
-					if (inCode) {
-						codeBuffer.push(line);
-						return;
-					}
-					if (line.startsWith('# ')) {
-						result.push({ type: 'h1', content: line.slice(2), lineIdx: idx });
-					} else if (line.startsWith('## ')) {
-						result.push({ type: 'h2', content: line.slice(3), lineIdx: idx });
-					} else if (line.startsWith('### ')) {
-						result.push({ type: 'h3', content: line.slice(4), lineIdx: idx });
-					} else if (line.startsWith('- [ ] ') || line.startsWith('- [x] ') || line.startsWith('- [X] ')) {
-						const checked = line.startsWith('- [x] ') || line.startsWith('- [X] ');
-						result.push({ type: 'todo', content: line.slice(6), checked, lineIdx: idx });
-					} else if (line.startsWith('- ') || line.startsWith('* ')) {
-						result.push({ type: 'bullet', content: line.slice(2), lineIdx: idx });
-					} else if (line.startsWith('> ')) {
-						result.push({ type: 'quote', content: line.slice(2), lineIdx: idx });
-					} else if (line.trim() === '') {
-						result.push({ type: 'blank', content: '', lineIdx: idx });
-					} else {
-						result.push({ type: 'paragraph', content: line, lineIdx: idx });
-					}
-				});
-				if (inCode) {
-					result.push({ type: 'code', content: codeBuffer.join('\\n'), lang: codeLang, startLine: lines.length - codeBuffer.length });
-				}
-				return result;
-			}, [content]);
-
-			const updateBlockLine = (lineIdx, newText) => {
-				const lines = content.split('\\n');
-				lines[lineIdx] = newText;
-				setContent(lines.join('\\n'));
-			};
-
-			const toggleTodo = (lineIdx, checked, text) => {
-				const newPrefix = checked ? '- [ ] ' : '- [x] ';
-				updateBlockLine(lineIdx, newPrefix + text);
-			};
-
-			return react.createElement('div', { className: 'dsh-editor-backdrop', onClick: (e) => { if (e.target === e.currentTarget) onClose(); } },
-				react.createElement('div', { className: 'dsh-editor-modal' }, [
-					react.createElement('div', { key: 'head', className: 'dsh-editor-header' }, [
-						react.createElement('div', { key: 'title-box', className: 'dsh-editor-title-box' }, [
-							react.createElement('span', { key: 'badge', className: 'dsh-editor-badge' }, isMarkdown ? 'MARKDOWN' : 'FILE'),
-							react.createElement('span', { key: 'fname', className: 'dsh-editor-filename' }, fileName),
-							react.createElement('span', { key: 'fpath', className: 'dsh-editor-filepath', title: filePath }, filePath)
-						]),
-						react.createElement('div', { key: 'actions', className: 'dsh-editor-actions' }, [
-							isMarkdown ? react.createElement('button', {
-								key: 'mode-toggle',
-								type: 'button',
-								className: 'dsh-editor-btn dsh-editor-mode-btn',
-								onClick: () => setIsBlockMode(!isBlockMode)
-							}, isBlockMode ? '📝 Raw Source' : '🧱 BlockNote Mode') : null,
-							react.createElement('button', {
-								key: 'save-btn',
-								type: 'button',
-								className: 'dsh-editor-btn dsh-editor-save-btn',
-								disabled: isSaving,
-								onClick: handleSave
-							}, isSaving ? 'Saving...' : (savedToast ? '✓ Saved!' : '💾 Save (Ctrl+S)')),
-							react.createElement('button', {
-								key: 'close-btn',
-								type: 'button',
-								className: 'dsh-editor-btn dsh-editor-close-btn',
-								onClick: onClose
-							}, '✕')
-						])
+			return react.createElement('div', { className: 'dsh-editor-panel-view' }, [
+				// Editor Top Tab Bar
+				react.createElement('div', { key: 'topbar', className: 'dsh-editor-topbar' }, [
+					react.createElement('div', { key: 'tab', className: 'dsh-editor-tab-active' }, [
+						react.createElement('span', { key: 'icon', className: 'dsh-tab-icon' }, isMarkdown ? '📄' : '💻'),
+						react.createElement('span', { key: 'name', className: 'dsh-tab-name' }, fileName),
+						react.createElement('button', { key: 'close', className: 'dsh-tab-close', onClick: onClose }, '✕')
 					]),
-					react.createElement('div', { key: 'body', className: 'dsh-editor-body' },
-						isMarkdown && isBlockMode
-							? react.createElement('div', { className: 'dsh-blocknote-container' },
-								blocks.map((b, i) => {
-									if (b.type === 'h1') {
-										return react.createElement('div', { key: i, className: 'dsh-bn-block dsh-bn-h1' }, [
-											react.createElement('span', { key: 'tag', className: 'dsh-bn-tag' }, 'H1'),
-											react.createElement('input', {
-												key: 'inp',
-												className: 'dsh-bn-input dsh-bn-h1-inp',
-												value: b.content,
-												onChange: (e) => updateBlockLine(b.lineIdx, '# ' + e.target.value)
-											})
-										]);
+					react.createElement('div', { key: 'actions', className: 'dsh-editor-top-actions' }, [
+						isMarkdown ? react.createElement('div', { key: 'mode-switch', className: 'dsh-mode-switch' }, [
+							react.createElement('button', {
+								key: 'rich-btn',
+								type: 'button',
+								className: 'dsh-switch-btn ' + (isRichMode ? 'dsh-switch-btn-active' : ''),
+								onClick: () => {
+									if (!isRichMode) {
+										setIsRichMode(true);
 									}
-									if (b.type === 'h2') {
-										return react.createElement('div', { key: i, className: 'dsh-bn-block dsh-bn-h2' }, [
-											react.createElement('span', { key: 'tag', className: 'dsh-bn-tag' }, 'H2'),
-											react.createElement('input', {
-												key: 'inp',
-												className: 'dsh-bn-input dsh-bn-h2-inp',
-												value: b.content,
-												onChange: (e) => updateBlockLine(b.lineIdx, '## ' + e.target.value)
-											})
-										]);
+								}
+							}, '✨ TipTap Rich WYSIWYG'),
+							react.createElement('button', {
+								key: 'raw-btn',
+								type: 'button',
+								className: 'dsh-switch-btn ' + (!isRichMode ? 'dsh-switch-btn-active' : ''),
+								onClick: () => {
+									if (isRichMode && richRef.current) {
+										const md = htmlToMarkdown(richRef.current);
+										setContent(md);
 									}
-									if (b.type === 'h3') {
-										return react.createElement('div', { key: i, className: 'dsh-bn-block dsh-bn-h3' }, [
-											react.createElement('span', { key: 'tag', className: 'dsh-bn-tag' }, 'H3'),
-											react.createElement('input', {
-												key: 'inp',
-												className: 'dsh-bn-input dsh-bn-h3-inp',
-												value: b.content,
-												onChange: (e) => updateBlockLine(b.lineIdx, '### ' + e.target.value)
-											})
-										]);
+									setIsRichMode(false);
+								}
+							}, '💻 Code Source')
+						]) : null,
+						react.createElement('button', {
+							key: 'save-btn',
+							type: 'button',
+							className: 'dsh-save-btn',
+							disabled: isSaving,
+							onClick: handleSave
+						}, isSaving ? 'Saving...' : (savedToast ? '✓ Saved!' : '💾 Save (Ctrl+S)')),
+						react.createElement('button', {
+							key: 'close-btn',
+							type: 'button',
+							className: 'dsh-close-btn',
+							title: 'Close Editor',
+							onClick: onClose
+						}, '✕')
+					])
+				]),
+
+				// TipTap Toolbar (When in Rich WYSIWYG Mode)
+				isMarkdown && isRichMode ? react.createElement('div', { key: 'toolbar', className: 'dsh-tiptap-toolbar' }, [
+					react.createElement('button', { key: 'h1', type: 'button', className: 'dsh-tb-tool', title: 'Heading 1', onClick: () => formatBlock('<h1>') }, 'H1'),
+					react.createElement('button', { key: 'h2', type: 'button', className: 'dsh-tb-tool', title: 'Heading 2', onClick: () => formatBlock('<h2>') }, 'H2'),
+					react.createElement('button', { key: 'h3', type: 'button', className: 'dsh-tb-tool', title: 'Heading 3', onClick: () => formatBlock('<h3>') }, 'H3'),
+					react.createElement('span', { key: 'sep1', className: 'dsh-tb-sep' }),
+					react.createElement('button', { key: 'b', type: 'button', className: 'dsh-tb-tool dsh-bold', title: 'Bold (Ctrl+B)', onClick: () => execFormat('bold') }, 'B'),
+					react.createElement('button', { key: 'i', type: 'button', className: 'dsh-tb-tool dsh-italic', title: 'Italic (Ctrl+I)', onClick: () => execFormat('italic') }, 'I'),
+					react.createElement('button', { key: 's', type: 'button', className: 'dsh-tb-tool dsh-strike', title: 'Strikethrough', onClick: () => execFormat('strikeThrough') }, 'S'),
+					react.createElement('span', { key: 'sep2', className: 'dsh-tb-sep' }),
+					react.createElement('button', { key: 'ul', type: 'button', className: 'dsh-tb-tool', title: 'Bullet List', onClick: () => execFormat('insertUnorderedList') }, '• List'),
+					react.createElement('button', { key: 'ol', type: 'button', className: 'dsh-tb-tool', title: 'Numbered List', onClick: () => execFormat('insertOrderedList') }, '1. List'),
+					react.createElement('button', { key: 'quote', type: 'button', className: 'dsh-tb-tool', title: 'Blockquote', onClick: () => formatBlock('<blockquote>') }, '❝ Quote'),
+					react.createElement('button', { key: 'code', type: 'button', className: 'dsh-tb-tool', title: 'Code Block', onClick: () => formatBlock('<pre>') }, '</> Code'),
+					react.createElement('button', { key: 'hr', type: 'button', className: 'dsh-tb-tool', title: 'Horizontal Line', onClick: () => execFormat('insertHorizontalRule') }, '─ Line')
+				]) : null,
+
+				// Editor Workspace Area
+				react.createElement('div', { key: 'workspace', className: 'dsh-editor-canvas' },
+					isMarkdown && isRichMode
+						? react.createElement('div', {
+							ref: richRef,
+							className: 'dsh-tiptap-content prose',
+							contentEditable: true,
+							spellCheck: false,
+							suppressContentEditableWarning: true
+						})
+						: react.createElement('div', { className: 'dsh-code-canvas' },
+							react.createElement('textarea', {
+								className: 'dsh-code-textarea',
+								value: content,
+								spellCheck: false,
+								onChange: (e) => setContent(e.target.value),
+								onKeyDown: (e) => {
+									if (e.key === 'Tab') {
+										e.preventDefault();
+										const start = e.target.selectionStart;
+										const end = e.target.selectionEnd;
+										const updated = content.substring(0, start) + '  ' + content.substring(end);
+										setContent(updated);
+										setTimeout(() => {
+											e.target.selectionStart = e.target.selectionEnd = start + 2;
+										}, 0);
 									}
-									if (b.type === 'todo') {
-										return react.createElement('div', { key: i, className: 'dsh-bn-block dsh-bn-todo' }, [
-											react.createElement('input', {
-												key: 'chk',
-												type: 'checkbox',
-												checked: b.checked,
-												className: 'dsh-bn-checkbox',
-												onChange: () => toggleTodo(b.lineIdx, b.checked, b.content)
-											}),
-											react.createElement('input', {
-												key: 'inp',
-												className: 'dsh-bn-input ' + (b.checked ? 'dsh-bn-todo-done' : ''),
-												value: b.content,
-												onChange: (e) => updateBlockLine(b.lineIdx, (b.checked ? '- [x] ' : '- [ ] ') + e.target.value)
-											})
-										]);
-									}
-									if (b.type === 'bullet') {
-										return react.createElement('div', { key: i, className: 'dsh-bn-block dsh-bn-bullet' }, [
-											react.createElement('span', { key: 'dot', className: 'dsh-bn-bullet-dot' }, '•'),
-											react.createElement('input', {
-												key: 'inp',
-												className: 'dsh-bn-input',
-												value: b.content,
-												onChange: (e) => updateBlockLine(b.lineIdx, '- ' + e.target.value)
-											})
-										]);
-									}
-									if (b.type === 'quote') {
-										return react.createElement('div', { key: i, className: 'dsh-bn-block dsh-bn-quote' }, [
-											react.createElement('span', { key: 'qbar', className: 'dsh-bn-quote-bar' }),
-											react.createElement('input', {
-												key: 'inp',
-												className: 'dsh-bn-input dsh-bn-quote-inp',
-												value: b.content,
-												onChange: (e) => updateBlockLine(b.lineIdx, '> ' + e.target.value)
-											})
-										]);
-									}
-									if (b.type === 'code') {
-										return react.createElement('div', { key: i, className: 'dsh-bn-block dsh-bn-code' }, [
-											react.createElement('div', { key: 'lang', className: 'dsh-bn-code-header' }, b.lang || 'code'),
-											react.createElement('textarea', {
-												key: 'txt',
-												className: 'dsh-bn-code-textarea',
-												rows: Math.max(2, b.content.split('\\n').length),
-												value: b.content,
-												onChange: (e) => {
-													const lines = content.split('\\n');
-													const newCodeLines = e.target.value.split('\\n');
-													const start = b.startLine;
-													const count = b.content.split('\\n').length;
-													lines.splice(start + 1, count, ...newCodeLines);
-													setContent(lines.join('\\n'));
-												}
-											})
-										]);
-									}
-									return react.createElement('div', { key: i, className: 'dsh-bn-block dsh-bn-p' }, [
-										react.createElement('input', {
-											key: 'inp',
-											className: 'dsh-bn-input',
-											value: b.content,
-											placeholder: 'Empty block (type to add text)...',
-											onChange: (e) => updateBlockLine(b.lineIdx, e.target.value)
-										})
-									]);
-								})
-							)
-							: react.createElement('div', { className: 'dsh-code-editor-container' },
-								react.createElement('textarea', {
-									className: 'dsh-code-editor-textarea',
-									value: content,
-									spellCheck: false,
-									onChange: (e) => setContent(e.target.value),
-									onKeyDown: (e) => {
-										if (e.key === 'Tab') {
-											e.preventDefault();
-											const start = e.target.selectionStart;
-											const end = e.target.selectionEnd;
-											const updated = content.substring(0, start) + '  ' + content.substring(end);
-											setContent(updated);
-											setTimeout(() => {
-												e.target.selectionStart = e.target.selectionEnd = start + 2;
-											}, 0);
-										}
-									}
-								})
-							)
-					)
-				])
-			);
+								}
+							})
+						)
+				)
+			]);
+		}
+
+		// ── VS Code + Codex Style Layout CSS ────────────────────────────────────
+		const vscodeEditorStyles = \`
+		.dsh-editor-panel-view {
+			position: fixed; top: 0; bottom: 0; left: 240px; right: 340px; z-index: 40;
+			background: var(--dsw-alias-bg-base, #ffffff);
+			display: flex; flex-direction: column; overflow: hidden;
+			box-shadow: -2px 0 12px rgba(0,0,0,0.06);
+		}
+		@media (max-width: 1024px) {
+			.dsh-editor-panel-view { left: 60px; right: 0; }
+		}
+		.dsh-editor-topbar {
+			height: 38px; background: var(--dsw-alias-bg-subtle, #f3f4f6);
+			border-bottom: 1px solid var(--dsw-alias-border-l2, #e5e7eb);
+			display: flex; align-items: center; justify-content: space-between;
+			padding: 0 12px; flex-shrink: 0;
+		}
+		.dsh-editor-tab-active {
+			background: var(--dsw-alias-bg-base, #ffffff);
+			height: 38px; padding: 0 14px; display: flex; align-items: center; gap: 8px;
+			border-right: 1px solid var(--dsw-alias-border-l2, #e5e7eb);
+			border-top: 2px solid #3b82f6; font-size: 13px; font-weight: 600;
+			color: var(--dsw-alias-label-primary, #111827);
+		}
+		.dsh-tab-close {
+			border: none; background: transparent; font-size: 11px; cursor: pointer;
+			color: var(--dsw-alias-label-tertiary, #9ca3af); border-radius: 4px; padding: 2px 4px;
+		}
+		.dsh-tab-close:hover { background: rgba(0,0,0,0.08); color: #ef4444; }
+		.dsh-editor-top-actions { display: flex; align-items: center; gap: 10px; }
+		.dsh-mode-switch { display: flex; background: var(--dsw-alias-border-l1, #e5e7eb); border-radius: 6px; padding: 2px; }
+		.dsh-switch-btn {
+			border: none; background: transparent; padding: 3px 8px; font-size: 11.5px;
+			font-weight: 600; border-radius: 4px; cursor: pointer; color: var(--dsw-alias-label-secondary, #4b5563);
+		}
+		.dsh-switch-btn-active { background: #fff; color: #2563eb; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+		.dsh-save-btn {
+			background: #10b981; color: #fff; border: none; padding: 4px 10px; border-radius: 6px;
+			font-size: 12px; font-weight: 600; cursor: pointer; transition: background 0.15s;
+		}
+		.dsh-save-btn:hover { background: #059669; }
+		.dsh-close-btn {
+			background: transparent; border: none; font-size: 14px; cursor: pointer;
+			color: var(--dsw-alias-label-secondary, #6b7280); padding: 4px 6px; border-radius: 4px;
+		}
+		.dsh-close-btn:hover { background: rgba(0,0,0,0.06); }
+		.dsh-tiptap-toolbar {
+			background: var(--dsw-alias-bg-base, #ffffff);
+			border-bottom: 1px solid var(--dsw-alias-border-l1, #e5e7eb);
+			padding: 6px 12px; display: flex; align-items: center; gap: 4px; flex-wrap: wrap; flex-shrink: 0;
+		}
+		.dsh-tb-tool {
+			border: 1px solid transparent; background: transparent; padding: 3px 7px;
+			border-radius: 4px; font-size: 12px; font-weight: 600; cursor: pointer;
+			color: var(--dsw-alias-label-secondary, #374151); min-width: 24px; text-align: center;
+		}
+		.dsh-tb-tool:hover { background: var(--dsw-alias-interactive-bg-hover, #f3f4f6); border-color: var(--dsw-alias-border-l2, #d1d5db); }
+		.dsh-tb-sep { width: 1px; height: 16px; background: var(--dsw-alias-border-l2, #e5e7eb); margin: 0 4px; }
+		.dsh-bold { font-weight: 800; }
+		.dsh-italic { font-style: italic; }
+		.dsh-strike { text-decoration: line-through; }
+		.dsh-editor-canvas { flex: 1; overflow-y: auto; display: flex; flex-direction: column; }
+		.dsh-tiptap-content {
+			flex: 1; padding: 24px 36px; outline: none; font-size: 15px; line-height: 1.7;
+			color: var(--dsw-alias-label-primary, #111827); max-width: 900px; margin: 0 auto; width: 100%;
+			font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+		}
+		.dsh-tiptap-content h1 { font-size: 26px; font-weight: 800; margin: 16px 0 10px; color: #111827; border-bottom: 1px solid #f3f4f6; padding-bottom: 6px; }
+		.dsh-tiptap-content h2 { font-size: 20px; font-weight: 700; margin: 14px 0 8px; color: #1f2937; }
+		.dsh-tiptap-content h3 { font-size: 16px; font-weight: 600; margin: 12px 0 6px; color: #374151; }
+		.dsh-tiptap-content p { margin: 6px 0; }
+		.dsh-tiptap-content blockquote { border-left: 4px solid #3b82f6; padding-left: 12px; color: #4b5563; margin: 8px 0; font-style: italic; }
+		.dsh-tiptap-content pre { background: #1e293b; color: #f8fafc; padding: 12px; border-radius: 8px; font-family: monospace; font-size: 13px; margin: 10px 0; }
+		.dsh-tiptap-content ul, .dsh-tiptap-content ol { padding-left: 24px; margin: 6px 0; }
+		.dsh-tiptap-content li { margin: 3px 0; }
+		.dsh-task-item { display: flex; align-items: center; gap: 8px; margin: 4px 0; }
+		.dsh-code-canvas { flex: 1; display: flex; }
+		.dsh-code-textarea {
+			width: 100%; height: 100%; min-height: 100%; border: none; outline: none; padding: 16px 20px;
+			font-family: 'Fira Code', 'Cascadia Code', Consolas, Monaco, monospace;
+			font-size: 13.5px; line-height: 1.6; background: var(--dsw-alias-bg-base, #ffffff);
+			color: var(--dsw-alias-label-primary, #111827); resize: none;
+		}
+		.ft-name-file { cursor: pointer; }
+		.ft-name-file:hover { color: #3b82f6 !important; text-decoration: underline; }
+		.ft-row:hover { background: rgba(59, 130, 246, 0.08); border-radius: 4px; }
+		\`;
+
+		if (typeof document !== "undefined" && !document.getElementById("dsh-vscode-editor-css")) {
+			const s = document.createElement("style");
+			s.id = "dsh-vscode-editor-css";
+			s.textContent = vscodeEditorStyles;
+			document.head.appendChild(s);
 		}
   `
 
-  if (!content.includes('function BlockNoteMarkdownEditor')) {
+  if (!content.includes('dsh-vscode-editor-css')) {
     content = content.replace(
       '// ── the right-column file tree panel ─────────────────────────────────────',
-      `${editorComponent}\n\n\t\t// ── the right-column file tree panel ─────────────────────────────────────`
+      `${tiptapEditorCode}\n\n\t\t// ── the right-column file tree panel ─────────────────────────────────────`
     )
   }
 
-  // D. Enhance FileTreePanel with openFile handler & editor state
+  // C. Update FileTreePanel to mount editor in center column (VS Code style!)
   if (!content.includes('const [editingFile, setEditingFile]')) {
     content = content.replace(
       'const [showHidden, setShowHidden] = react.useState(false);',
@@ -480,23 +459,21 @@ if (fs.existsSync(clientFile)) {
 			};`
     )
 
-    // Add click handler to file name span
     content = content.replace(
       'react.createElement("span", { key: "name", className: "ft-name ft-name-" + entry.type, title: entry.path }, entry.name),',
       `react.createElement("span", {
 							key: "name",
 							className: "ft-name ft-name-" + entry.type,
-							title: isDir ? entry.path : (entry.path + " (Click to edit)"),
+							title: isDir ? entry.path : (entry.path + " (Click to open editor)"),
 							onClick: () => { if (!isDir) openFile(entry.path); }
 						}, entry.name),`
     )
 
-    // Wrap FileTreePanel return in Fragment to include editor modal
     content = content.replace(
       'return react.createElement("div", { className: "ft-panel" }, [',
       `return react.createElement(react.Fragment, null, [
-				editingFile ? react.createElement(BlockNoteMarkdownEditor, {
-					key: "editor-modal",
+				editingFile ? react.createElement(TipTapMarkdownEditor, {
+					key: "editor-canvas",
 					filePath: editingFile,
 					initialContent: fileContent,
 					onClose: () => setEditingFile(null),
@@ -506,10 +483,10 @@ if (fs.existsSync(clientFile)) {
     )
 
     content = content.replace(
-      'react.createElement("div", { key: "body", className: "ft-body" },\n\t\t\t\t\troot === null\n\t\t\t\t\t\t? react.createElement("div", { className: "ft-hint" }, "Open a session to display its workspace file tree")\n\t\t\t\t\t\t: react.createElement("div", { className: "ft-tree" }, renderLevel(root, 0))\n\t\t\t\t)\n\t\t\t]);\n\t\t}',
+      'react.createElement("div", { key: "body", className: "ft-body" },\n\t\t\t\t\troot === null\n\t\t\t\t\t\t? react.createElement("div", { className: "ft-hint" }, "Open a session to display workspace files")\n\t\t\t\t\t\t: react.createElement("div", { className: "ft-tree" }, renderLevel(root, 0))\n\t\t\t\t)\n\t\t\t]);\n\t\t}',
       `react.createElement("div", { key: "body", className: "ft-body" },
 					root === null
-						? react.createElement("div", { className: "ft-hint" }, "Open a session to display its workspace file tree")
+						? react.createElement("div", { className: "ft-hint" }, "Open a session to display workspace files")
 						: react.createElement("div", { className: "ft-tree" }, renderLevel(root, 0))
 				)
 			])
@@ -519,5 +496,5 @@ if (fs.existsSync(clientFile)) {
   }
 
   fs.writeFileSync(clientFile, content, 'utf8')
-  console.log('[✓] Successfully applied complete FileTreePanel & BlockNote Editor patch!')
+  console.log('[✓] Successfully applied TipTap Markdown & VS Code Editor layout patch!')
 }

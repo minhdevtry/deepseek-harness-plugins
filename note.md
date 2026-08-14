@@ -16,7 +16,7 @@ Anthropic Claude API / OpenAI API / Groq / Mistral / Gemini
 Giao thức MCP & LSP:
 @deepseek-ai/dsh-mcp-client: Hỗ trợ Model Context Protocol (MCP) kết nối các MCP server.
 @deepseek-ai/dsh-tool-lsp: Hỗ trợ Language Server Protocol (LSP) giúp Agent đọc hiểu cú pháp mã nguồn chuẩn xác như trong IDE.
-
+á đù má `thật nè`
 
 ✅ tool-bash (Thực thi câu lệnh Bash Terminal)
 ✅ tool-fs (Đọc/ghi hệ thống tệp)
