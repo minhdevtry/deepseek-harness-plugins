@@ -66275,12 +66275,24 @@ function Viewer({ file, rev, onStartEdit, onSaveDirect, onUpdateDirect, isDirect
 					setSidebarTab("search");
 					if (sidebarCollapsed) actions.toggleSidebar();
 					setTimeout(() => document.getElementById("global-search-input")?.focus(), 100);
+				} else if (cmdId === "save_file") {
+					document.dispatchEvent(new KeyboardEvent('keydown', { key: 's', ctrlKey: true, bubbles: true }));
+				} else if (cmdId === "toggle_diff") {
+					const diffBtn = document.querySelector('.vk_editBtn[title*="Diff"], .vk_status_item[title*="Diff"]');
+					diffBtn?.click();
+				} else if (cmdId === "undo") {
+					const undoBtn = document.querySelector('.vk_editBtn[title*="Undo"]');
+					undoBtn?.click();
+				} else if (cmdId === "redo") {
+					const redoBtn = document.querySelector('.vk_editBtn[title*="Redo"]');
+					redoBtn?.click();
 				} else if (cmdId === "toggle_chat") {
 					actions.setRight(panels.right === 0 ? 440 : 0);
 				} else if (cmdId === "toggle_sidebar") {
 					actions.toggleSidebar();
-				} else if (cmdId === "refresh_explorer") {
+				} else if (cmdId === "refresh_explorer" || cmdId === "new_file" || cmdId === "new_folder") {
 					setSidebarTab("files");
+					if (sidebarCollapsed) actions.toggleSidebar();
 				} else if (cmdId.startsWith("ai_")) {
 					const type = cmdId.replace(/^ai_/, "");
 					const activeFile = tabsState && tabsState.active ? tabsState.active.split(/[\\/]/).pop() : "current file";

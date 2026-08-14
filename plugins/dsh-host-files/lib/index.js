@@ -214,6 +214,12 @@ function recycleBinDelete(target, isDir) {
 				if (error) rejectPromise(new Error(`recycle-bin delete failed: ${error.message}`));
 				else resolvePromise();
 			});
+		} else if (process.platform === "darwin") {
+			const escaped = target.replace(/["\\]/g, "\\$&");
+			execFile("osascript", ["-e", `tell application "Finder" to delete POSIX file "${escaped}"`], (error) => {
+				if (!error) return resolvePromise();
+				rm(target, { recursive: true, force: true }).then(resolvePromise, rejectPromise);
+			});
 		} else {
 			execFile("gio", ["trash", target], (error) => {
 				if (!error) return resolvePromise();
