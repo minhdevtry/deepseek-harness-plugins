@@ -28,6 +28,9 @@
 		"tiptap-markdown": "^0.9.0"
 	},
 	"dependencies": {
+		"@tiptap/extension-color": "^3.30.1",
+		"@tiptap/extension-link": "^3.30.1",
+		"@tiptap/extension-text-style": "^3.30.1",
 		"@tiptap/extension-typography": "^3.30.1"
 	}
 }

@@ -13,6 +13,9 @@ import Underline from '@tiptap/extension-underline';
 import Highlight from '@tiptap/extension-highlight';
 import Typography from '@tiptap/extension-typography';
 import TextAlign from '@tiptap/extension-text-align';
+import Link from '@tiptap/extension-link';
+import Color from '@tiptap/extension-color';
+import { TextStyle } from '@tiptap/extension-text-style';
 import { BubbleMenu } from '@tiptap/extension-bubble-menu';
 import { FloatingMenu } from '@tiptap/extension-floating-menu';
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight';
@@ -38,6 +41,9 @@ if (typeof window !== 'undefined') {
     Highlight,
     Typography,
     TextAlign,
+    Link,
+    Color,
+    TextStyle,
     BubbleMenu,
     FloatingMenu,
     CodeBlockLowlight,
@@ -62,6 +68,9 @@ export {
   Highlight,
   Typography,
   TextAlign,
+  Link,
+  Color,
+  TextStyle,
   BubbleMenu,
   FloatingMenu,
   CodeBlockLowlight,

@@ -24380,6 +24380,9 @@ ${prefix}
     }
   });
 
+  // src/index.ts
+  var index_default$b = Link$2;
+
   var __defProp$1 = Object.defineProperty;
   var __export = (target, all) => {
     for (var name in all)
@@ -26233,7 +26236,7 @@ ${prefix}
   });
 
   // src/index.ts
-  var index_default$9 = Underline;
+  var index_default$a = Underline;
 
   /**
   Create a plugin that, when added to a ProseMirror instance,
@@ -28003,13 +28006,13 @@ ${prefix}
   });
 
   // src/index.ts
-  var index_default$8 = StarterKit;
+  var index_default$9 = StarterKit;
 
   // src/index.ts
-  var index_default$7 = TaskList$2;
+  var index_default$8 = TaskList$2;
 
   // src/index.ts
-  var index_default$6 = TaskItem$2;
+  var index_default$7 = TaskItem$2;
 
   //#region src/tablemap.ts
   let readFromCache;
@@ -31018,7 +31021,7 @@ ${prefix}
   });
 
   // src/index.ts
-  var index_default$5 = Image$2;
+  var index_default$6 = Image$2;
 
   // src/youtube.ts
 
@@ -31352,7 +31355,7 @@ ${prefix}
   });
 
   // src/index.ts
-  var index_default$4 = Youtube;
+  var index_default$5 = Youtube;
 
   // src/highlight.ts
   var inputRegex = /(?:^|\s)(==(?!\s+==)((?:[^=]+))==(?!\s+==))$/;
@@ -31461,7 +31464,7 @@ ${prefix}
   });
 
   // src/index.ts
-  var index_default$3 = Highlight;
+  var index_default$4 = Highlight;
 
   // src/typography.ts
   var emDash = (override) => textInputRule({
@@ -31673,7 +31676,7 @@ ${prefix}
   });
 
   // src/index.ts
-  var index_default$2 = Typography;
+  var index_default$3 = Typography;
 
   // src/text-align.ts
   var TextAlign = Extension.create({
@@ -31740,7 +31743,339 @@ ${prefix}
   });
 
   // src/index.ts
-  var index_default$1 = TextAlign;
+  var index_default$2 = TextAlign;
+
+  // src/text-style/index.ts
+  var MAX_FIND_CHILD_SPAN_DEPTH = 20;
+  var findChildSpans = (element, depth = 0) => {
+    const childSpans = [];
+    if (!element.children.length || depth > MAX_FIND_CHILD_SPAN_DEPTH) {
+      return childSpans;
+    }
+    Array.from(element.children).forEach((child) => {
+      if (child.tagName === "SPAN") {
+        childSpans.push(child);
+      } else if (child.children.length) {
+        childSpans.push(...findChildSpans(child, depth + 1));
+      }
+    });
+    return childSpans;
+  };
+  var mergeNestedSpanStyles = (element) => {
+    if (!element.children.length) {
+      return;
+    }
+    const childSpans = findChildSpans(element);
+    if (!childSpans) {
+      return;
+    }
+    childSpans.forEach((childSpan) => {
+      var _a, _b;
+      const childStyle = childSpan.getAttribute("style");
+      const closestParentSpanStyleOfChild = (_b = (_a = childSpan.parentElement) == null ? void 0 : _a.closest("span")) == null ? void 0 : _b.getAttribute("style");
+      childSpan.setAttribute("style", `${closestParentSpanStyleOfChild};${childStyle}`);
+    });
+  };
+  var TextStyle = Mark.create({
+    name: "textStyle",
+    priority: 101,
+    addOptions() {
+      return {
+        HTMLAttributes: {},
+        mergeNestedSpanStyles: true
+      };
+    },
+    parseHTML() {
+      return [
+        {
+          tag: "span",
+          consuming: false,
+          getAttrs: (element) => {
+            const hasStyles = element.hasAttribute("style");
+            if (!hasStyles) {
+              return false;
+            }
+            if (this.options.mergeNestedSpanStyles) {
+              mergeNestedSpanStyles(element);
+            }
+            return {};
+          }
+        }
+      ];
+    },
+    renderHTML({ HTMLAttributes }) {
+      return ["span", mergeAttributes(this.options.HTMLAttributes, HTMLAttributes), 0];
+    },
+    addCommands() {
+      return {
+        toggleTextStyle: (attributes) => ({ commands }) => {
+          return commands.toggleMark(this.name, attributes);
+        },
+        removeEmptyTextStyle: () => ({ tr }) => {
+          const { selection } = tr;
+          tr.doc.nodesBetween(selection.from, selection.to, (node, pos) => {
+            if (node.isTextblock) {
+              return true;
+            }
+            if (!node.marks.filter((mark) => mark.type === this.type).some((mark) => Object.values(mark.attrs).some((value) => !!value))) {
+              tr.removeMark(pos, pos + node.nodeSize, this.type);
+            }
+          });
+          return true;
+        }
+      };
+    }
+  });
+  var BackgroundColor = Extension.create({
+    name: "backgroundColor",
+    addOptions() {
+      return {
+        types: ["textStyle"]
+      };
+    },
+    addGlobalAttributes() {
+      return [
+        {
+          types: this.options.types,
+          attributes: {
+            backgroundColor: {
+              default: null,
+              parseHTML: (element) => {
+                var _a;
+                const value = (_a = getStyleProperty(element, "background-color")) != null ? _a : element.style.backgroundColor;
+                return value == null ? void 0 : value.replace(/['"]+/g, "");
+              },
+              renderHTML: (attributes) => {
+                if (!attributes.backgroundColor) {
+                  return {};
+                }
+                return {
+                  style: `background-color: ${attributes.backgroundColor}`
+                };
+              }
+            }
+          }
+        }
+      ];
+    },
+    addCommands() {
+      return {
+        setBackgroundColor: (backgroundColor) => ({ chain }) => {
+          return chain().setMark("textStyle", { backgroundColor }).run();
+        },
+        unsetBackgroundColor: () => ({ chain }) => {
+          return chain().setMark("textStyle", { backgroundColor: null }).removeEmptyTextStyle().run();
+        }
+      };
+    }
+  });
+  var Color = Extension.create({
+    name: "color",
+    addOptions() {
+      return {
+        types: ["textStyle"]
+      };
+    },
+    addGlobalAttributes() {
+      return [
+        {
+          types: this.options.types,
+          attributes: {
+            color: {
+              default: null,
+              parseHTML: (element) => {
+                var _a;
+                const value = (_a = getStyleProperty(element, "color")) != null ? _a : element.style.color;
+                return value == null ? void 0 : value.replace(/['"]+/g, "");
+              },
+              renderHTML: (attributes) => {
+                if (!attributes.color) {
+                  return {};
+                }
+                return {
+                  style: `color: ${attributes.color}`
+                };
+              }
+            }
+          }
+        }
+      ];
+    },
+    addCommands() {
+      return {
+        setColor: (color) => ({ chain }) => {
+          return chain().setMark("textStyle", { color }).run();
+        },
+        unsetColor: () => ({ chain }) => {
+          return chain().setMark("textStyle", { color: null }).removeEmptyTextStyle().run();
+        }
+      };
+    }
+  });
+  var FontFamily = Extension.create({
+    name: "fontFamily",
+    addOptions() {
+      return {
+        types: ["textStyle"]
+      };
+    },
+    addGlobalAttributes() {
+      return [
+        {
+          types: this.options.types,
+          attributes: {
+            fontFamily: {
+              default: null,
+              // Prefer the raw inline `style` attribute so unquoted or
+              // single-quoted multi-word names are preserved instead of being
+              // canonicalized by `element.style.fontFamily`, which forces double
+              // quotes that then get HTML-encoded to `&quot;` on serialization.
+              parseHTML: (element) => {
+                var _a;
+                return (_a = getStyleProperty(element, "font-family")) != null ? _a : element.style.fontFamily;
+              },
+              renderHTML: (attributes) => {
+                if (!attributes.fontFamily) {
+                  return {};
+                }
+                return {
+                  style: `font-family: ${attributes.fontFamily}`
+                };
+              }
+            }
+          }
+        }
+      ];
+    },
+    addCommands() {
+      return {
+        setFontFamily: (fontFamily) => ({ chain }) => {
+          return chain().setMark("textStyle", { fontFamily }).run();
+        },
+        unsetFontFamily: () => ({ chain }) => {
+          return chain().setMark("textStyle", { fontFamily: null }).removeEmptyTextStyle().run();
+        }
+      };
+    }
+  });
+  var FontSize = Extension.create({
+    name: "fontSize",
+    addOptions() {
+      return {
+        types: ["textStyle"]
+      };
+    },
+    addGlobalAttributes() {
+      return [
+        {
+          types: this.options.types,
+          attributes: {
+            fontSize: {
+              default: null,
+              // Prefer the raw inline `style` attribute so the original format
+              // is preserved instead of the canonicalized value returned by
+              // `element.style.fontSize`.
+              parseHTML: (element) => {
+                var _a;
+                return (_a = getStyleProperty(element, "font-size")) != null ? _a : element.style.fontSize;
+              },
+              renderHTML: (attributes) => {
+                if (!attributes.fontSize) {
+                  return {};
+                }
+                return {
+                  style: `font-size: ${attributes.fontSize}`
+                };
+              }
+            }
+          }
+        }
+      ];
+    },
+    addCommands() {
+      return {
+        setFontSize: (fontSize) => ({ chain }) => {
+          return chain().setMark("textStyle", { fontSize }).run();
+        },
+        unsetFontSize: () => ({ chain }) => {
+          return chain().setMark("textStyle", { fontSize: null }).removeEmptyTextStyle().run();
+        }
+      };
+    }
+  });
+  var LineHeight = Extension.create({
+    name: "lineHeight",
+    addOptions() {
+      return {
+        types: ["textStyle"]
+      };
+    },
+    addGlobalAttributes() {
+      return [
+        {
+          types: this.options.types,
+          attributes: {
+            lineHeight: {
+              default: null,
+              // Prefer the raw inline `style` attribute so the original format
+              // is preserved instead of the canonicalized value returned by
+              // `element.style.lineHeight`.
+              parseHTML: (element) => {
+                var _a;
+                return (_a = getStyleProperty(element, "line-height")) != null ? _a : element.style.lineHeight;
+              },
+              renderHTML: (attributes) => {
+                if (!attributes.lineHeight) {
+                  return {};
+                }
+                return {
+                  style: `line-height: ${attributes.lineHeight}`
+                };
+              }
+            }
+          }
+        }
+      ];
+    },
+    addCommands() {
+      return {
+        setLineHeight: (lineHeight) => ({ chain }) => {
+          return chain().setMark("textStyle", { lineHeight }).run();
+        },
+        unsetLineHeight: () => ({ chain }) => {
+          return chain().setMark("textStyle", { lineHeight: null }).removeEmptyTextStyle().run();
+        }
+      };
+    }
+  });
+  Extension.create({
+    name: "textStyleKit",
+    addExtensions() {
+      const extensions = [];
+      if (this.options.backgroundColor !== false) {
+        extensions.push(BackgroundColor.configure(this.options.backgroundColor));
+      }
+      if (this.options.color !== false) {
+        extensions.push(Color.configure(this.options.color));
+      }
+      if (this.options.fontFamily !== false) {
+        extensions.push(FontFamily.configure(this.options.fontFamily));
+      }
+      if (this.options.fontSize !== false) {
+        extensions.push(FontSize.configure(this.options.fontSize));
+      }
+      if (this.options.lineHeight !== false) {
+        extensions.push(LineHeight.configure(this.options.lineHeight));
+      }
+      if (this.options.textStyle !== false) {
+        extensions.push(TextStyle.configure(this.options.textStyle));
+      }
+      return extensions;
+    }
+  });
+
+  // src/index.ts
+  var index_default$1 = Color;
 
   /**
    * Custom positioning reference element.
@@ -62420,19 +62755,22 @@ ${element.innerHTML}
     window.TipTapBundle = {
       Editor,
       Extension,
-      StarterKit: index_default$8,
-      TaskList: index_default$7,
-      TaskItem: index_default$6,
+      StarterKit: index_default$9,
+      TaskList: index_default$8,
+      TaskItem: index_default$7,
       Table: Table$2,
       TableRow,
       TableCell,
       TableHeader,
-      Image: index_default$5,
-      Youtube: index_default$4,
-      Underline: index_default$9,
-      Highlight: index_default$3,
-      Typography: index_default$2,
-      TextAlign: index_default$1,
+      Image: index_default$6,
+      Youtube: index_default$5,
+      Underline: index_default$a,
+      Highlight: index_default$4,
+      Typography: index_default$3,
+      TextAlign: index_default$2,
+      Link: index_default$b,
+      Color: index_default$1,
+      TextStyle,
       BubbleMenu,
       FloatingMenu,
       CodeBlockLowlight: index_default,
@@ -62443,23 +62781,26 @@ ${element.innerHTML}
 
   exports.BubbleMenu = BubbleMenu;
   exports.CodeBlockLowlight = index_default;
+  exports.Color = index_default$1;
   exports.Editor = Editor;
   exports.Extension = Extension;
   exports.FloatingMenu = FloatingMenu;
-  exports.Highlight = index_default$3;
-  exports.Image = index_default$5;
+  exports.Highlight = index_default$4;
+  exports.Image = index_default$6;
+  exports.Link = index_default$b;
   exports.Markdown = Markdown;
-  exports.StarterKit = index_default$8;
+  exports.StarterKit = index_default$9;
   exports.Table = Table$2;
   exports.TableCell = TableCell;
   exports.TableHeader = TableHeader;
   exports.TableRow = TableRow;
-  exports.TaskItem = index_default$6;
-  exports.TaskList = index_default$7;
-  exports.TextAlign = index_default$1;
-  exports.Typography = index_default$2;
-  exports.Underline = index_default$9;
-  exports.Youtube = index_default$4;
+  exports.TaskItem = index_default$7;
+  exports.TaskList = index_default$8;
+  exports.TextAlign = index_default$2;
+  exports.TextStyle = TextStyle;
+  exports.Typography = index_default$3;
+  exports.Underline = index_default$a;
+  exports.Youtube = index_default$5;
   exports.lowlight = lowlight;
 
   return exports;

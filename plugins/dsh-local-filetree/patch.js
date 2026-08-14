@@ -490,7 +490,7 @@ if (fs.existsSync(clientFile)) {
 				if (window.TipTapBundle) {
 					const {
 						Editor, StarterKit, TaskList, TaskItem, Table, TableRow, TableCell, TableHeader,
-						Image, Youtube, Underline, Highlight, Typography, TextAlign, CodeBlockLowlight, lowlight, Markdown
+						Image, Youtube, Underline, Highlight, Typography, TextAlign, Link, Color, TextStyle, CodeBlockLowlight, lowlight, Markdown
 					} = window.TipTapBundle;
 
 					const editor = new Editor({
@@ -512,6 +512,9 @@ if (fs.existsSync(clientFile)) {
 							Highlight,
 							Typography,
 							TextAlign.configure({ types: ['heading', 'paragraph'] }),
+							Link.configure({ openOnClick: false }),
+							Color,
+							TextStyle,
 							CodeBlockLowlight.configure({ lowlight }),
 							Markdown.configure({
 								html: true,
