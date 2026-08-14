@@ -1,0 +1,8 @@
+{
+  "name": "@anoslide/dsh-host-files",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "lib/index.js",
+  "description": "VS Code 布局魔改：为浏览器端文件树/查看器提供列目录与读文件 HTTP 接口"
+}

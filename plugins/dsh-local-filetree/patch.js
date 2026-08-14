@@ -12,7 +12,7 @@ const clientFile = path.join(baseDir, 'client.js')
 const tiptapBundleFile = path.join(__dirname, 'tiptap.bundle.js')
 
 // ==========================================
-// 1. CLEAN SERVER PATCH (Read, Save, Create, Delete APIs)
+// 1. SERVER PATCH (Read, Save, Create, Delete APIs)
 // ==========================================
 if (fs.existsSync(serverFile)) {
   let content = fs.readFileSync(serverFile, 'utf8')
@@ -117,11 +117,18 @@ if (fs.existsSync(tiptapBundleFile)) {
 }
 
 // ==========================================
-// 2. PRISTINE, PROFESSIONAL CLIENT SUITE
+// 2. PRISTINE, PROFESSIONAL CLIENT SUITE WITH NATIVE SVG ICONS & VSCODE-GRADE TABBED LAYOUT
 // ==========================================
 let tiptapBundleCode = ''
 if (fs.existsSync(tiptapBundleFile)) {
   tiptapBundleCode = fs.readFileSync(tiptapBundleFile, 'utf8')
+}
+
+// Read official SVG sprite and icon mappings from file-icons-block.js
+const iconsBlockFile = path.join(__dirname, 'file-icons-block.js')
+let originalSvgCode = ''
+if (fs.existsSync(iconsBlockFile)) {
+  originalSvgCode = fs.readFileSync(iconsBlockFile, 'utf8')
 }
 
 const completeClientModule = `
@@ -136,41 +143,68 @@ window.__ModuleLoader__.load({
 		// ── Ultimate TipTap Suite Bundle ──
 		${tiptapBundleCode}
 
+		// ── Official VS Code / Material SVG Icon Sprites & Mappings ──
+		${originalSvgCode}
+
+		function FileTypeIcon({ symbolId }) {
+			return react.createElement("svg", {
+				className: "ft-icon",
+				viewBox: "0 0 24 24",
+				"aria-hidden": true,
+				style: { width: "16px", height: "16px", flexShrink: 0 }
+			}, react.createElement("use", { href: "#" + symbolId }));
+		}
+
+		if (typeof document !== "undefined" && !document.getElementById("ft-icons-sprite")) {
+			const container = document.createElement("div");
+			container.id = "ft-icons-sprite";
+			container.innerHTML = FILE_ICON_SPRITE;
+			document.body.appendChild(container);
+		}
+
 		// ── Premium Stylesheet (Modern Linear / Notion / VSCode aesthetics) ──
 		const styles = \`
-			/* Root Panel */
-			.ft-panel {
-				box-sizing: border-box; height: 100%; display: flex; flex-direction: column; min-width: 0;
-				color: var(--dsw-alias-label-primary, #111827); background: var(--dsw-alias-bg-base, #ffffff);
-				font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+			/* Left Sidebar Explorer Panel */
+			.ft-sidebar-view {
+				display: flex; flex-direction: column; height: 100%; min-height: 0;
+				color: var(--dsw-alias-label-primary, #111827); font-size: 13px;
 			}
-			.ft-header {
-				flex: none; border-bottom: 1px solid var(--dsw-alias-border-l1, #e5e7eb);
-				padding: 10px 14px; display: flex; flex-direction: column; gap: 8px;
-				background: var(--dsw-alias-bg-subtle, #f9fafb);
+			.ft-sidebar-header {
+				padding: 8px 12px; border-bottom: 1px solid var(--dsw-alias-border-l1, #e5e7eb);
+				display: flex; flex-direction: column; gap: 6px; background: var(--dsw-alias-bg-subtle, #f9fafb);
 			}
 			.ft-header-top { display: flex; align-items: center; justify-content: space-between; }
-			.ft-title { font-size: 13.5px; font-weight: 700; color: var(--dsw-alias-label-primary, #111827); display: flex; align-items: center; gap: 6px; }
-			.ft-header-actions { display: flex; align-items: center; gap: 4px; }
+			.ft-title { font-size: 12px; font-weight: 700; color: var(--dsw-alias-label-secondary, #6b7280); text-transform: uppercase; letter-spacing: 0.5px; }
+			.ft-header-actions { display: flex; align-items: center; gap: 2px; }
 			.ft-tool-btn {
-				border: 1px solid var(--dsw-alias-border-l1, #e5e7eb); background: #ffffff;
-				padding: 4px 8px; border-radius: 6px; font-size: 11.5px; font-weight: 600;
-				cursor: pointer; color: var(--dsw-alias-label-secondary, #4b5563);
-				display: flex; align-items: center; gap: 4px; transition: all 0.15s;
+				border: none; background: transparent; padding: 4px 6px; border-radius: 4px;
+				font-size: 12px; cursor: pointer; color: var(--dsw-alias-label-secondary, #6b7280);
+				display: flex; align-items: center; justify-content: center; transition: all 0.1s;
 			}
-			.ft-tool-btn:hover { background: #f3f4f6; color: #111827; border-color: #d1d5db; }
+			.ft-tool-btn:hover { background: rgba(0,0,0,0.06); color: #111827; }
 			.ft-search-box {
-				width: 100%; border: 1px solid var(--dsw-alias-border-l1, #e5e7eb); border-radius: 6px;
-				padding: 5px 10px; font-size: 12px; outline: none; background: #ffffff;
+				width: 100%; border: 1px solid var(--dsw-alias-border-l1, #e5e7eb); border-radius: 5px;
+				padding: 4px 8px; font-size: 12px; outline: none; background: #ffffff;
 				color: var(--dsw-alias-label-primary, #111827); box-sizing: border-box;
 			}
 			.ft-search-box:focus { border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15); }
-			.ft-root { color: var(--dsw-alias-label-tertiary, #9ca3af); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-			/* Tree view */
-			.ft-body { flex: 1 1 auto; overflow-y: auto; padding: 6px 0; }
+			/* Left Sidebar Mode Switcher (Workspaces <-> Files) */
+			.ft-sidebar-switcher {
+				display: flex; background: var(--dsw-alias-border-l1, #e5e7eb); border-radius: 6px;
+				padding: 2px; margin: 4px 12px 6px;
+			}
+			.ft-switcher-btn {
+				flex: 1; border: none; background: transparent; padding: 4px 0; font-size: 11.5px;
+				font-weight: 600; border-radius: 4px; cursor: pointer; color: var(--dsw-alias-label-secondary, #6b7280);
+				text-align: center; transition: all 0.1s;
+			}
+			.ft-switcher-btn-active { background: #ffffff; color: #2563eb; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+
+			/* Tree View */
+			.ft-tree-container { flex: 1; overflow-y: auto; padding: 4px 0; }
 			.ft-row {
-				height: 28px; display: flex; align-items: center; padding: 0 10px; cursor: pointer;
+				height: 26px; display: flex; align-items: center; padding: 0 8px; cursor: pointer;
 				user-select: none; gap: 6px; font-size: 12.5px; border-radius: 4px; margin: 1px 4px;
 				color: var(--dsw-alias-label-secondary, #4b5563); transition: background 0.1s;
 			}
@@ -182,24 +216,21 @@ window.__ModuleLoader__.load({
 				color: #9ca3af; cursor: pointer; flex-shrink: 0;
 			}
 			.ft-twist-off { opacity: 0; pointer-events: none; }
-			.ft-file-icon { font-size: 14px; flex-shrink: 0; display: flex; align-items: center; }
 			.ft-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-			.ft-size { font-size: 11px; color: var(--dsw-alias-label-tertiary, #9ca3af); margin-left: auto; flex-shrink: 0; }
+			.ft-size { font-size: 10.5px; color: var(--dsw-alias-label-tertiary, #9ca3af); margin-left: auto; flex-shrink: 0; }
 
-			/* Multi-Tab Workbench */
+			/* Center / Right Multi-Tab Workbench */
 			.dsh-editor-panel-view {
-				position: fixed; top: 0; bottom: 0; left: 260px; right: 360px; z-index: 40;
+				position: fixed; top: 0; bottom: 0; left: 280px; right: 0; z-index: 45;
 				background: var(--dsw-alias-bg-base, #ffffff);
 				display: flex; flex-direction: column; overflow: hidden;
 				box-shadow: -4px 0 20px rgba(0,0,0,0.06);
-				border-right: 1px solid var(--dsw-alias-border-l1, #e5e7eb);
 			}
-			.dsh-editor-panel-view-maximized { right: 0 !important; z-index: 60 !important; }
-			@media (max-width: 1200px) { .dsh-editor-panel-view { right: 0; left: 60px; } }
+			@media (max-width: 1024px) { .dsh-editor-panel-view { left: 60px; right: 0; } }
 
 			/* Top Tabs Bar */
 			.dsh-editor-topbar {
-				height: 42px; background: var(--dsw-alias-bg-subtle, #f9fafb);
+				height: 40px; background: var(--dsw-alias-bg-subtle, #f9fafb);
 				border-bottom: 1px solid var(--dsw-alias-border-l2, #e5e7eb);
 				display: flex; align-items: center; justify-content: space-between;
 				padding: 0 12px 0 0; flex-shrink: 0; overflow: hidden;
@@ -210,10 +241,10 @@ window.__ModuleLoader__.load({
 			}
 			.dsh-tabs-scroll::-webkit-scrollbar { display: none; }
 			.dsh-tab-item {
-				height: 42px; padding: 0 14px; display: flex; align-items: center; gap: 8px;
+				height: 40px; padding: 0 14px; display: flex; align-items: center; gap: 8px;
 				border-right: 1px solid var(--dsw-alias-border-l2, #e5e7eb);
 				font-size: 12.5px; font-weight: 500; cursor: pointer; color: var(--dsw-alias-label-secondary, #6b7280);
-				background: transparent; border-top: 2.5px solid transparent; user-select: none;
+				background: transparent; border-top: 2px solid transparent; user-select: none;
 				white-space: nowrap; transition: all 0.1s;
 			}
 			.dsh-tab-item:hover { background: rgba(0,0,0,0.03); color: var(--dsw-alias-label-primary, #111827); }
@@ -232,12 +263,12 @@ window.__ModuleLoader__.load({
 			.dsh-editor-top-actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; padding-left: 8px; }
 			.dsh-mode-switch { display: flex; background: var(--dsw-alias-border-l1, #e5e7eb); border-radius: 6px; padding: 2px; }
 			.dsh-switch-btn {
-				border: none; background: transparent; padding: 4px 9px; font-size: 11.5px;
+				border: none; background: transparent; padding: 3px 8px; font-size: 11.5px;
 				font-weight: 600; border-radius: 4px; cursor: pointer; color: var(--dsw-alias-label-secondary, #4b5563);
 			}
 			.dsh-switch-btn-active { background: #fff; color: #2563eb; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
 			.dsh-save-btn {
-				background: #10b981; color: #fff; border: none; padding: 5px 12px; border-radius: 6px;
+				background: #10b981; color: #fff; border: none; padding: 4px 10px; border-radius: 5px;
 				font-size: 12px; font-weight: 600; cursor: pointer; transition: background 0.15s; display: flex; align-items: center; gap: 4px;
 			}
 			.dsh-save-btn:hover { background: #059669; }
@@ -440,27 +471,99 @@ window.__ModuleLoader__.load({
 			document.head.appendChild(s);
 		}
 
-		// Helper: Get clean icon for file
-		function getFileIcon(name, isDir, isOpen) {
-			if (isDir) return isOpen ? '📂' : '📁';
-			if (name.endsWith('.md')) return '📝';
-			if (name.endsWith('.js') || name.endsWith('.ts') || name.endsWith('.jsx') || name.endsWith('.tsx')) return '⚡';
-			if (name.endsWith('.json') || name.endsWith('.yml') || name.endsWith('.yaml')) return '⚙️';
-			if (name.endsWith('.py')) return '🐍';
-			if (name.endsWith('.css') || name.endsWith('.html')) return '🎨';
-			if (name.endsWith('.sh') || name.endsWith('.bash')) return '💻';
-			return '📄';
-		}
-
 		function formatSize(bytes) {
-			if (bytes === null || bytes === undefined) return '';
-			if (bytes < 1024) return bytes + ' B';
-			if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
-			return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+			if (bytes === null || bytes === undefined) return "";
+			if (bytes < 1024) return bytes + " B";
+			if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
+			return (bytes / 1024 / 1024).toFixed(1) + " MB";
 		}
 
-		// ── Official TipTap Workbench Component ──
-		function OfficialTipTapWorkbench({ openTabs, activeTabPath, onSelectTab, onCloseTab, onUpdateContent, onSaveTab }) {
+		// ── Global Tab State Store (Shared between Sidebar Explorer & Main Editor) ──
+		const tabStore = {
+			tabs: [],
+			activeTabPath: null,
+			listeners: new Set(),
+			subscribe(fn) {
+				tabStore.listeners.add(fn);
+				return () => tabStore.listeners.delete(fn);
+			},
+			notify() {
+				for (const fn of tabStore.listeners) fn();
+			},
+			open(filePath) {
+				const existing = tabStore.tabs.find(t => t.path === filePath);
+				if (existing) {
+					tabStore.activeTabPath = filePath;
+					tabStore.notify();
+					return;
+				}
+				fetch('/filetree/read?path=' + encodeURIComponent(filePath))
+					.then(r => r.json())
+					.then(data => {
+						if (data.ok) {
+							const name = filePath.split('/').pop() || filePath;
+							const isMd = filePath.endsWith('.md');
+							tabStore.tabs.push({
+								path: data.path,
+								name,
+								content: data.content || '',
+								initialContent: data.content || '',
+								isDirty: false,
+								isRichMode: isMd
+							});
+							tabStore.activeTabPath = data.path;
+							tabStore.notify();
+						}
+					})
+					.catch(() => {});
+			},
+			close(filePath) {
+				tabStore.tabs = tabStore.tabs.filter(t => t.path !== filePath);
+				if (tabStore.activeTabPath === filePath) {
+					tabStore.activeTabPath = tabStore.tabs.length > 0 ? tabStore.tabs[tabStore.tabs.length - 1].path : null;
+				}
+				tabStore.notify();
+			},
+			select(path) {
+				tabStore.activeTabPath = path;
+				tabStore.notify();
+			},
+			update(filePath, newContent, newMode) {
+				tabStore.tabs = tabStore.tabs.map(t => {
+					if (t.path === filePath) {
+						return {
+							...t,
+							content: newContent !== undefined ? newContent : t.content,
+							isDirty: newContent !== undefined ? (newContent !== t.initialContent) : t.isDirty,
+							isRichMode: newMode !== undefined ? newMode : t.isRichMode
+						};
+					}
+					return t;
+				});
+				tabStore.notify();
+			},
+			save(filePath, savedContent) {
+				tabStore.tabs = tabStore.tabs.map(t => {
+					if (t.path === filePath) {
+						return { ...t, content: savedContent, initialContent: savedContent, isDirty: false };
+					}
+					return t;
+				});
+				tabStore.notify();
+			}
+		};
+
+		// ── Official TipTap Workbench Component (Center/Right Workspace) ──
+		function OfficialTipTapWorkbench() {
+			const [, forceUpdate] = react.useState(0);
+			react.useEffect(() => tabStore.subscribe(() => forceUpdate(n => n + 1)), []);
+
+			const openTabs = tabStore.tabs;
+			const activeTabPath = tabStore.activeTabPath;
+
+			// If no files open or user clicked "AI Chat Session" tab
+			if (openTabs.length === 0 || activeTabPath === 'chat') return null;
+
 			const activeTab = openTabs.find(t => t.path === activeTabPath) || openTabs[0];
 			if (!activeTab) return null;
 
@@ -476,7 +579,6 @@ window.__ModuleLoader__.load({
 			const [slashQuery, _setSlashQuery] = react.useState('');
 			const [bubbleMenu, setBubbleMenu] = react.useState(null);
 			const [isInTable, setIsInTable] = react.useState(false);
-			const [isMaximized, setIsMaximized] = react.useState(false);
 			const [embedModal, setEmbedModal] = react.useState(null);
 			const [stats, setStats] = react.useState({ words: 0, chars: 0, readingTime: 1 });
 
@@ -618,9 +720,7 @@ window.__ModuleLoader__.load({
 						chatInput.innerText = prompt;
 					}
 					chatInput.focus();
-					alert('✓ Snippet sent to AI Chat input! Switch to chat to send.');
-				} else {
-					alert('Chat input not found.');
+					tabStore.select('chat');
 				}
 			};
 
@@ -658,7 +758,7 @@ window.__ModuleLoader__.load({
 							updateDocState(ed);
 							if (ed.storage && ed.storage.markdown) {
 								const md = ed.storage.markdown.getMarkdown();
-								onUpdateContent(filePath, md);
+								tabStore.update(filePath, md);
 							}
 						},
 						onSelectionUpdate: ({ editor: ed }) => {
@@ -707,7 +807,7 @@ window.__ModuleLoader__.load({
 				let textToSave = activeTab.content;
 				if (isMarkdown && isRichMode && editorRef.current && editorRef.current.storage && editorRef.current.storage.markdown) {
 					textToSave = editorRef.current.storage.markdown.getMarkdown();
-					onUpdateContent(filePath, textToSave);
+					tabStore.update(filePath, textToSave);
 				}
 				setIsSaving(true);
 				try {
@@ -720,7 +820,7 @@ window.__ModuleLoader__.load({
 					if (data.ok) {
 						setSavedToast(true);
 						setTimeout(() => setSavedToast(false), 2000);
-						onSaveTab(filePath, textToSave);
+						tabStore.save(filePath, textToSave);
 					} else {
 						alert('Save failed: ' + data.message);
 					}
@@ -756,26 +856,34 @@ window.__ModuleLoader__.load({
 					if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); handleSave(); }
 					if (e.key === 'Escape') {
 						if (embedModal) { e.preventDefault(); setEmbedModal(null); return; }
-						if (!slashMenu && !bubbleMenu) { e.preventDefault(); onCloseTab(filePath); }
+						if (!slashMenu && !bubbleMenu) { e.preventDefault(); tabStore.close(filePath); }
 					}
 				};
 				window.addEventListener('keydown', onKeyDown);
 				return () => window.removeEventListener('keydown', onKeyDown);
 			}, [activeTab.content, filePath, isRichMode, embedModal, slashMenu, bubbleMenu]);
 
-			return react.createElement('div', { className: 'dsh-editor-panel-view ' + (isMaximized ? 'dsh-editor-panel-view-maximized' : '') }, [
-				// Top Tab Strip
+			return react.createElement('div', { className: 'dsh-editor-panel-view' }, [
+				// Top Tab Strip (With Chat Session Tab + Open File Tabs)
 				react.createElement('div', { key: 'topbar', className: 'dsh-editor-topbar' }, [
-					react.createElement('div', { key: 'tabs-scroll', className: 'dsh-tabs-scroll' },
-						openTabs.map(tab => {
+					react.createElement('div', { key: 'tabs-scroll', className: 'dsh-tabs-scroll' }, [
+						react.createElement('div', {
+							key: 'chat-tab',
+							className: 'dsh-tab-item ' + (activeTabPath === 'chat' ? 'dsh-tab-active' : ''),
+							onClick: () => tabStore.select('chat')
+						}, [
+							react.createElement('span', { key: 'icon' }, '💬'),
+							react.createElement('span', { key: 'name' }, 'AI Chat Session')
+						]),
+						...openTabs.map(tab => {
 							const isActive = tab.path === activeTabPath;
-							const icon = getFileIcon(tab.name || tab.path, false, false);
+							const iconSymbol = fileIconId(tab.name || tab.path, 'file', false);
 							return react.createElement('div', {
 								key: tab.path,
 								className: 'dsh-tab-item ' + (isActive ? 'dsh-tab-active' : ''),
-								onClick: () => onSelectTab(tab.path)
+								onClick: () => tabStore.select(tab.path)
 							}, [
-								react.createElement('span', { key: 'icon' }, icon),
+								react.createElement(FileTypeIcon, { key: 'icon', symbolId: iconSymbol }),
 								react.createElement('span', { key: 'name' }, tab.name),
 								tab.isDirty ? react.createElement('span', { key: 'dirty', className: 'dsh-tab-dirty', title: 'Unsaved changes' }) : null,
 								react.createElement('button', {
@@ -783,25 +891,18 @@ window.__ModuleLoader__.load({
 									type: 'button',
 									className: 'dsh-tab-close',
 									title: 'Close Tab',
-									onClick: (e) => { e.stopPropagation(); onCloseTab(tab.path); }
+									onClick: (e) => { e.stopPropagation(); tabStore.close(tab.path); }
 								}, '✕')
 							]);
 						})
-					),
+					]),
 					react.createElement('div', { key: 'actions', className: 'dsh-editor-top-actions' }, [
-						react.createElement('button', {
-							key: 'max-btn',
-							type: 'button',
-							className: 'dsh-switch-btn',
-							title: isMaximized ? 'Restore Split View' : 'Maximize Zen Mode',
-							onClick: () => setIsMaximized(!isMaximized)
-						}, isMaximized ? '🗗 Split' : '⛶ Zen'),
 						isMarkdown ? react.createElement('div', { key: 'mode-switch', className: 'dsh-mode-switch' }, [
 							react.createElement('button', {
 								key: 'rich-btn',
 								type: 'button',
 								className: 'dsh-switch-btn ' + (isRichMode ? 'dsh-switch-btn-active' : ''),
-								onClick: () => { if (!isRichMode) onUpdateContent(filePath, activeTab.content, true); }
+								onClick: () => { if (!isRichMode) tabStore.update(filePath, activeTab.content, true); }
 							}, '✨ TipTap Suite'),
 							react.createElement('button', {
 								key: 'raw-btn',
@@ -810,9 +911,9 @@ window.__ModuleLoader__.load({
 								onClick: () => {
 									if (isRichMode && editorRef.current && editorRef.current.storage && editorRef.current.storage.markdown) {
 										const md = editorRef.current.storage.markdown.getMarkdown();
-										onUpdateContent(filePath, md, false);
+										tabStore.update(filePath, md, false);
 									} else {
-										onUpdateContent(filePath, activeTab.content, false);
+										tabStore.update(filePath, activeTab.content, false);
 									}
 								}
 							}, '💻 Code Source')
@@ -830,7 +931,7 @@ window.__ModuleLoader__.load({
 							className: 'dsh-tab-close',
 							style: { fontSize: '15px', padding: '4px 8px' },
 							title: 'Close Active Tab',
-							onClick: () => onCloseTab(filePath)
+							onClick: () => tabStore.close(filePath)
 						}, '✕')
 					])
 				]),
@@ -881,14 +982,14 @@ window.__ModuleLoader__.load({
 								className: 'dsh-code-textarea',
 								value: activeTab.content,
 								spellCheck: false,
-								onChange: (e) => onUpdateContent(filePath, e.target.value),
+								onChange: (e) => tabStore.update(filePath, e.target.value),
 								onKeyDown: (e) => {
 									if (e.key === 'Tab') {
 										e.preventDefault();
 										const start = e.target.selectionStart;
 										const end = e.target.selectionEnd;
 										const updated = activeTab.content.substring(0, start) + '  ' + activeTab.content.substring(end);
-										onUpdateContent(filePath, updated);
+										tabStore.update(filePath, updated);
 										setTimeout(() => { e.target.selectionStart = e.target.selectionEnd = start + 2; }, 0);
 									}
 								}
@@ -1016,15 +1117,14 @@ window.__ModuleLoader__.load({
 			]);
 		}
 
-		// ── File Tree Panel (Right Column) ──
-		function FileTreePanel({ useSessions, sessionId, onRestoreDetails }) {
+		// ── Left Sidebar File Explorer Panel Component ──
+		function LeftSidebarFileExplorer({ useSessions, sessionId, onRestoreDetails, onBackToSessions }) {
+			const closeHandler = onRestoreDetails || onBackToSessions;
 			const [root, setRoot] = react.useState(null);
 			const [dirs, setDirs] = react.useState({});
 			const [expanded, setExpanded] = react.useState({});
 			const [showHidden, setShowHidden] = react.useState(false);
 			const [searchQuery, setSearchQuery] = react.useState('');
-			const [openTabs, setOpenTabs] = react.useState([]);
-			const [activeTabPath, setActiveTabPath] = react.useState(null);
 			const [newFileModal, setNewFileModal] = react.useState(null);
 			const controllersRef = react.useRef(new Map());
 
@@ -1082,74 +1182,6 @@ window.__ModuleLoader__.load({
 				loadDir(path);
 			}, [loadDir]);
 
-			const openFile = async (filePath) => {
-				const existing = openTabs.find(t => t.path === filePath);
-				if (existing) {
-					setActiveTabPath(filePath);
-					return;
-				}
-				try {
-					const res = await fetch('/filetree/read?path=' + encodeURIComponent(filePath));
-					const data = await res.json();
-					if (data.ok) {
-						const name = filePath.split('/').pop() || filePath;
-						const isMd = filePath.endsWith('.md');
-						const newTab = {
-							path: data.path,
-							name,
-							content: data.content || '',
-							initialContent: data.content || '',
-							isDirty: false,
-							isRichMode: isMd
-						};
-						setOpenTabs(prev => [...prev, newTab]);
-						setActiveTabPath(data.path);
-					} else {
-						alert('Cannot open file: ' + data.message);
-					}
-				} catch (err) {
-					alert('Error reading file: ' + err.message);
-				}
-			};
-
-			const handleCloseTab = (filePath) => {
-				setOpenTabs(prev => {
-					const next = prev.filter(t => t.path !== filePath);
-					if (activeTabPath === filePath) {
-						setActiveTabPath(next.length > 0 ? next[next.length - 1].path : null);
-					}
-					return next;
-				});
-			};
-
-			const handleUpdateContent = (filePath, newContent, newMode) => {
-				setOpenTabs(prev => prev.map(t => {
-					if (t.path === filePath) {
-						return {
-							...t,
-							content: newContent !== undefined ? newContent : t.content,
-							isDirty: newContent !== undefined ? (newContent !== t.initialContent) : t.isDirty,
-							isRichMode: newMode !== undefined ? newMode : t.isRichMode
-						};
-					}
-					return t;
-				}));
-			};
-
-			const handleSaveTab = (filePath, savedContent) => {
-				setOpenTabs(prev => prev.map(t => {
-					if (t.path === filePath) {
-						return {
-							...t,
-							content: savedContent,
-							initialContent: savedContent,
-							isDirty: false
-						};
-					}
-					return t;
-				}));
-			};
-
 			const handleCreateFileOrDir = async (e) => {
 				e.preventDefault();
 				if (!newFileModal || !newFileModal.name) return;
@@ -1167,7 +1199,7 @@ window.__ModuleLoader__.load({
 					if (data.ok) {
 						setNewFileModal(null);
 						refresh();
-						if (newFileModal.type === 'file') openFile(data.path);
+						if (newFileModal.type === 'file') tabStore.open(data.path);
 					} else {
 						alert('Create failed: ' + data.message);
 					}
@@ -1178,7 +1210,7 @@ window.__ModuleLoader__.load({
 
 			function renderLevel(path, depth) {
 				const state = dirs[path];
-				const pad = { paddingLeft: 8 + depth * 16 };
+				const pad = { paddingLeft: 6 + depth * 14 };
 				const rows = [];
 				if (state === undefined || state.status === "loading") {
 					rows.push(react.createElement("div", { key: path + ":state", className: "ft-row", style: Object.assign({}, pad, { color: '#9ca3af', fontStyle: 'italic' }) },
@@ -1202,12 +1234,13 @@ window.__ModuleLoader__.load({
 				for (const entry of sorted) {
 					const isDir = entry.type === "directory";
 					const isOpen = expanded[entry.path] === true;
-					const isCurrent = activeTabPath === entry.path;
+					const isCurrent = tabStore.activeTabPath === entry.path;
+					const iconSymbol = fileIconId(entry.name, entry.type, isOpen);
 					rows.push(react.createElement("div", {
 						key: entry.path,
 						className: "ft-row " + (isCurrent ? "ft-row-active" : ""),
 						style: pad,
-						onClick: () => { if (!isDir) openFile(entry.path); }
+						onClick: () => { if (!isDir) tabStore.open(entry.path); }
 					}, [
 						react.createElement("button", {
 							key: "twist",
@@ -1216,7 +1249,7 @@ window.__ModuleLoader__.load({
 							disabled: !isDir,
 							onClick: (e) => { e.stopPropagation(); toggle(entry.path); }
 						}, isDir ? (isOpen ? "▼" : "▶") : ""),
-						react.createElement("span", { key: "icon", className: "ft-file-icon" }, getFileIcon(entry.name, isDir, isOpen)),
+						react.createElement(FileTypeIcon, { key: "icon", symbolId: iconSymbol }),
 						react.createElement("span", { key: "name", className: "ft-name", title: entry.path }, entry.name),
 						!isDir && entry.size !== null
 							? react.createElement("span", { key: "size", className: "ft-size" }, formatSize(entry.size))
@@ -1228,16 +1261,7 @@ window.__ModuleLoader__.load({
 			}
 
 			return react.createElement(react.Fragment, null, [
-				openTabs.length > 0 ? react.createElement(OfficialTipTapWorkbench, {
-					key: "workbench-canvas",
-					openTabs,
-					activeTabPath,
-					onSelectTab: (path) => setActiveTabPath(path),
-					onCloseTab: handleCloseTab,
-					onUpdateContent: handleUpdateContent,
-					onSaveTab: handleSaveTab
-				}) : null,
-
+				react.createElement(OfficialTipTapWorkbench, { key: "workbench" }),
 				newFileModal ? react.createElement('div', {
 					key: 'new-file-modal',
 					className: 'dsh-modal-backdrop',
@@ -1267,19 +1291,16 @@ window.__ModuleLoader__.load({
 					])
 				])) : null,
 
-				react.createElement("div", { key: "panel", className: "ft-panel" }, [
-					react.createElement("div", { key: "header", className: "ft-header" }, [
+				react.createElement("div", { key: "sidebar-view", className: "ft-sidebar-view" }, [
+					react.createElement("div", { key: "header", className: "ft-sidebar-header" }, [
 						react.createElement("div", { key: "top", className: "ft-header-top" }, [
-							react.createElement("div", { key: "title", className: "ft-title" }, [
-								react.createElement("span", { key: "icon" }, "📁"),
-								react.createElement("span", { key: "txt" }, "Workspace Files")
-							]),
+							react.createElement("div", { key: "title", className: "ft-title" }, "WORKSPACE FILES"),
 							react.createElement("div", { key: "actions", className: "ft-header-actions" }, [
-								react.createElement("button", { key: "new-f", type: "button", className: "ft-tool-btn", title: "New File", onClick: () => setNewFileModal({ type: 'file', name: '' }) }, "➕ File"),
-								react.createElement("button", { key: "new-d", type: "button", className: "ft-tool-btn", title: "New Folder", onClick: () => setNewFileModal({ type: 'dir', name: '' }) }, "📁 Folder"),
+								react.createElement("button", { key: "new-f", type: "button", className: "ft-tool-btn", title: "New File", onClick: () => setNewFileModal({ type: 'file', name: '' }) }, "➕"),
+								react.createElement("button", { key: "new-d", type: "button", className: "ft-tool-btn", title: "New Folder", onClick: () => setNewFileModal({ type: 'dir', name: '' }) }, "📁"),
 								react.createElement("button", { key: "ref", type: "button", className: "ft-tool-btn", title: "Refresh", onClick: refresh }, "🔄"),
 								react.createElement("button", { key: "hid", type: "button", className: "ft-tool-btn", title: showHidden ? "Hide dotfiles" : "Show dotfiles", onClick: () => setShowHidden(!showHidden) }, showHidden ? "👁️" : "🕶️"),
-								react.createElement("button", { key: "close", type: "button", className: "ft-tool-btn", title: "Close panel", onClick: onRestoreDetails }, "✕")
+								react.createElement("button", { key: "close", type: "button", className: "ft-tool-btn", title: "Close Explorer", onClick: () => (closeHandler ? closeHandler() : null) }, "✕")
 							])
 						]),
 						react.createElement("input", {
@@ -1289,13 +1310,12 @@ window.__ModuleLoader__.load({
 							value: searchQuery,
 							className: "ft-search-box",
 							onChange: (e) => setSearchQuery(e.target.value)
-						}),
-						react.createElement("div", { key: "root", className: "ft-root", title: root ?? "" }, root ?? "(No session workspace)")
+						})
 					]),
-					react.createElement("div", { key: "body", className: "ft-body" },
+					react.createElement("div", { key: "body", className: "ft-tree-container" },
 						root === null
 							? react.createElement("div", { className: "ft-row", style: { color: '#9ca3af', fontStyle: 'italic' } }, "Open a session to display workspace files")
-							: react.createElement("div", { className: "ft-tree" }, renderLevel(root, 0))
+							: react.createElement("div", null, renderLevel(root, 0))
 					)
 				])
 			]);
@@ -1308,19 +1328,20 @@ window.__ModuleLoader__.load({
 
 			let treeDisposer = null;
 			let treeActive = false;
-
 			const layout = () => ctx.get("layout");
 
-			const openTree = () => {
+			const openExplorer = () => {
 				if (treeDisposer === null) {
 					treeDisposer = slots.register({
 						name: "details",
 						priority: -1,
-						inject: () => ({ onRestoreDetails: closeTree })
-					}, (props) => react.createElement(FileTreePanel, {
+						inject: () => ({
+							onRestoreDetails: closeExplorer
+						})
+					}, (props) => react.createElement(LeftSidebarFileExplorer, {
 						useSessions: props.useSessions,
 						sessionId: props.sessionId,
-						onRestoreDetails: props.onRestoreDetails
+						onRestoreDetails: closeExplorer
 					}));
 				}
 				treeActive = true;
@@ -1328,32 +1349,34 @@ window.__ModuleLoader__.load({
 				if (l !== undefined) l.openDetails();
 			};
 
-			const closeTree = () => {
+			const closeExplorer = () => {
+				treeActive = false;
 				if (treeDisposer !== null) {
 					treeDisposer();
 					treeDisposer = null;
 				}
-				treeActive = false;
 				const l = layout();
 				if (l !== undefined) l.closeDetails();
 			};
 
-			const toggleTree = () => (treeActive ? closeTree() : openTree());
+			const toggleExplorer = () => (treeActive ? closeExplorer() : openExplorer());
 
+			// Register toggle button in sidebar action footer
 			slots.inject("sidebar.footer.action", () => slots.register(
 				{ name: "sidebar.footer.action", id: "filetree-toggle" },
 				(props) => react.createElement("button", {
 					className: "dsw-sidebar-action" + (treeActive ? " active" : ""),
-					title: "File Explorer",
-					onClick: toggleTree,
+					title: "Workspace Files Explorer",
+					onClick: toggleExplorer,
+					type: "button",
 					style: {
 						display: "flex", alignItems: "center", gap: "8px", width: "100%",
-						padding: "8px 12px", border: "none", background: "transparent",
-						cursor: "pointer", fontSize: "13px", color: "inherit", borderRadius: "6px"
+						padding: "8px 12px", border: "none", background: treeActive ? "rgba(59,130,246,0.12)" : "transparent",
+						cursor: "pointer", fontSize: "13px", color: treeActive ? "#2563eb" : "inherit", borderRadius: "6px"
 					}
 				}, [
-					react.createElement("span", { key: "icon", style: { fontSize: "16px" } }, "📁"),
-					props.wide === true ? react.createElement("span", { key: "label", style: { fontWeight: "500" } }, "File Explorer") : null
+					react.createElement(FileTypeIcon, { key: "icon", symbolId: "fti-FolderOpen" }),
+					props.wide === true ? react.createElement("span", { key: "label", style: { fontWeight: "600" } }, "Files Explorer") : null
 				])
 			));
 		}
@@ -1365,4 +1388,4 @@ window.__ModuleLoader__.load({
 `
 
 fs.writeFileSync(clientFile, completeClientModule, 'utf8')
-console.log('[✓] Successfully deployed pristine, professional Dual Notion / Code Workbench!')
+console.log('[✓] Successfully deployed VSCode-Grade Native SVG & Tabbed Claude Code Suite!')
