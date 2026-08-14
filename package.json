@@ -1,4 +1,27 @@
 {
+	"name": "deepseek-harness-plugins",
+	"version": "1.0.0",
+	"description": "Unified 3-Column VS Code IDE Layout & TipTap Notion WYSIWYG Suite for DeepSeek Harness",
+	"main": "plugins/dsh-client-vscode-layout/lib/client.js",
+	"type": "module",
+	"scripts": {
+		"build:tiptap": "node build-tiptap.mjs",
+		"build:layout": "node build-unified-vscode-layout.mjs",
+		"build": "node build-tiptap.mjs && node build-unified-vscode-layout.mjs",
+		"deploy": "node deploy-vscode-notion-layout.mjs",
+		"setup": "(pnpm install --ignore-scripts || npm install --legacy-peer-deps) && npm run build && npm run deploy",
+		"test": "node tests/e2e.test.mjs"
+	},
+	"keywords": [
+		"deepseek-harness",
+		"vscode-layout",
+		"tiptap",
+		"notion",
+		"wysiwyg",
+		"ide"
+	],
+	"author": "Lucas Minh",
+	"license": "MIT",
 	"devDependencies": {
 		"@rollup/plugin-commonjs": "^29.0.3",
 		"@rollup/plugin-node-resolve": "^16.0.3",

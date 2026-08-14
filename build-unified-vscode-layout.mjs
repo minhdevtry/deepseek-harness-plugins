@@ -1437,8 +1437,8 @@ clientSource = clientSource.replace(
 					file,
 					content: state.content,
 					isDirty: isDirectDirty || false,
-					onUpdateContent: (text) => onUpdateDirect ? onUpdateDirect(text) : onStartEdit(text),
-					onSave: (text) => onSaveDirect ? onSaveDirect(text) : onStartEdit(text),
+					onUpdateContent: (text) => onUpdateDirect ? onUpdateDirect(text, file?.path) : onStartEdit(text),
+					onSave: (text) => onSaveDirect ? onSaveDirect(text, file?.path) : onStartEdit(text),
 					onCancel: () => {},
 					busy: busy || false,
 					saveMsg: saveMsg || null,
@@ -1518,29 +1518,31 @@ const newEditorArea = `function EditorArea({ tabs, activePath, onSelect, onClose
 				return () => document.removeEventListener("keydown", onKey);
 			});
 
-			const onEditText = react.useCallback((text) => {
-				if (currentPath === null) return;
-				setEdits((prev) => ({ ...prev, [currentPath]: { text, dirty: true } }));
+			const onEditText = react.useCallback((text, explicitPath) => {
+				const targetPath = explicitPath || currentPath;
+				if (!targetPath || typeof text !== "string") return;
+				setEdits((prev) => ({ ...prev, [targetPath]: { text, dirty: true } }));
 			}, [currentPath]);
 
-			const saveWithText = react.useCallback(async (textToSave) => {
-				if (currentPath === null || busy) return;
+			const saveWithText = react.useCallback(async (textToSave, explicitPath) => {
+				const targetPath = explicitPath || currentPath;
+				if (!targetPath || typeof textToSave !== "string" || busy) return;
 				setBusy(true);
 				setSaveMsg("Saving...");
 				try {
 					const r = await fetch("/vscode-files/write", {
 						method: "POST",
 						headers: { "content-type": "application/json" },
-						body: JSON.stringify({ path: currentPath, content: textToSave })
+						body: JSON.stringify({ path: targetPath, content: textToSave })
 					});
 					const d = await r.json();
 					if (d && d.ok) {
 						setEdits((prev) => {
 							const next = { ...prev };
-							delete next[currentPath];
+							delete next[targetPath];
 							return next;
 						});
-						setRevisions((prev) => ({ ...prev, [currentPath]: (prev[currentPath] ?? 0) + 1 }));
+						setRevisions((prev) => ({ ...prev, [targetPath]: (prev[targetPath] ?? 0) + 1 }));
 						setSaveMsg("Saved");
 						setTimeout(() => setSaveMsg(null), 2000);
 					} else {
@@ -1555,8 +1557,8 @@ const newEditorArea = `function EditorArea({ tabs, activePath, onSelect, onClose
 
 			const save = react.useCallback(async () => {
 				const edit = edits[currentPath];
-				if (edit === void 0 || busy) return;
-				saveWithText(edit.text);
+				if (edit === void 0 || typeof edit.text !== "string" || busy) return;
+				saveWithText(edit.text, currentPath);
 			}, [currentPath, edits, busy, saveWithText]);
 
 			const cancel = react.useCallback(() => {
@@ -1753,8 +1755,8 @@ const newEditorArea = `function EditorArea({ tabs, activePath, onSelect, onClose
 								file: active,
 								rev: revisions[active.path] ?? 0,
 								onStartEdit: startEdit,
-								onSaveDirect: (txt) => saveWithText(txt),
-								onUpdateDirect: onEditText,
+								onSaveDirect: (txt, p) => saveWithText(txt, p),
+								onUpdateDirect: (txt, p) => onEditText(txt, p),
 								isDirectDirty: edits[active.path]?.dirty === true,
 								saveMsg,
 								busy

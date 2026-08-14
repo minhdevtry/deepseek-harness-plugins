@@ -105,11 +105,15 @@ async function build() {
     name: 'TipTapBundle'
   });
 
-  fs.writeFileSync('plugins/dsh-local-filetree/tiptap.bundle.js', output[0].code);
-  console.log('[✓] Ultimate TipTap Suite Bundle built successfully! Size:', output[0].code.length);
+  const targetPath = 'plugins/dsh-client-vscode-layout/assets/tiptap.bundle.js';
+  fs.mkdirSync('plugins/dsh-client-vscode-layout/assets', { recursive: true });
+  fs.writeFileSync(targetPath, output[0].code);
+  if (fs.existsSync('tiptap-entry.js')) fs.unlinkSync('tiptap-entry.js');
+  console.log('[✓] TipTap Suite Bundle built successfully at ' + targetPath + '! Size: ' + output[0].code.length + ' bytes');
 }
 
 build().catch(err => {
+  if (fs.existsSync('tiptap-entry.js')) fs.unlinkSync('tiptap-entry.js');
   console.error('Build error:', err);
   process.exit(1);
 });
