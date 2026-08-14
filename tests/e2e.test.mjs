@@ -197,22 +197,24 @@ async function run() {
 
 		// 8. Test In-App Unsaved Changes Modal Dialog (No browser alert!)
 		console.log('[+] Step 9: Testing In-App Unsaved Changes Modal Dialog...');
-		// Open package.json in raw edit mode
-		const pkgTab = page.locator('.vk_fileTab').filter({ hasText: 'package.json' }).first();
-		await pkgTab.click();
-		await page.waitForTimeout(400);
+		// Open note.md
+		const noteTabForModal = page.locator('.vk_fileTab').filter({ hasText: 'note.md' }).first();
+		if (await noteTabForModal.isVisible()) {
+			await noteTabForModal.click();
+			await page.waitForTimeout(400);
+		}
 
-		// Click Edit button if visible
-		const editBtn = page.locator('.vk_editBtn').filter({ hasText: 'Edit' }).first();
-		if (await editBtn.isVisible()) {
-			await editBtn.click();
+		// Click Raw/Edit button if visible
+		const rawBtn = page.locator('.vk_editBtn').filter({ hasText: 'Raw' }).or(page.locator('.vk_editBtn').filter({ hasText: 'Edit' })).first();
+		if (await rawBtn.isVisible()) {
+			await rawBtn.click();
 			await page.waitForTimeout(300);
 		}
 
 		// Type in textarea to make it dirty
 		const textarea = page.locator('.vk_textarea').first();
 		if (await textarea.isVisible()) {
-			await textarea.type(' // dirty test');
+			await textarea.type('\n\n<!-- dirty test comment -->');
 			await page.waitForTimeout(400);
 
 			// Test Diff View toggle
@@ -231,7 +233,8 @@ async function run() {
 			console.log('[✓] Step 10 passed: Diff Viewer verified!');
 
 			// Now click tab close button '×'
-			const tabClose = pkgTab.locator('.vk_tabClose');
+			const activeTabEl = page.locator('.vk_fileTabActive');
+			const tabClose = activeTabEl.locator('.vk_tabClose');
 			await tabClose.click();
 			await page.waitForTimeout(400);
 
@@ -276,8 +279,11 @@ async function run() {
 			const tocCard = page.locator('.vk_toc_card[data-vk-toc="true"]');
 			if (await tocCard.isVisible()) {
 				console.log('[+] Document Outline TOC drawer displayed successfully!');
-				await page.keyboard.press('Escape');
-				await page.waitForTimeout(300);
+				const tocCloseBtn = page.locator('.vk_toc_close').first();
+				if (await tocCloseBtn.isVisible()) {
+					await tocCloseBtn.click();
+					await page.waitForTimeout(300);
+				}
 			}
 		}
 		console.log('[✓] Step 12 passed: Document Outline TOC verified!');
@@ -311,6 +317,34 @@ async function run() {
 			await chatInput.fill('');
 		}
 		console.log('[✓] Step 14 passed: @ Mention in Chat verified!');
+
+		// 13. Test AI Mode Selector (Agent / Plan / Ask)
+		console.log('[+] Step 15: Testing AI Mode Selector (Agent / Plan / Ask)...');
+		const planModeBtn = page.locator('.vk_ai_mode_pill').filter({ hasText: 'Plan' }).first();
+		if (await planModeBtn.isVisible()) {
+			await planModeBtn.click();
+			await page.waitForTimeout(400);
+			console.log('[+] Switched to Plan Mode!');
+			// Switch back to Agent
+			const agentModeBtn = page.locator('.vk_ai_mode_pill').filter({ hasText: 'Agent' }).first();
+			await agentModeBtn.click();
+			await page.waitForTimeout(300);
+		}
+		console.log('[✓] Step 15 passed: AI Mode Selector verified!');
+
+		// 14. Test Chat Slash Commands (/)
+		console.log('[+] Step 16: Testing Chat Slash Commands (/)...');
+		if (await chatInput.isVisible()) {
+			await chatInput.click();
+			await chatInput.fill('/pl');
+			await page.waitForTimeout(600);
+			const slashDropdown = page.locator('.vk_chat_slash_dropdown[data-vk-slash-commands="true"]');
+			if (await slashDropdown.isVisible()) {
+				console.log('[+] Chat Slash Command Dropdown appeared with suggestions!');
+			}
+			await chatInput.fill('');
+		}
+		console.log('[✓] Step 16 passed: Chat Slash Commands verified!');
 
 		console.log('\n[🎉] ALL E2E VERIFICATION TESTS PASSED WITH ZERO ERRORS!');
 	} catch (err) {

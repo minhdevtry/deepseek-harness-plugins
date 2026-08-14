@@ -64210,6 +64210,44 @@ const FILE_ICON_DIR_OPEN = "fti-FolderOpen";
 				background: rgba(30, 41, 59, 0.85); color: #e2e8f0; transition: all 0.12s;
 			}
 			.vk_code_action_btn:hover { background: #2563eb; color: #ffffff; border-color: #2563eb; }
+
+			/* AI Mode Selector */
+			.vk_ai_mode_bar {
+				display: flex; align-items: center; gap: 4px; padding: 4px 10px;
+				background: var(--dsw-alias-bg-subtle, #f8fafc); border-bottom: 1px solid var(--dsw-alias-border-l1, #e2e8f0);
+			}
+			.vk_ai_mode_pill {
+				background: transparent; border: 1px solid transparent; border-radius: 5px;
+				padding: 3px 8px; font-size: 11px; font-weight: 600; cursor: pointer;
+				color: var(--dsw-alias-label-secondary, #64748b); transition: all 0.12s;
+			}
+			.vk_ai_mode_pill:hover { background: rgba(37,99,235,0.08); color: #2563eb; }
+			.vk_ai_mode_pill_active {
+				background: #eff6ff !important; border-color: #93c5fd !important;
+				color: #1d4ed8 !important; font-weight: 700;
+			}
+
+			/* Chat Slash Command Dropdown */
+			.vk_chat_slash_dropdown {
+				position: absolute; bottom: calc(100% + 8px); left: 16px; z-index: 9999;
+				width: 380px; max-height: 280px; overflow-y: auto;
+				background: var(--dsw-alias-bg-elevated, #ffffff);
+				border: 1px solid var(--dsw-alias-border-l2, #d1d5db); border-radius: 10px;
+				box-shadow: 0 12px 30px rgba(0,0,0,0.2); padding: 6px; animation: vk-pop-in 0.12s ease-out;
+			}
+			.vk_chat_slash_item {
+				display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 6px;
+				cursor: pointer; font-size: 12px; transition: background 0.1s;
+			}
+			.vk_chat_slash_item:hover { background: #eff6ff; color: #1d4ed8; }
+			.vk_chat_slash_label { font-weight: 700; color: #2563eb; font-family: monospace; font-size: 12.5px; }
+			.vk_chat_slash_desc { font-size: 11px; color: #64748b; margin-left: auto; text-align: right; }
+
+			/* Reasoning Accordion (<think>) */
+			.vk_colRight details.thinking, .vk_colRight details[data-thinking="true"] {
+				background: rgba(30, 41, 59, 0.05); border: 1px solid var(--dsw-alias-border-l1, #e2e8f0);
+				border-radius: 8px; padding: 8px 12px; margin: 8px 0; font-size: 12px; color: #64748b;
+			}
 		`;
 
 		if (typeof document !== "undefined" && !document.getElementById("vk-tiptap-styles")) {
@@ -64461,6 +64499,57 @@ const FILE_ICON_DIR_OPEN = "fti-FolderOpen";
 					h("button", { className: "vk_ai_dropdown_item", onClick: () => trigger("docs") }, "📝 Generate JSDoc / Docs"),
 					h("button", { className: "vk_ai_dropdown_item", onClick: () => trigger("review") }, "🔍 Code Review & Bug Check")
 				) : null
+			);
+		}
+
+		// ── AI Mode Selector Component (Agent / Plan / Ask) ──
+		function AIModeSelector({ currentMode, onSelectMode }) {
+			const modes = [
+				{ id: "agent", label: "🚀 Agent", title: "Autonomous execution: read, edit files & run commands" },
+				{ id: "plan", label: "📋 Plan", title: "Planning mode: architectural analysis & step-by-step design" },
+				{ id: "ask", label: "💬 Ask", title: "Explain & brainstorm: discuss without modifying files" }
+			];
+
+			return h("div", { className: "vk_ai_mode_bar", "data-vk-ai-mode-bar": true },
+				modes.map(m => h("button", {
+					key: m.id,
+					type: "button",
+					className: "vk_ai_mode_pill" + (currentMode === m.id ? " vk_ai_mode_pill_active" : ""),
+					title: m.title,
+					onClick: () => onSelectMode(m.id)
+				}, m.label))
+			);
+		}
+
+		// ── Chat Slash Command Dropdown Component (/) ──
+		function ChatSlashCommandDropdown({ isOpen, query, onSelect, onClose }) {
+			const commands = [
+				{ id: "/plan", label: "/plan", desc: "Step-by-step implementation plan before coding", prefix: "[PLANNING MODE] Please create a comprehensive, step-by-step implementation plan with architectural overview for: " },
+				{ id: "/review", label: "/review", desc: "Review git diffs, edge cases and security", prefix: "[CODE REVIEW] Please perform a thorough code review on the active file and recent workspace changes for: " },
+				{ id: "/test", label: "/test", desc: "Run and fix automated test suite", prefix: "[TEST SUITE] Please run our automated test suite and fix any failing tests: " },
+				{ id: "/skill", label: "/skill", desc: "Load and activate specialized AI Skill", prefix: "[SKILL ACTIVATION] Activate skill: " },
+				{ id: "/compact", label: "/compact", desc: "Compact and summarize chat context", prefix: "/compact" },
+				{ id: "/clear", label: "/clear", desc: "Start a fresh discussion session", prefix: "/clear" }
+			];
+
+			const filtered = react.useMemo(() => {
+				if (!query) return commands;
+				const q = query.toLowerCase();
+				return commands.filter(c => c.id.toLowerCase().includes(q) || c.desc.toLowerCase().includes(q));
+			}, [query]);
+
+			if (!isOpen || filtered.length === 0) return null;
+
+			return h("div", { className: "vk_chat_slash_dropdown", "data-vk-slash-commands": true },
+				h("div", { className: "vk_slash_header" }, "AI Slash Commands (/)"),
+				filtered.map(c => h("div", {
+					key: c.id,
+					className: "vk_chat_slash_item",
+					onClick: () => onSelect(c)
+				},
+					h("span", { className: "vk_chat_slash_label" }, c.label),
+					h("span", { className: "vk_chat_slash_desc" }, c.desc)
+				))
 			);
 		}
 
@@ -66158,6 +66247,29 @@ function Viewer({ file, rev, onStartEdit, onSaveDirect, onUpdateDirect, isDirect
 			);
 		}
 		function RightPanel({ tab, onTab, conversation, details, mode, onToggleMode, showDetails, onCloseRight }) {
+			const [aiMode, setAiMode] = react.useState(() => {
+				try { return localStorage.getItem("vk_ai_mode") || "agent"; } catch { return "agent"; }
+			});
+
+			const handleSelectMode = (newMode) => {
+				setAiMode(newMode);
+				try { localStorage.setItem("vk_ai_mode", newMode); } catch {}
+				const chatInput = document.querySelector('.vk_colRight textarea, .vk_colRight [contenteditable="true"], textarea, [contenteditable="true"]');
+				if (chatInput && newMode === "plan") {
+					const cur = chatInput.value || chatInput.innerText || "";
+					if (!cur.startsWith("[PLANNING MODE]")) {
+						const newVal = "[PLANNING MODE] " + cur;
+						if (chatInput.tagName === 'TEXTAREA' || chatInput.tagName === 'INPUT') {
+							chatInput.value = newVal;
+							chatInput.dispatchEvent(new Event('input', { bubbles: true }));
+						} else {
+							chatInput.innerText = newVal;
+							chatInput.dispatchEvent(new Event('input', { bubbles: true }));
+						}
+					}
+				}
+			};
+
 			return h("div", { className: "vk_colRight" },
 				h("div", { className: "vk_tabBar" },
 					h("button", { className: "vk_tabBtn" + (tab === "conversation" ? " vk_tabBtnActive" : ""), onClick: () => onTab("conversation") }, "Chat"),
@@ -66166,6 +66278,7 @@ function Viewer({ file, rev, onStartEdit, onSaveDirect, onUpdateDirect, isDirect
 					h("button", { className: "vk_tabBtn vk_modeBtn", title: mode === "native" ? "Switch to Split View (Editor + Chat)" : "Switch to Fullscreen Chat", onClick: onToggleMode }, mode === "native" ? "◫ Split View" : "⛶ Fullscreen Chat"),
 					onCloseRight ? h("button", { className: "vk_tabBtn", title: "Close / Collapse Chat Panel (Ctrl+L)", onClick: onCloseRight }, "✕") : null
 				),
+				tab === "conversation" ? h(AIModeSelector, { currentMode: aiMode, onSelectMode: handleSelectMode }) : null,
 				h("div", { className: "vk_tabBody" + (tab === "conversation" ? "" : " vk_tabBodyHidden") }, conversation),
 				showDetails ? h("div", { className: "vk_tabBody" + (tab === "details" ? "" : " vk_tabBodyHidden") }, details) : null
 			);
@@ -66470,9 +66583,11 @@ function Viewer({ file, rev, onStartEdit, onSaveDirect, onUpdateDirect, isDirect
 			react.useEffect(() => {
 				if (!native && panels.rightTab === "details") actions.setRightTab("conversation");
 			}, [native, panels.rightTab, actions]);
-			// @ Mention File Autocomplete State in Chat
+			// @ Mention File & Slash Commands State in Chat
 			const [atFileOpen, setAtFileOpen] = react.useState(false);
 			const [atFileQuery, setAtFileQuery] = react.useState("");
+			const [slashCmdOpen, setSlashCmdOpen] = react.useState(false);
+			const [slashCmdQuery, setSlashCmdQuery] = react.useState("");
 
 			react.useEffect(() => {
 				const onInput = (e) => {
@@ -66480,12 +66595,20 @@ function Viewer({ file, rev, onStartEdit, onSaveDirect, onUpdateDirect, isDirect
 					if (!target || !(target.matches && (target.matches('.vk_colRight textarea') || target.matches('.vk_colRight [contenteditable="true"]') || target.matches('textarea')))) return;
 					const val = target.value || target.innerText || "";
 					const lastAt = val.lastIndexOf("@");
+					const lastSlash = val.lastIndexOf("/");
 					if (lastAt !== -1 && lastAt >= val.length - 25) {
 						const q = val.slice(lastAt + 1).split(/\s/)[0];
 						setAtFileQuery(q);
 						setAtFileOpen(true);
 					} else {
 						setAtFileOpen(false);
+					}
+					if (lastSlash === 0 || (lastSlash > 0 && val[lastSlash - 1] === " ")) {
+						const q = val.slice(lastSlash);
+						setSlashCmdQuery(q);
+						setSlashCmdOpen(true);
+					} else {
+						setSlashCmdOpen(false);
 					}
 				};
 				document.addEventListener("input", onInput);
@@ -66507,6 +66630,21 @@ function Viewer({ file, rev, onStartEdit, onSaveDirect, onUpdateDirect, isDirect
 						chatInput.innerText = newVal;
 						chatInput.dispatchEvent(new Event('input', { bubbles: true }));
 					}
+				}
+				chatInput.focus();
+			};
+
+			const handleSelectSlashCmd = (cmd) => {
+				setSlashCmdOpen(false);
+				const chatInput = document.querySelector('.vk_colRight textarea, .vk_colRight [contenteditable="true"], textarea, [contenteditable="true"]');
+				if (!chatInput) return;
+				const newVal = cmd.prefix;
+				if (chatInput.tagName === 'TEXTAREA' || chatInput.tagName === 'INPUT') {
+					chatInput.value = newVal;
+					chatInput.dispatchEvent(new Event('input', { bubbles: true }));
+				} else {
+					chatInput.innerText = newVal;
+					chatInput.dispatchEvent(new Event('input', { bubbles: true }));
 				}
 				chatInput.focus();
 			};
@@ -66623,6 +66761,7 @@ function Viewer({ file, rev, onStartEdit, onSaveDirect, onUpdateDirect, isDirect
 					h(QuickOpenModal, { isOpen: quickOpen, onClose: () => setQuickOpen(false), root: fileRoot, onOpenFile: openFile }),
 					h(CommandPaletteModal, { isOpen: cmdPalette, onClose: () => setCmdPalette(false), onExecuteAction: handleCommandPaletteAction }),
 					h(AtFileMentionDropdown, { isOpen: atFileOpen, query: atFileQuery, onSelect: handleSelectAtFile, onClose: () => setAtFileOpen(false) }),
+					h(ChatSlashCommandDropdown, { isOpen: slashCmdOpen, query: slashCmdQuery, onSelect: handleSelectSlashCmd, onClose: () => setSlashCmdOpen(false) }),
 					showOpenChatBtn ? h("button", {
 						className: "vk_open_chat_float",
 						title: "Open AI Chat Panel (Ctrl+L)",
