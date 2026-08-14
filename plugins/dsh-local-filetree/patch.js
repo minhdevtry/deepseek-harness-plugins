@@ -158,6 +158,12 @@ if (fs.existsSync(clientFile)) {
 			border-bottom: 1px solid var(--dsw-alias-border-l1, #e5e7eb);
 			padding: 6px 14px; display: flex; align-items: center; gap: 4px; flex-wrap: wrap; flex-shrink: 0;
 		}
+		.dsh-table-toolbar {
+			background: #f0fdf4; border-bottom: 1px solid #bbf7d0;
+			padding: 4px 14px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; flex-shrink: 0;
+			animation: dsh-slide-down 0.15s ease-out;
+		}
+		@keyframes dsh-slide-down { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
 		.dsh-tb-tool {
 			border: 1px solid transparent; background: transparent; padding: 4px 8px;
 			border-radius: 4px; font-size: 12px; font-weight: 600; cursor: pointer;
@@ -165,6 +171,14 @@ if (fs.existsSync(clientFile)) {
 			display: inline-flex; align-items: center; gap: 4px;
 		}
 		.dsh-tb-tool:hover { background: var(--dsw-alias-interactive-bg-hover, #f3f4f6); border-color: var(--dsw-alias-border-l2, #d1d5db); }
+		.dsh-tb-table-btn {
+			border: 1px solid #86efac; background: #ffffff; padding: 3px 8px;
+			border-radius: 5px; font-size: 11.5px; font-weight: 600; cursor: pointer;
+			color: #166534; display: inline-flex; align-items: center; gap: 3px;
+		}
+		.dsh-tb-table-btn:hover { background: #dcfce7; border-color: #4ade80; }
+		.dsh-tb-table-btn-danger { color: #dc2626; border-color: #fca5a5; }
+		.dsh-tb-table-btn-danger:hover { background: #fee2e2; border-color: #f87171; }
 		.dsh-tb-sep { width: 1px; height: 16px; background: var(--dsw-alias-border-l2, #e5e7eb); margin: 0 4px; }
 		.dsh-bold { font-weight: 800; }
 		.dsh-italic { font-style: italic; }
@@ -192,9 +206,9 @@ if (fs.existsSync(clientFile)) {
 		.dsh-tiptap-prose ul[data-type="taskList"] li > label { display: flex; align-items: center; user-select: none; }
 		.dsh-tiptap-prose ul[data-type="taskList"] li > label input[type="checkbox"] { width: 17px; height: 17px; cursor: pointer; accent-color: #3b82f6; }
 		.dsh-tiptap-prose ul[data-type="taskList"] li[data-checked="true"] > div { text-decoration: line-through; opacity: 0.55; }
-		.dsh-tiptap-prose table { border-collapse: collapse; width: 100%; margin: 16px 0; overflow: hidden; border-radius: 8px; border: 1px solid #e5e7eb; }
-		.dsh-tiptap-prose th, .dsh-tiptap-prose td { border: 1px solid #e5e7eb; padding: 10px 14px; text-align: left; vertical-align: top; }
-		.dsh-tiptap-prose th { background: #f8fafc; font-weight: 700; color: #1e293b; }
+		.dsh-tiptap-prose table { border-collapse: collapse; width: 100%; margin: 16px 0; overflow: hidden; border-radius: 8px; border: 1px solid #cbd5e1; }
+		.dsh-tiptap-prose th, .dsh-tiptap-prose td { border: 1px solid #cbd5e1; padding: 10px 14px; text-align: left; vertical-align: top; min-width: 80px; position: relative; }
+		.dsh-tiptap-prose th { background: #f1f5f9; font-weight: 700; color: #1e293b; }
 		.dsh-tiptap-prose iframe { width: 100%; aspect-ratio: 16/9; border-radius: 12px; margin: 16px 0; border: none; }
 		.dsh-tiptap-prose img { max-width: 100%; border-radius: 8px; margin: 14px 0; box-shadow: 0 4px 12px rgba(0,0,0,0.06); }
 		.dsh-tiptap-prose mark { background: #fef08a; padding: 2px 4px; border-radius: 3px; }
@@ -240,12 +254,20 @@ if (fs.existsSync(clientFile)) {
 			display: flex; align-items: center; justify-content: space-between;
 			font-size: 15px; font-weight: 700; color: var(--dsw-alias-label-primary, #111827);
 		}
-		.dsh-modal-body { padding: 18px; display: flex; flex-direction: column; gap: 10px; }
+		.dsh-modal-body { padding: 18px; display: flex; flex-direction: column; gap: 12px; }
+		.dsh-modal-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+		.dsh-modal-label { font-size: 13.5px; font-weight: 600; color: var(--dsw-alias-label-secondary, #374151); }
 		.dsh-modal-input {
 			width: 100%; border: 1.5px solid #3b82f6; border-radius: 8px; padding: 10px 14px;
 			font-size: 14px; outline: none; box-sizing: border-box; background: var(--dsw-alias-bg-base, #ffffff);
 			color: var(--dsw-alias-label-primary, #111827);
 		}
+		.dsh-modal-num-input {
+			width: 90px; border: 1.5px solid #d1d5db; border-radius: 6px; padding: 6px 10px;
+			font-size: 14px; outline: none; box-sizing: border-box; background: #fff; text-align: center;
+		}
+		.dsh-modal-num-input:focus { border-color: #3b82f6; }
+		.dsh-modal-checkbox { width: 18px; height: 18px; accent-color: #3b82f6; cursor: pointer; }
 		.dsh-modal-foot {
 			padding: 12px 18px; border-top: 1px solid var(--dsw-alias-border-l1, #e5e7eb);
 			background: var(--dsw-alias-bg-subtle, #f9fafb); display: flex; justify-content: flex-end; gap: 8px;
@@ -289,7 +311,8 @@ if (fs.existsSync(clientFile)) {
 			const [slashMenu, _setSlashMenu] = react.useState(null);
 			const [slashIdx, _setSlashIdx] = react.useState(0);
 			const [slashQuery, _setSlashQuery] = react.useState('');
-			const [embedModal, setEmbedModal] = react.useState(null); // { type: 'youtube'|'image', url: '' }
+			const [isInTable, setIsInTable] = react.useState(false);
+			const [embedModal, setEmbedModal] = react.useState(null); // { type: 'youtube'|'image'|'table', ... }
 			const editorRef = react.useRef(null);
 			const containerRef = react.useRef(null);
 			const canvasRef = react.useRef(null);
@@ -301,12 +324,8 @@ if (fs.existsSync(clientFile)) {
 				_setSlashMenu(val);
 			};
 			const setSlashQuery = (val) => {
-				if (typeof val === 'function') {
-					slashStateRef.current.query = val(slashStateRef.current.query);
-				} else {
-					slashStateRef.current.query = val;
-				}
-				_setSlashQuery(slashStateRef.current.query);
+				slashStateRef.current.query = val;
+				_setSlashQuery(val);
 			};
 			const setSlashIdx = (val) => {
 				if (typeof val === 'function') {
@@ -327,13 +346,59 @@ if (fs.existsSync(clientFile)) {
 				{ category: 'LISTS & TASKS', label: 'Task List', desc: 'Todo checkboxes', icon: '☑' },
 				{ category: 'LISTS & TASKS', label: 'Bullet List', desc: 'Unordered list', icon: '•' },
 				{ category: 'LISTS & TASKS', label: 'Numbered List', desc: 'Ordered list', icon: '1.' },
-				{ category: 'ADVANCED & MEDIA', label: 'Table', desc: 'Interactive table', icon: '📊' },
+				{ category: 'ADVANCED & MEDIA', label: 'Table', desc: 'Custom Rows x Columns', icon: '📊' },
 				{ category: 'ADVANCED & MEDIA', label: 'Code Block', desc: 'Syntax highlighting', icon: '</>' },
 				{ category: 'ADVANCED & MEDIA', label: 'Blockquote', desc: 'Capture quote', icon: '❝' },
 				{ category: 'ADVANCED & MEDIA', label: 'YouTube Video', desc: 'Embed YouTube player', icon: '🎥' },
 				{ category: 'ADVANCED & MEDIA', label: 'Image', desc: 'Insert image URL', icon: '🖼️' },
 				{ category: 'ADVANCED & MEDIA', label: 'Divider Line', desc: 'Horizontal rule', icon: '─' }
 			];
+
+			const filteredSlashItems = react.useMemo(() => {
+				if (!slashQuery) return slashItems;
+				const q = slashQuery.toLowerCase();
+				return slashItems.filter(item => item.label.toLowerCase().includes(q) || item.desc.toLowerCase().includes(q));
+			}, [slashQuery]);
+
+			const updateSlashFromDoc = (editor) => {
+				if (!editor || !canvasRef.current) return;
+				const { selection } = editor.state;
+				if (!selection.empty) {
+					setSlashMenu(null);
+					return;
+				}
+
+				const { $from } = selection;
+				const blockText = $from.parent.textContent;
+				const offset = $from.parentOffset;
+				const textBefore = blockText.slice(0, offset);
+
+				const slashPos = textBefore.lastIndexOf('/');
+				if (slashPos === -1) {
+					setSlashMenu(null);
+					return;
+				}
+
+				if (slashPos > 0 && !/\\s/.test(textBefore[slashPos - 1])) {
+					setSlashMenu(null);
+					return;
+				}
+
+				const query = textBefore.slice(slashPos + 1);
+				if (query.includes(' ') || query.includes('\\n')) {
+					setSlashMenu(null);
+					return;
+				}
+
+				const containerRect = canvasRef.current.getBoundingClientRect();
+				const slashAbsPos = $from.pos - query.length - 1;
+				const coords = editor.view.coordsAtPos(slashAbsPos);
+				const top = coords.bottom - containerRect.top + canvasRef.current.scrollTop + 6;
+				const left = Math.min(coords.left - containerRect.left + canvasRef.current.scrollLeft, containerRect.width - 320);
+
+				setSlashMenu({ top, left });
+				setSlashQuery(query);
+			};
 
 			const executeSlashItem = (item) => {
 				if (!editorRef.current) return;
@@ -349,6 +414,14 @@ if (fs.existsSync(clientFile)) {
 
 				let from = $from.pos - posInBlock + (slashIndex >= 0 ? slashIndex : 0);
 				let to = $from.pos;
+
+				if (item.label === 'Table') {
+					if (from < to) {
+						editor.chain().focus().deleteRange({ from, to }).run();
+					}
+					setEmbedModal({ type: 'table', rows: 3, cols: 3, withHeaderRow: true });
+					return;
+				}
 
 				if (item.label === 'YouTube Video') {
 					if (from < to) {
@@ -383,8 +456,6 @@ if (fs.existsSync(clientFile)) {
 					chain.toggleBulletList().run();
 				} else if (item.label === 'Numbered List') {
 					chain.toggleOrderedList().run();
-				} else if (item.label === 'Table') {
-					chain.insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run();
 				} else if (item.label === 'Code Block') {
 					chain.toggleCodeBlock().run();
 				} else if (item.label === 'Blockquote') {
@@ -393,12 +464,6 @@ if (fs.existsSync(clientFile)) {
 					chain.setHorizontalRule().run();
 				}
 			};
-
-			const filteredSlashItems = react.useMemo(() => {
-				if (!slashQuery) return slashItems;
-				const q = slashQuery.toLowerCase();
-				return slashItems.filter(item => item.label.toLowerCase().includes(q) || item.desc.toLowerCase().includes(q));
-			}, [slashQuery]);
 
 			// Close slash menu on outside click
 			react.useEffect(() => {
@@ -447,24 +512,19 @@ if (fs.existsSync(clientFile)) {
 							})
 						],
 						content: rawContent,
+						onUpdate: ({ editor: ed }) => {
+							updateSlashFromDoc(ed);
+						},
+						onSelectionUpdate: ({ editor: ed }) => {
+							setIsInTable(ed.isActive('table'));
+							updateSlashFromDoc(ed);
+						},
 						editorProps: {
 							attributes: {
 								class: 'dsh-tiptap-prose prose'
 							},
 							handleKeyDown: (view, event) => {
 								const current = slashStateRef.current;
-								if (event.key === '/' && !current.menu) {
-									setTimeout(() => {
-										if (!canvasRef.current) return;
-										const containerRect = canvasRef.current.getBoundingClientRect();
-										const coords = view.coordsAtPos(view.state.selection.from);
-										const top = coords.bottom - containerRect.top + canvasRef.current.scrollTop + 6;
-										const left = Math.min(coords.left - containerRect.left + canvasRef.current.scrollLeft, containerRect.width - 320);
-										setSlashMenu({ top, left });
-										setSlashIdx(0);
-										setSlashQuery('');
-									}, 0);
-								}
 								if (current.menu) {
 									const q = current.query.toLowerCase();
 									const filtered = slashItems.filter(item => item.label.toLowerCase().includes(q) || item.desc.toLowerCase().includes(q));
@@ -481,7 +541,7 @@ if (fs.existsSync(clientFile)) {
 									}
 									if (event.key === 'Enter') {
 										event.preventDefault();
-										const item = filtered[current.index];
+										const item = filtered[current.index] || filtered[0];
 										if (item) {
 											executeSlashItem(item);
 										}
@@ -490,19 +550,6 @@ if (fs.existsSync(clientFile)) {
 									if (event.key === 'Escape') {
 										setSlashMenu(null);
 										return true;
-									}
-									if (event.key.length === 1 && !event.ctrlKey && !event.metaKey) {
-										setSlashQuery(query => query + event.key);
-										setSlashIdx(0);
-									} else if (event.key === 'Backspace') {
-										setSlashQuery(query => {
-											if (!query) {
-												setSlashMenu(null);
-												return '';
-											}
-											return query.slice(0, -1);
-										});
-										setSlashIdx(0);
 									}
 								}
 								return false;
@@ -555,11 +602,16 @@ if (fs.existsSync(clientFile)) {
 
 			const handleEmbedSubmit = (e) => {
 				e.preventDefault();
-				if (!embedModal || !embedModal.url) return;
-				if (embedModal.type === 'youtube') {
+				if (!embedModal) return;
+				if (embedModal.type === 'youtube' && embedModal.url) {
 					runCommand(c => c.setYoutubeVideo({ src: embedModal.url }));
-				} else if (embedModal.type === 'image') {
+				} else if (embedModal.type === 'image' && embedModal.url) {
 					runCommand(c => c.setImage({ src: embedModal.url }));
+				} else if (embedModal.type === 'table') {
+					const rows = parseInt(embedModal.rows, 10) || 3;
+					const cols = parseInt(embedModal.cols, 10) || 3;
+					const withHeaderRow = !!embedModal.withHeaderRow;
+					runCommand(c => c.insertTable({ rows, cols, withHeaderRow }));
 				}
 				setEmbedModal(null);
 			};
@@ -649,12 +701,26 @@ if (fs.existsSync(clientFile)) {
 					react.createElement('button', { key: 'ul', type: 'button', className: 'dsh-tb-tool', title: 'Bullet List', onMouseDown: (e) => e.preventDefault(), onClick: () => runCommand(c => c.toggleBulletList()) }, '• List'),
 					react.createElement('button', { key: 'ol', type: 'button', className: 'dsh-tb-tool', title: 'Numbered List', onMouseDown: (e) => e.preventDefault(), onClick: () => runCommand(c => c.toggleOrderedList()) }, '1. List'),
 					react.createElement('button', { key: 'task', type: 'button', className: 'dsh-tb-tool', title: 'Task List (Checkboxes)', onMouseDown: (e) => e.preventDefault(), onClick: () => runCommand(c => c.toggleTaskList()) }, '☑ Task'),
-					react.createElement('button', { key: 'table', type: 'button', className: 'dsh-tb-tool', title: 'Insert Table', onMouseDown: (e) => e.preventDefault(), onClick: () => runCommand(c => c.insertTable({ rows: 3, cols: 3, withHeaderRow: true })) }, '📊 Table'),
+					react.createElement('button', { key: 'table', type: 'button', className: 'dsh-tb-tool', title: 'Insert Custom Table', onMouseDown: (e) => e.preventDefault(), onClick: () => setEmbedModal({ type: 'table', rows: 3, cols: 3, withHeaderRow: true }) }, '📊 Table'),
 					react.createElement('button', { key: 'quote', type: 'button', className: 'dsh-tb-tool', title: 'Blockquote', onMouseDown: (e) => e.preventDefault(), onClick: () => runCommand(c => c.toggleBlockquote()) }, '❝ Quote'),
 					react.createElement('button', { key: 'code', type: 'button', className: 'dsh-tb-tool', title: 'Code Block (Syntax Highlighted)', onMouseDown: (e) => e.preventDefault(), onClick: () => runCommand(c => c.toggleCodeBlock()) }, '</> Code'),
 					react.createElement('button', { key: 'yt', type: 'button', className: 'dsh-tb-tool', title: 'Embed YouTube Video', onMouseDown: (e) => e.preventDefault(), onClick: () => setEmbedModal({ type: 'youtube', url: '' }) }, '🎥 YouTube'),
 					react.createElement('button', { key: 'img', type: 'button', className: 'dsh-tb-tool', title: 'Insert Image URL', onMouseDown: (e) => e.preventDefault(), onClick: () => setEmbedModal({ type: 'image', url: '' }) }, '🖼️ Image'),
 					react.createElement('button', { key: 'hr', type: 'button', className: 'dsh-tb-tool', title: 'Divider Line', onMouseDown: (e) => e.preventDefault(), onClick: () => runCommand(c => c.setHorizontalRule()) }, '─ Line')
+				]) : null,
+
+				// Contextual Interactive Table Action Bar (Appears when cursor is inside any table)
+				isMarkdown && isRichMode && isInTable ? react.createElement('div', { key: 'table-toolbar', className: 'dsh-table-toolbar' }, [
+					react.createElement('span', { key: 'tbl-label', style: { fontSize: '11px', fontWeight: '700', color: '#15803d', marginRight: '4px' } }, '📊 TABLE TOOLS:'),
+					react.createElement('button', { key: 'row-after', type: 'button', className: 'dsh-tb-table-btn', title: 'Add Row Below (+)', onMouseDown: (e) => e.preventDefault(), onClick: () => runCommand(c => c.addRowAfter()) }, '➕ Row Below'),
+					react.createElement('button', { key: 'row-before', type: 'button', className: 'dsh-tb-table-btn', title: 'Add Row Above (+)', onMouseDown: (e) => e.preventDefault(), onClick: () => runCommand(c => c.addRowBefore()) }, '➕ Row Above'),
+					react.createElement('button', { key: 'col-after', type: 'button', className: 'dsh-tb-table-btn', title: 'Add Column Right (+)', onMouseDown: (e) => e.preventDefault(), onClick: () => runCommand(c => c.addColumnAfter()) }, '➕ Col Right'),
+					react.createElement('button', { key: 'col-before', type: 'button', className: 'dsh-tb-table-btn', title: 'Add Column Left (+)', onMouseDown: (e) => e.preventDefault(), onClick: () => runCommand(c => c.addColumnBefore()) }, '➕ Col Left'),
+					react.createElement('span', { key: 'sep-tbl', className: 'dsh-tb-sep' }),
+					react.createElement('button', { key: 'toggle-hdr', type: 'button', className: 'dsh-tb-table-btn', title: 'Toggle Header Row', onMouseDown: (e) => e.preventDefault(), onClick: () => runCommand(c => c.toggleHeaderRow()) }, '🔲 Header Row'),
+					react.createElement('button', { key: 'del-row', type: 'button', className: 'dsh-tb-table-btn dsh-tb-table-btn-danger', title: 'Delete Current Row (-)', onMouseDown: (e) => e.preventDefault(), onClick: () => runCommand(c => c.deleteRow()) }, '➖ Del Row'),
+					react.createElement('button', { key: 'del-col', type: 'button', className: 'dsh-tb-table-btn dsh-tb-table-btn-danger', title: 'Delete Current Column (-)', onMouseDown: (e) => e.preventDefault(), onClick: () => runCommand(c => c.deleteColumn()) }, '➖ Del Col'),
+					react.createElement('button', { key: 'del-tbl', type: 'button', className: 'dsh-tb-table-btn dsh-tb-table-btn-danger', title: 'Delete Entire Table', onMouseDown: (e) => e.preventDefault(), onClick: () => runCommand(c => c.deleteTable()) }, '🗑️ Delete Table')
 				]) : null,
 
 				// TipTap Canvas / Code Canvas
@@ -707,29 +773,72 @@ if (fs.existsSync(clientFile)) {
 					]) : null
 				]),
 
-				// Sleek Inline Modal Dialog for YouTube & Image Embeds (No window.prompt!)
+				// Sleek Inline Modal Dialog for Table Configuration, YouTube & Image Embeds
 				embedModal ? react.createElement('div', {
 					key: 'embed-dialog-backdrop',
 					className: 'dsh-modal-backdrop',
 					onClick: (e) => { if (e.target === e.currentTarget) setEmbedModal(null); }
 				}, react.createElement('div', { className: 'dsh-modal-card' }, [
 					react.createElement('div', { key: 'head', className: 'dsh-modal-head' }, [
-						react.createElement('span', { key: 'title' }, embedModal.type === 'youtube' ? '🎥 Embed YouTube Video' : '🖼️ Insert Image URL'),
+						react.createElement('span', { key: 'title' },
+							embedModal.type === 'youtube' ? '🎥 Embed YouTube Video' :
+							embedModal.type === 'image' ? '🖼️ Insert Image URL' : '📊 Configure Table (Rows × Columns)'
+						),
 						react.createElement('button', { key: 'close', className: 'dsh-tab-close', onClick: () => setEmbedModal(null) }, '✕')
 					]),
 					react.createElement('form', { key: 'form', onSubmit: handleEmbedSubmit }, [
-						react.createElement('div', { key: 'body', className: 'dsh-modal-body' }, [
-							react.createElement('input', {
-								key: 'input',
-								type: 'url',
-								autoFocus: true,
-								required: true,
-								placeholder: embedModal.type === 'youtube' ? 'https://www.youtube.com/watch?v=...' : 'https://example.com/image.png',
-								value: embedModal.url,
-								className: 'dsh-modal-input',
-								onChange: (e) => setEmbedModal({ ...embedModal, url: e.target.value })
-							})
-						]),
+						react.createElement('div', { key: 'body', className: 'dsh-modal-body' },
+							embedModal.type === 'table' ? [
+								react.createElement('div', { key: 'row-input', className: 'dsh-modal-row' }, [
+									react.createElement('span', { key: 'lbl1', className: 'dsh-modal-label' }, 'Number of Rows:'),
+									react.createElement('input', {
+										key: 'inp-rows',
+										type: 'number',
+										min: 1,
+										max: 30,
+										required: true,
+										autoFocus: true,
+										className: 'dsh-modal-num-input',
+										value: embedModal.rows,
+										onChange: (e) => setEmbedModal({ ...embedModal, rows: e.target.value })
+									})
+								]),
+								react.createElement('div', { key: 'col-input', className: 'dsh-modal-row' }, [
+									react.createElement('span', { key: 'lbl2', className: 'dsh-modal-label' }, 'Number of Columns:'),
+									react.createElement('input', {
+										key: 'inp-cols',
+										type: 'number',
+										min: 1,
+										max: 15,
+										required: true,
+										className: 'dsh-modal-num-input',
+										value: embedModal.cols,
+										onChange: (e) => setEmbedModal({ ...embedModal, cols: e.target.value })
+									})
+								]),
+								react.createElement('div', { key: 'hdr-input', className: 'dsh-modal-row' }, [
+									react.createElement('span', { key: 'lbl3', className: 'dsh-modal-label' }, 'Include Header Row:'),
+									react.createElement('input', {
+										key: 'inp-hdr',
+										type: 'checkbox',
+										className: 'dsh-modal-checkbox',
+										checked: embedModal.withHeaderRow,
+										onChange: (e) => setEmbedModal({ ...embedModal, withHeaderRow: e.target.checked })
+									})
+								])
+							] : [
+								react.createElement('input', {
+									key: 'input',
+									type: 'url',
+									autoFocus: true,
+									required: true,
+									placeholder: embedModal.type === 'youtube' ? 'https://www.youtube.com/watch?v=...' : 'https://example.com/image.png',
+									value: embedModal.url,
+									className: 'dsh-modal-input',
+									onChange: (e) => setEmbedModal({ ...embedModal, url: e.target.value })
+								})
+							]
+						),
 						react.createElement('div', { key: 'foot', className: 'dsh-modal-foot' }, [
 							react.createElement('button', {
 								key: 'cancel',
@@ -741,7 +850,7 @@ if (fs.existsSync(clientFile)) {
 								key: 'submit',
 								type: 'submit',
 								className: 'dsh-modal-btn-submit'
-							}, embedModal.type === 'youtube' ? 'Embed Video' : 'Insert Image')
+							}, embedModal.type === 'youtube' ? 'Embed Video' : embedModal.type === 'image' ? 'Insert Image' : 'Insert Table')
 						])
 					])
 				])) : null
@@ -821,5 +930,5 @@ if (fs.existsSync(clientFile)) {
   }
 
   fs.writeFileSync(clientFile, content, 'utf8')
-  console.log('[✓] Successfully patched dsh-local-filetree with Novel-Grade TipTap UI/UX!')
+  console.log('[✓] Successfully patched dsh-local-filetree with Document-Driven Live Slash Filtering!')
 }

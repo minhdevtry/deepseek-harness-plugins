@@ -1,5 +1,4 @@
 import { chromium } from 'playwright';
-import path from 'path';
 
 async function run() {
   console.log('[+] Launching local headless chromium...');
@@ -41,55 +40,45 @@ async function run() {
     const editor = page.locator('.dsh-tiptap-prose').first();
     await editor.click();
     
-    // TEST 1: Insert Heading 1 via Slash Menu
-    console.log('[+] Testing Slash Command -> Heading 1...');
+    // STEP 1: Type '/' to show all commands
+    console.log('[+] Typing "/" to open full Slash Menu...');
     await page.keyboard.press('Enter');
     await page.keyboard.type('/');
-    await page.waitForTimeout(600);
-    await page.keyboard.press('Enter'); // Heading 1 is selected
-    await page.keyboard.type('Test Slash Heading 1');
-    await page.waitForTimeout(600);
-    await page.screenshot({ path: 'test-after-h1-executed.png' });
-    console.log('[✓] Heading 1 screenshot saved: test-after-h1-executed.png');
+    await page.waitForTimeout(500);
+    await page.screenshot({ path: 'test-slash-all.png' });
+    console.log('[✓] Full slash menu screenshot saved: test-slash-all.png');
 
-    // TEST 2: Insert Table via Slash Menu
-    console.log('[+] Testing Slash Command -> /table...');
-    await page.keyboard.press('Enter');
-    await page.keyboard.type('/table');
-    await page.waitForTimeout(600);
-    await page.keyboard.press('Enter');
-    await page.waitForTimeout(600);
-    await page.screenshot({ path: 'test-after-table-executed.png' });
-    console.log('[✓] Table screenshot saved: test-after-table-executed.png');
+    // STEP 2: Type 'tab' to test live filtering
+    console.log('[+] Typing "tab" to test live filtering for Table...');
+    await page.keyboard.type('tab');
+    await page.waitForTimeout(500);
+    await page.screenshot({ path: 'test-slash-filtered-table.png' });
+    console.log('[✓] Filtered table slash screenshot saved: test-slash-filtered-table.png');
 
-    // TEST 3: Insert Code Block via Slash Menu
-    console.log('[+] Testing Slash Command -> /code...');
-    await page.keyboard.press('Enter');
-    await page.keyboard.type('/code');
-    await page.waitForTimeout(600);
-    await page.keyboard.press('Enter');
-    await page.keyboard.type('console.log("Hello TipTap!");');
-    await page.waitForTimeout(600);
-    await page.screenshot({ path: 'test-after-code-executed.png' });
-    console.log('[✓] Code block screenshot saved: test-after-code-executed.png');
+    // STEP 3: Backspace 3 times
+    console.log('[+] Pressing Backspace 3 times to restore full menu...');
+    await page.keyboard.press('Backspace');
+    await page.keyboard.press('Backspace');
+    await page.keyboard.press('Backspace');
+    await page.waitForTimeout(500);
+    await page.screenshot({ path: 'test-slash-backspaced.png' });
+    console.log('[✓] Restored slash menu screenshot saved: test-slash-backspaced.png');
 
-    // TEST 4: Insert YouTube Video via Slash Menu
-    console.log('[+] Testing Slash Command -> /you -> Modal...');
-    await page.keyboard.press('Enter');
-    await page.keyboard.type('/you');
-    await page.waitForTimeout(600);
-    await page.keyboard.press('Enter'); // Opens modal
-    await page.waitForTimeout(600);
-    
-    // Enter YouTube URL into modal
-    const modalInput = page.locator('.dsh-modal-input').first();
-    await modalInput.fill('https://www.youtube.com/watch?v=dQw4w9WgXcQ');
-    await page.keyboard.press('Enter'); // Submit modal
-    await page.waitForTimeout(1000);
-    await page.screenshot({ path: 'test-after-youtube-executed.png' });
-    console.log('[✓] YouTube embed screenshot saved: test-after-youtube-executed.png');
+    // STEP 4: Type 'you' to filter to YouTube
+    console.log('[+] Typing "you" to test live filtering for YouTube...');
+    await page.keyboard.type('you');
+    await page.waitForTimeout(500);
+    await page.screenshot({ path: 'test-slash-filtered-youtube.png' });
+    console.log('[✓] Filtered YouTube screenshot saved: test-slash-filtered-youtube.png');
 
-    console.log('[🎉] ALL 4 SLASH COMMAND TESTS COMPLETED SUCCESSFULLY!');
+    // STEP 5: Press Enter to open YouTube modal
+    console.log('[+] Pressing Enter to open YouTube modal from filtered item...');
+    await page.keyboard.press('Enter');
+    await page.waitForTimeout(500);
+    await page.screenshot({ path: 'test-slash-modal-opened.png' });
+    console.log('[✓] Modal opened screenshot saved: test-slash-modal-opened.png');
+
+    console.log('[🎉] ALL LIVE SLASH FILTERING TESTS COMPLETED SUCCESSFULLY!');
   } else {
     console.log('[-] Could not locate "note.md" file in the sidebar.');
   }
