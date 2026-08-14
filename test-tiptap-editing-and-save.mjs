@@ -15,7 +15,7 @@ async function run() {
 
   // 2. Type into TipTap editor
   console.log('[+] Typing into TipTap editor...');
-  const editor = page.locator('.vk_tiptap_prose').first();
+  const editor = page.locator('.tiptap, .vk_tiptap_wrapper').first();
   await editor.click();
   await page.keyboard.type('\n## 🚀 Newly Added Section via TipTap Notion WYSIWYG!\nEverything is working smoothly in real-time.\n');
   await page.waitForTimeout(1000);

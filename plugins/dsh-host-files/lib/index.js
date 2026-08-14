@@ -133,6 +133,72 @@ async function searchDir(root, q) {
 	return out;
 }
 
+/** 递归全文内容搜索（带行号、代码预览、区分大小写/正则）。 */
+async function searchContent(root, q, caseSensitive = false, isRegex = false) {
+	const out = [];
+	const budget = { used: 0 };
+	let regex = null;
+	if (isRegex) {
+		try {
+			regex = new RegExp(q, caseSensitive ? "g" : "gi");
+		} catch {
+			regex = null;
+		}
+	}
+	const needle = caseSensitive ? q : q.toLowerCase();
+
+	async function walk(dir, depth) {
+		if (depth > SEARCH_DEPTH_LIMIT || budget.used >= SEARCH_ENTRY_LIMIT || out.length >= SEARCH_RESULT_LIMIT) return;
+		let entries;
+		try {
+			entries = await readdir(dir, { withFileTypes: true });
+		} catch {
+			return;
+		}
+		for (const entry of entries) {
+			if (out.length >= SEARCH_RESULT_LIMIT || budget.used >= SEARCH_ENTRY_LIMIT) return;
+			if (isHiddenName(entry.name)) continue;
+			const full = join(dir, entry.name);
+			if (entry.isDirectory()) {
+				await walk(full, depth + 1);
+			} else if (entry.isFile()) {
+				const ext = extname(entry.name).toLowerCase();
+				if ([".png", ".jpg", ".jpeg", ".gif", ".ico", ".pdf", ".zip", ".tar", ".gz", ".woff", ".woff2", ".ttf", ".eot", ".exe", ".dll", ".so", ".dylib"].includes(ext)) continue;
+				budget.used += 1;
+				try {
+					const info = await stat(full);
+					if (info.size > 512 * 1024) continue;
+					const content = await readFile(full, "utf8");
+					if (looksBinary(content)) continue;
+					const lines = content.split("\n");
+					for (let i = 0; i < lines.length; i++) {
+						if (out.length >= SEARCH_RESULT_LIMIT) break;
+						const line = lines[i];
+						let match = false;
+						if (regex) {
+							regex.lastIndex = 0;
+							match = regex.test(line);
+						} else {
+							match = caseSensitive ? line.includes(needle) : line.toLowerCase().includes(needle);
+						}
+						if (match) {
+							out.push({
+								name: entry.name,
+								path: full,
+								rel: full.slice(root.length + 1).replace(/\\/g, "/"),
+								line: i + 1,
+								preview: line.trim().slice(0, 200)
+							});
+						}
+					}
+				} catch {}
+			}
+		}
+	}
+	await walk(root, 0);
+	return out;
+}
+
 /** 送回收站删除（可恢复；目录递归）。 */
 function recycleBinDelete(target, isDir) {
 	return new Promise((resolvePromise, rejectPromise) => {
@@ -301,7 +367,13 @@ function apply(ctx) {
 				}
 				if (url.pathname === "/vscode-files/search") {
 					const q = url.searchParams.get("q");
+					const type = url.searchParams.get("type") || "filename";
+					const caseSensitive = url.searchParams.get("caseSensitive") === "true";
+					const isRegex = url.searchParams.get("isRegex") === "true";
 					if (typeof q !== "string" || q.trim().length === 0) return sendJson(res, 400, { ok: false, error: "missing q" });
+					if (type === "content") {
+						return sendJson(res, 200, { ok: true, results: await searchContent(target, q.trim(), caseSensitive, isRegex) });
+					}
 					return sendJson(res, 200, { ok: true, results: await searchDir(target, q.trim()) });
 				}
 				if (url.pathname === "/vscode-files/highlight") {

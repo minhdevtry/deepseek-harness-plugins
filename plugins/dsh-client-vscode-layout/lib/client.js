@@ -443,6 +443,16 @@ window.__ModuleLoader__.load({
 			const [draft, setDraft] = react.useState("");
 			const [showHidden, setShowHidden] = react.useState(false);
 			const [git, setGit] = react.useState(null);
+			const [creating, setCreating] = react.useState(null);
+			const [createName, setCreateName] = react.useState("");
+			const [createErr, setCreateErr] = react.useState(null);
+			const [renaming, setRenaming] = react.useState(null);
+			const [renameErr, setRenameErr] = react.useState(null);
+			const [searchOn, setSearchOn] = react.useState(false);
+			const [searchQ, setSearchQ] = react.useState("");
+			const [searchResults, setSearchResults] = react.useState(null);
+			const [ctxMenu, setCtxMenu] = react.useState(null);
+
 			react.useEffect(() => {
 				setGit(null);
 				if (typeof root === "string" && root.length > 0) {
@@ -452,45 +462,34 @@ window.__ModuleLoader__.load({
 						.catch(() => {});
 				}
 			}, [root]);
-			const [creating, setCreating] = react.useState(null);
-			const [createName, setCreateName] = react.useState("");
-			const [createErr, setCreateErr] = react.useState(null);
-			const [renaming, setRenaming] = react.useState(null);
-			const [renameErr, setRenameErr] = react.useState(null);
-			const [searchOn, setSearchOn] = react.useState(false);
-			const [searchQ, setSearchQ] = react.useState("");
-			const [searchResults, setSearchResults] = react.useState(null);
-			react.useEffect(() => {
-				const q = searchQ.trim();
-				if (q.length === 0) {
-					setSearchResults(null);
-					return;
-				}
-				if (typeof root !== "string" || root.length === 0) return;
-				let dead = false;
-				const timer = setTimeout(() => {
-					fetch("/vscode-files/search?path=" + encodeURIComponent(root) + "&q=" + encodeURIComponent(q))
-						.then((r) => r.json())
-						.then((d) => { if (!dead) setSearchResults(d && d.ok ? d.results : []); })
-						.catch(() => { if (!dead) setSearchResults([]); });
-				}, 250);
-				return () => { dead = true; clearTimeout(timer); };
-			}, [searchQ, root]);
+
 			react.useEffect(() => {
 				setExpanded(new Set());
 				setEntries({});
 				setError(null);
 				if (typeof root === "string" && root.length > 0) load(root);
 			}, [root]);
+
+			react.useEffect(() => {
+				if (ctxMenu === null) return;
+				const onDown = (e) => {
+					if (e.target instanceof Element && e.target.closest("[data-vk-menu]")) return;
+					setCtxMenu(null);
+				};
+				window.addEventListener("pointerdown", onDown);
+				return () => window.removeEventListener("pointerdown", onDown);
+			}, [ctxMenu]);
+
 			function load(path) {
 				fetch("/vscode-files/list?path=" + encodeURIComponent(path))
 					.then((r) => r.json())
 					.then((d) => {
 						if (d && d.ok) setEntries((m) => ({ ...m, [path]: d }));
-						else setError((d && d.error) || "加载失败");
+						else setError((d && d.error) || "Load failed");
 					})
 					.catch((e) => setError(String(e)));
 			}
+
 			function toggle(path) {
 				const next = new Set(expanded);
 				if (next.has(path)) next.delete(path);
@@ -500,145 +499,145 @@ window.__ModuleLoader__.load({
 				}
 				setExpanded(next);
 			}
+
 			function rel(p) {
 				if (typeof root !== "string") return null;
 				if (p === root) return "";
 				if (p.startsWith(root + "\\") || p.startsWith(root + "/")) return p.slice(root.length + 1).replace(/\\/g, "/");
 				return null;
 			}
+
 			function badgeOf(code) {
-				if (code === "??") return { text: "U", cls: " vk_gitU" };
-				if (code.includes("M")) return { text: "M", cls: " vk_gitM" };
-				if (code.includes("A")) return { text: "A", cls: " vk_gitA" };
-				if (code.includes("D")) return { text: "D", cls: " vk_gitD" };
-				if (code.includes("R")) return { text: "R", cls: " vk_gitR" };
-				return null;
+				if (code === "??") return { text: "U", cls: " vk_gitBadgeUntracked" };
+				if (code === "M") return { text: "M", cls: " vk_gitBadgeModified" };
+				if (code === "A") return { text: "A", cls: " vk_gitBadgeAdded" };
+				if (code === "D") return { text: "D", cls: " vk_gitBadgeDeleted" };
+				if (code === "R") return { text: "R", cls: " vk_gitBadgeRenamed" };
+				return { text: code, cls: "" };
 			}
-			function dirBadge(dirPath) {
-				if (git === null) return null;
-				const base = rel(dirPath);
-				if (base === null) return null;
-				const prefix = base === "" ? "" : base + "/";
-				let hasM = false;
-				let hasOther = false;
-				for (const k of Object.keys(git)) {
-					const hit = prefix === "" ? !k.includes("/") : k.startsWith(prefix);
-					if (!hit) continue;
-					if (git[k].includes("M") || git[k].includes("D") || git[k].includes("R")) hasM = true;
-					else hasOther = true;
-				}
-				if (hasM) return { text: "M", cls: " vk_gitM" };
-				if (hasOther) return { text: "U", cls: " vk_gitU" };
-				return null;
-			}
-			function parentOf(p) {
-				const i = Math.max(p.lastIndexOf("\\"), p.lastIndexOf("/"));
-				return i > 0 ? p.slice(0, i) : p;
-			}
-			function refreshGit() {
-				if (typeof root !== "string" || root.length === 0) return;
-				fetch("/vscode-files/git?path=" + encodeURIComponent(root))
-					.then((r) => r.json())
-					.then((d) => { if (d && d.ok && d.statuses) setGit(d.statuses); })
-					.catch(() => {});
-			}
-			function refreshAround(dirPath) {
-				load(dirPath);
-				setEntries((m) => {
-					const next = {};
-					for (const k of Object.keys(m)) {
-						if (k === dirPath) continue;
-						if (k.startsWith(dirPath + "\\") || k.startsWith(dirPath + "/")) continue;
-						next[k] = m[k];
+
+			async function doDelete(p, name) {
+				if (typeof confirm === "function" && !confirm('Move "' + name + '" to Trash?')) return;
+				try {
+					const r = await fetch("/vscode-files/delete", {
+						method: "POST",
+						headers: { "content-type": "application/json" },
+						body: JSON.stringify({ path: p })
+					});
+					const d = await r.json();
+					if (d && d.ok) {
+						if (typeof root === "string") load(root);
+						if (onDeleted) onDeleted(p);
+					} else {
+						setError((d && d.error) || "Delete failed");
 					}
-					return next;
-				});
-				refreshGit();
+				} catch (e) {
+					setError(String(e));
+				}
 			}
-			function commitCreate() {
-				const n = createName.trim();
-				const kind = creating;
-				if (n.length === 0 || kind === null) return;
+
+			async function commitCreate() {
+				if (creating === null) return;
+				const name = createName.trim();
+				if (name.length === 0) return;
 				const parent = typeof root === "string" ? root : "";
-				if (parent.length === 0) return;
-				const endpoint = kind === "dir" ? "/vscode-files/mkdir" : "/vscode-files/mkfile";
-				fetch(endpoint + "?path=" + encodeURIComponent(parent), {
-					method: "POST",
-					headers: { "content-type": "application/json" },
-					body: JSON.stringify({ path: parent, name: n })
-				})
-					.then((r) => r.json())
-					.then((d) => {
-						if (d && d.ok) {
-							setCreateErr(null);
-							setCreating(null);
-							setCreateName("");
-							refreshAround(parent);
-							if (kind === "file" && d.path) onOpenFile({ path: d.path, name: n });
-						} else setCreateErr((d && d.error) || "Create failed");
-					})
-					.catch((e) => setCreateErr(String(e)));
+				const endpoint = creating === "dir" ? "/vscode-files/mkdir" : "/vscode-files/mkfile";
+				try {
+					const r = await fetch(endpoint, {
+						method: "POST",
+						headers: { "content-type": "application/json" },
+						body: JSON.stringify({ path: parent, name })
+					});
+					const d = await r.json();
+					if (d && d.ok) {
+						setCreating(null);
+						setCreateName("");
+						setCreateErr(null);
+						if (typeof root === "string") load(root);
+						if (creating === "file" && onOpenFile) onOpenFile({ path: d.path, name });
+					} else {
+						setCreateErr((d && d.error) || "Create failed");
+					}
+				} catch (e) {
+					setCreateErr(String(e));
+				}
 			}
-			function commitRename(nameOverride) {
+
+			async function commitRename(newName) {
 				if (renaming === null) return;
-				const n = (nameOverride ?? renaming.name).trim();
-				if (n.length === 0 || n === renaming.oldName) {
+				const val = newName.trim();
+				if (val.length === 0 || val === renaming.name) {
 					setRenaming(null);
 					setRenameErr(null);
 					return;
 				}
-				fetch("/vscode-files/rename?path=" + encodeURIComponent(renaming.path), {
-					method: "POST",
-					headers: { "content-type": "application/json" },
-					body: JSON.stringify({ path: renaming.path, newName: n })
-				})
-					.then((r) => r.json())
-					.then((d) => {
-						if (d && d.ok) {
-							const newPath = d.path;
-							setRenaming(null);
-							setRenameErr(null);
-							refreshAround(parentOf(renaming.path));
-							onRenamed?.(renaming.path, newPath, n);
-						} else setRenameErr((d && d.error) || "Rename failed");
-					})
-					.catch((e) => setRenameErr(String(e)));
+				try {
+					const r = await fetch("/vscode-files/rename", {
+						method: "POST",
+						headers: { "content-type": "application/json" },
+						body: JSON.stringify({ path: renaming.path, newName: val })
+					});
+					const d = await r.json();
+					if (d && d.ok) {
+						const oldP = renaming.path;
+						const newP = d.path;
+						setRenaming(null);
+						setRenameErr(null);
+						if (typeof root === "string") load(root);
+						if (onRenamed) onRenamed(oldP, newP, val);
+					} else {
+						setRenameErr((d && d.error) || "Rename failed");
+					}
+				} catch (e) {
+					setRenameErr(String(e));
+				}
 			}
-			function doDelete(path, name) {
-				if (typeof confirm === "function" && !confirm(`Move "${name}" to Trash?`)) return;
-				fetch("/vscode-files/delete?path=" + encodeURIComponent(path), {
-					method: "POST",
-					headers: { "content-type": "application/json" },
-					body: JSON.stringify({ path })
-				})
-					.then((r) => r.json())
-					.then((d) => {
-						if (d && d.ok) {
-							refreshAround(parentOf(path));
-							onDeleted?.(path);
-						} else setError((d && d.error) || "Delete failed");
-					})
-					.catch((e) => setError(String(e)));
-			}
+
 			function rows(dir, depth) {
-				if (!dir) return [];
-				const out = [];
+				if (!dir || !dir.ok) return [];
+				const list = [];
 				for (const d of dir.dirs) {
 					if (d.hidden && !showHidden) continue;
-					out.push(h(Row, { key: d.path, path: d.path, name: d.name, isDir: true, hidden: d.hidden, active: false, badge: dirBadge(d.path), depth, expanded: expanded.has(d.path), onToggle: () => toggle(d.path) }));
-					if (expanded.has(d.path) && entries[d.path] && entries[d.path].ok) out.push(...rows(entries[d.path], depth + 1));
+					const exp = expanded.has(d.path);
+					const badge = git ? (git[rel(d.path) || ""] ? badgeOf(git[rel(d.path) || ""]) : null) : null;
+					list.push(renderRow({
+						key: d.path,
+						path: d.path,
+						name: d.name,
+						isDir: true,
+						expanded: exp,
+						depth,
+						hidden: d.hidden,
+						badge,
+						onToggle: () => toggle(d.path)
+					}));
+					if (exp && entries[d.path]) {
+						list.push(...rows(entries[d.path], depth + 1));
+					}
 				}
 				for (const f of dir.files) {
 					if (f.hidden && !showHidden) continue;
-					const code = git !== null ? git[rel(f.path) ?? ""] ?? null : null;
-					out.push(h(Row, { key: f.path, path: f.path, name: f.name, isDir: false, hidden: f.hidden, active: f.path === activePath, badge: code !== null && rel(f.path) !== null ? badgeOf(code) : null, depth, onToggle: () => onOpenFile({ path: f.path, name: f.name }) }));
+					const badge = git ? (git[rel(f.path) || ""] ? badgeOf(git[rel(f.path) || ""]) : null) : null;
+					list.push(renderRow({
+						key: f.path,
+						path: f.path,
+						name: f.name,
+						isDir: false,
+						depth,
+						hidden: f.hidden,
+						active: activePath === f.path,
+						badge,
+						onToggle: () => onOpenFile({ path: f.path, name: f.name })
+					}));
 				}
-				return out;
+				return list;
 			}
-			function Row(props) {
-				const pad = { paddingLeft: 10 + props.depth * 16 + "px" };
+
+			function renderRow(props) {
+				const pad = { paddingLeft: 12 + props.depth * 14 + "px" };
 				if (renaming !== null && renaming.path === props.path) {
 					return h(RenameRow, {
+						key: props.key,
 						pad,
 						initialName: renaming.name,
 						error: renameErr,
@@ -646,50 +645,54 @@ window.__ModuleLoader__.load({
 						onCancel: () => { setRenaming(null); setRenameErr(null); }
 					});
 				}
-				const caret = props.isDir ? h("span", { className: "vk_caret" }, props.expanded ? "▾" : "▸") : h("span", { className: "vk_caret" }, "\u00A0");
-				// 缩进参考线（纯装饰）：对齐各级祖先目录的 caret 中心
+				const caret = props.isDir ? h("span", { className: "vk_caret" }, props.expanded ? "▾" : "▸") : h("span", { className: "vk_caret" }, " ");
 				const guides = [];
-				for (let i = 0; i < props.depth; i++) guides.push(h("span", { key: "g" + i, className: "vk_guide", style: { left: 17 + i * 16 + "px" } }));
-				const ic = iconOf(props.name, props.isDir, props.isDir && props.expanded === true);
-				const icon = h("span", { className: "vk_icon " + ic.c }, ic.g);
-				const name = props.isDir
-					? h("span", { className: "vk_name vk_dirName" }, props.name)
-					: h("span", { className: "vk_name" }, props.name);
+				for (let i = 0; i < props.depth; i++) guides.push(h("span", { key: "g" + i, className: "vk_guide", style: { left: 17 + i * 14 + "px" } }));
+				const icon = props.isDir
+					? h(FileTypeIcon, { symbolId: props.expanded ? "fti-FolderOpen" : "fti-Folder" })
+					: h(FileTypeIcon, { symbolId: fileIconId(props.name, "file", false) });
+				const name = h("span", { className: "vk_name" + (props.isDir ? " vk_dirName" : "") }, props.name);
 				const badge = props.badge ? h("span", { className: "vk_gitBadge" + props.badge.cls }, props.badge.text) : null;
-				const actions = h("span", { className: "vk_rowActions" },
-					h("button", { className: "vk_rowBtn", title: "Rename", onClick: (e) => { e.stopPropagation(); setRenaming({ path: props.path, name: props.name, oldName: props.name }); setRenameErr(null); } }, "🖊"),
-					h("button", { className: "vk_rowBtn", title: "Delete (Move to Trash)", onClick: (e) => { e.stopPropagation(); doDelete(props.path, props.name); } }, "🗑")
-				);
-				return h("div", { className: "vk_row" + (props.hidden ? " vk_rowHidden" : "") + (props.active ? " vk_rowActive" : ""), style: pad, onClick: props.onToggle }, guides, caret, icon, name, badge, actions);
+
+				return h("div", {
+					key: props.key,
+					className: "vk_row" + (props.hidden ? " vk_rowHidden" : "") + (props.active ? " vk_rowActive" : ""),
+					style: pad,
+					onClick: props.onToggle,
+					onContextMenu: (e) => {
+						e.preventDefault();
+						e.stopPropagation();
+						setCtxMenu({ x: e.clientX, y: e.clientY, item: props });
+					}
+				}, guides, caret, icon, name, badge);
 			}
+
 			function commitFolder() {
 				const p = draft.trim();
 				setPicking(false);
 				setDraft("");
 				if (p.length > 0) onOpenFolder(p);
 			}
+
 			const title = typeof root === "string" && root.length > 0 && root !== "." ? (root.split(/[\\/]/).pop() || root) : "EXPLORER";
 			const head = h("div", { className: "vk_treeHead" },
 				h("span", { className: "vk_treeTitle", title: typeof root === "string" ? root : "" }, title),
-				h("button", {
-					className: "vk_treeBtn",
-					title: "Open Folder",
-					onClick: async () => {
-						try {
-							const p = await onPickNative();
-							if (typeof p === "string" && p.length > 0) onOpenFolder(p);
-						} catch {
-							setPicking(true);
-							setDraft("");
-						}
+				h("button", { className: "vk_treeBtn", title: "Open Folder", onClick: async () => {
+					try {
+						const p = await onPickNative();
+						if (typeof p === "string" && p.length > 0) onOpenFolder(p);
+					} catch {
+						setPicking(true);
+						setDraft("");
 					}
-				}, "📂"),
+				} }, "📂"),
 				h("button", { className: "vk_treeBtn" + (showHidden ? " vk_treeBtnActive" : ""), title: showHidden ? "Hide Hidden Files" : "Show Hidden Files (.git, node_modules, etc.)", onClick: () => setShowHidden((v) => !v) }, "👁"),
 				h("button", { className: "vk_treeBtn", title: "Enter Path Manually", onClick: () => { setPicking(true); setDraft(""); } }, "✏️"),
 				h("button", { className: "vk_treeBtn" + (creating !== null ? " vk_treeBtnActive" : ""), title: "New File / Folder", onClick: () => { setCreating(creating === null ? "file" : null); setCreateName(""); setCreateErr(null); } }, "＋"),
 				h("button", { className: "vk_treeBtn" + (searchOn ? " vk_treeBtnActive" : ""), title: "Search Files", onClick: () => { setSearchOn(!searchOn); setSearchQ(""); } }, "🔍"),
 				custom ? h("button", { className: "vk_treeBtn", title: "Reset to Workspace Folder", onClick: onCloseFolder }, "×") : null
 			);
+
 			const picker = picking ? h("div", { className: "vk_pickForm" },
 				h("input", {
 					className: "vk_pickInput",
@@ -707,6 +710,7 @@ window.__ModuleLoader__.load({
 					h("button", { className: "vk_pickBtn", onClick: () => { setPicking(false); setDraft(""); } }, "Cancel")
 				)
 			) : null;
+
 			const createForm = creating !== null ? h("div", { className: "vk_pickForm" },
 				h("div", { className: "vk_pickRow" },
 					h("button", { className: "vk_pickBtn" + (creating === "file" ? " vk_modeBtn" : ""), onClick: () => setCreating("file") }, "New File"),
@@ -726,9 +730,10 @@ window.__ModuleLoader__.load({
 				createErr !== null ? h("span", { className: "vk_saveMsg" }, createErr) : null,
 				h("div", { className: "vk_pickRow" },
 					h("button", { className: "vk_pickBtn", onClick: commitCreate }, "Create"),
-					h("button", { className: "vk_pickBtn", onClick: () => { setCreating(null); setCreateName(""); setCreateErr(null); } }, "取消")
+					h("button", { className: "vk_pickBtn", onClick: () => { setCreating(null); setCreateName(""); setCreateErr(null); } }, "Cancel")
 				)
 			) : null;
+
 			const searchForm = searchOn ? h("div", { className: "vk_pickForm" },
 				h("input", {
 					className: "vk_pickInput",
@@ -747,14 +752,15 @@ window.__ModuleLoader__.load({
 					}
 				})
 			) : null;
+
 			const dir = typeof root === "string" && root.length > 0 ? entries[root] : void 0;
 			const body = (() => {
 				if (searchOn && searchQ.trim().length > 0) {
 					if (searchResults === null) return h("div", { className: "vk_empty" }, "Searching...");
 					if (searchResults.length === 0) return h("div", { className: "vk_empty" }, "No matching files found");
-					return searchResults.map((r) => h("div", { key: r.path, className: "vk_row", style: { paddingLeft: 10 + "px" }, onClick: () => { onOpenFile({ path: r.path, name: r.name }); setSearchOn(false); setSearchQ(""); } },
-						h("span", { className: "vk_caret" }, "\u00A0"),
-						h("span", { className: "vk_icon " + iconOf(r.name, false, false).c }, iconOf(r.name, false, false).g),
+					return searchResults.map((r) => h("div", { key: r.path, className: "vk_row", style: { paddingLeft: "10px" }, onClick: () => { onOpenFile({ path: r.path, name: r.name }); setSearchOn(false); setSearchQ(""); } },
+						h("span", { className: "vk_caret" }, " "),
+						h(FileTypeIcon, { symbolId: fileIconId(r.name, "file", false) }),
 						h("span", { className: "vk_name vk_nameFixed" }, r.name),
 						h("span", { className: "vk_relPath" }, r.rel)
 					));
@@ -768,7 +774,57 @@ window.__ModuleLoader__.load({
 				}
 				return h("div", { className: "vk_err" }, dir.error || "Unable to read directory");
 			})();
-			return h("div", { className: "vk_treeWrap" }, head, picker, createForm, searchForm, h("div", { className: "vk_tree" }, body));
+
+			const menuItem = (label, action, danger) => h("button", {
+				key: label,
+				className: "vk_menuItem" + (danger ? " vk_menuItemDanger" : ""),
+				onClick: () => { setCtxMenu(null); action(); }
+			}, label);
+
+			return h("div", {
+				className: "vk_treeWrap",
+				onContextMenu: (e) => {
+					if (e.target instanceof Element && e.target.closest(".vk_row")) return;
+					e.preventDefault();
+					setCtxMenu({ x: e.clientX, y: e.clientY, item: null });
+				}
+			},
+				head, picker, createForm, searchForm,
+				h("div", { className: "vk_tree" }, body),
+				ctxMenu !== null ? h("div", {
+					className: "vk_menu",
+					"data-vk-menu": true,
+					style: { left: Math.min(ctxMenu.x, window.innerWidth - 220) + "px", top: Math.min(ctxMenu.y, window.innerHeight - 260) + "px" }
+				},
+					ctxMenu.item ? [
+						!ctxMenu.item.isDir ? menuItem("📄 Open File", () => onOpenFile({ path: ctxMenu.item.path, name: ctxMenu.item.name })) : null,
+						ctxMenu.item.isDir ? menuItem("📄 New File...", () => { setCreating("file"); setCreateName(""); setCreateErr(null); }) : null,
+						ctxMenu.item.isDir ? menuItem("📁 New Folder...", () => { setCreating("dir"); setCreateName(""); setCreateErr(null); }) : null,
+						menuItem("✏️ Rename (F2)", () => { setRenaming({ path: ctxMenu.item.path, name: ctxMenu.item.name, oldName: ctxMenu.item.name }); setRenameErr(null); }),
+						menuItem("🗑️ Move to Trash (Delete)", () => doDelete(ctxMenu.item.path, ctxMenu.item.name), true),
+						menuItem("📋 Copy Path", () => { navigator.clipboard?.writeText(ctxMenu.item.path); }),
+						menuItem("📋 Copy Relative Path", () => { navigator.clipboard?.writeText(rel(ctxMenu.item.path) || ctxMenu.item.name); }),
+						!ctxMenu.item.isDir ? menuItem("🤖 Ask AI About This File", () => {
+							const prompt = "Please analyze and explain the file: " + ctxMenu.item.name;
+							const chatInput = document.querySelector('.vk_colRight textarea, .vk_colRight [contenteditable="true"], textarea, [contenteditable="true"]');
+							if (chatInput) {
+								if (chatInput.tagName === 'TEXTAREA' || chatInput.tagName === 'INPUT') {
+									chatInput.value = prompt;
+									chatInput.dispatchEvent(new Event('input', { bubbles: true }));
+								} else {
+									chatInput.innerText = prompt;
+									chatInput.dispatchEvent(new Event('input', { bubbles: true }));
+								}
+								chatInput.focus();
+							}
+						}) : null
+					] : [
+						menuItem("📄 New File...", () => { setCreating("file"); setCreateName(""); setCreateErr(null); }),
+						menuItem("📁 New Folder...", () => { setCreating("dir"); setCreateName(""); setCreateErr(null); }),
+						menuItem("🔄 Refresh Explorer", () => { if (root) load(root); })
+					]
+				) : null
+			);
 		}
 
 		// ──────────────────────────────────────────────────────────────
@@ -63644,57 +63700,67 @@ const FILE_ICON_DIR_OPEN = "fti-FolderOpen";
 			document.body.appendChild(container);
 		}
 
-		// ── TipTap Notion Suite CSS Styles ──
+		// ── Custom Layout & TipTap Notion Suite CSS Styles ──
 		const tiptapStyles = `
 			.vk_tiptap_wrapper {
 				display: flex; flex-direction: column; height: 100%; width: 100%;
-				background: var(--dsw-alias-bg-base, #ffffff); overflow: hidden; position: relative;
+				background: var(--dsw-alias-bg-base, #ffffff); color: var(--dsw-alias-label-primary, #111827);
+				overflow: hidden; position: relative;
 			}
 			.vk_tiptap_toolbar {
 				background: var(--dsw-alias-bg-base, #ffffff);
 				border-bottom: 1px solid var(--dsw-alias-border-l1, #e5e7eb);
 				padding: 6px 14px; display: flex; align-items: center; gap: 3px; flex-wrap: wrap; flex-shrink: 0;
 			}
-			.vk_table_toolbar {
-				background: #f0fdf4; border-bottom: 1px solid #bbf7d0;
-				padding: 4px 14px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; flex-shrink: 0;
-				animation: vk-slide-down 0.15s ease-out;
-			}
-			@keyframes vk-slide-down { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
 			.vk_tb_tool {
-				border: 1px solid transparent; background: transparent; padding: 4px 8px;
-				border-radius: 5px; font-size: 12px; font-weight: 600; cursor: pointer;
-				color: var(--dsw-alias-label-secondary, #374151); min-width: 26px; text-align: center;
-				display: inline-flex; align-items: center; gap: 4px; transition: background 0.1s;
+				border: none; background: transparent; color: var(--dsw-alias-label-primary, #374151);
+				padding: 4px 8px; border-radius: 5px; font-size: 12.5px; font-weight: 500; cursor: pointer;
+				display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 26px;
+				transition: background 0.1s, color 0.1s;
 			}
-			.vk_tb_tool:hover { background: var(--dsw-alias-interactive-bg-hover, #f3f4f6); border-color: var(--dsw-alias-border-l2, #d1d5db); }
-			.vk_tb_table_btn {
-				border: 1px solid #86efac; background: #ffffff; padding: 3px 8px;
-				border-radius: 5px; font-size: 11.5px; font-weight: 600; cursor: pointer;
-				color: #166534; display: inline-flex; align-items: center; gap: 3px;
-			}
-			.vk_tb_table_btn:hover { background: #dcfce7; border-color: #4ade80; }
-			.vk_tb_table_btn_danger { color: #dc2626; border-color: #fca5a5; }
-			.vk_tb_table_btn_danger:hover { background: #fee2e2; border-color: #f87171; }
+			.vk_tb_tool:hover { background: var(--dsw-alias-interactive-bg-hover, rgba(0,0,0,0.06)); color: var(--dsw-alias-state-business-primary, #2563eb); }
 			.vk_tb_sep { width: 1px; height: 16px; background: var(--dsw-alias-border-l2, #e5e7eb); margin: 0 4px; }
 			.vk_bold { font-weight: 800; }
 			.vk_italic { font-style: italic; }
-			.vk_strike { text-decoration: line-through; }
 			.vk_underline { text-decoration: underline; }
+			.vk_strike { text-decoration: line-through; }
 
-			.vk_tiptap_canvas { flex: 1; overflow-y: auto; display: flex; flex-direction: column; position: relative; }
-			.vk_tiptap_container { flex: 1; display: flex; flex-direction: column; padding: 32px 52px 80px; max-width: 900px; margin: 0 auto; width: 100%; box-sizing: border-box; }
-			.vk_tiptap_prose { outline: none; font-size: 15.5px; line-height: 1.8; min-height: 480px; color: var(--dsw-alias-label-primary, #111827); width: 100%; }
-			.vk_tiptap_prose h1 { font-size: 28px; font-weight: 800; margin: 26px 0 14px; color: #111827; border-bottom: 1px solid #f3f4f6; padding-bottom: 8px; line-height: 1.3; }
-			.vk_tiptap_prose h2 { font-size: 22px; font-weight: 700; margin: 22px 0 12px; color: #1f2937; line-height: 1.35; }
-			.vk_tiptap_prose h3 { font-size: 18px; font-weight: 600; margin: 18px 0 10px; color: #374151; }
-			.vk_tiptap_prose p { margin: 10px 0; }
-			.vk_tiptap_prose blockquote { border-left: 4px solid #3b82f6; padding: 10px 18px; color: #4b5563; margin: 14px 0; font-style: italic; background: rgba(59,130,246,0.04); border-radius: 0 8px 8px 0; }
-			
+			.vk_table_toolbar {
+				background: #f0fdf4; border-bottom: 1px solid #bbf7d0; padding: 4px 14px;
+				display: flex; align-items: center; gap: 4px; flex-wrap: wrap; flex-shrink: 0;
+			}
+			.vk_tb_table_btn {
+				background: #ffffff; border: 1px solid #86efac; border-radius: 4px;
+				color: #166534; font-size: 11.5px; font-weight: 600; padding: 2px 7px;
+				cursor: pointer; display: inline-flex; align-items: center; gap: 3px;
+			}
+			.vk_tb_table_btn:hover { background: #dcfce7; }
+			.vk_tb_table_btn_danger { border-color: #fca5a5; color: #991b1b; }
+			.vk_tb_table_btn_danger:hover { background: #fee2e2; }
+
+			.vk_tiptap_canvas {
+				flex: 1; overflow-y: auto; overflow-x: hidden; padding: 36px 48px;
+				display: flex; flex-direction: column; align-items: center;
+				cursor: text; position: relative;
+			}
+			.vk_tiptap_container { width: 100%; max-width: 860px; min-height: 100%; }
+
+			.vk_tiptap_prose {
+				outline: none; font-size: 15.5px; line-height: 1.8; min-height: 480px;
+				color: var(--dsw-alias-label-primary, #111827); width: 100%;
+			}
+			.vk_tiptap_prose h1, .vk_tiptap_prose h2, .vk_tiptap_prose h3 {
+				color: var(--dsw-alias-label-primary, #111827);
+			}
+			.vk_tiptap_prose h1 { font-size: 2.1em; font-weight: 800; margin: 28px 0 12px; line-height: 1.25; }
+			.vk_tiptap_prose h2 { font-size: 1.6em; font-weight: 700; margin: 22px 0 10px; line-height: 1.3; }
+			.vk_tiptap_prose h3 { font-size: 1.3em; font-weight: 600; margin: 18px 0 8px; line-height: 1.4; }
+			.vk_tiptap_prose p { margin: 8px 0; }
+
 			.vk_callout_box {
-				border: 1.5px solid #bae6fd; background: #f0f9ff; border-radius: 10px;
-				padding: 14px 18px; margin: 18px 0; display: flex; align-items: flex-start; gap: 12px;
-				color: #0369a1; box-shadow: 0 2px 8px rgba(2,132,199,0.05);
+				background: rgba(59,130,246,0.08); border: 1.5px solid rgba(59,130,246,0.3);
+				border-radius: 8px; padding: 14px 18px; margin: 16px 0; display: flex; gap: 12px;
+				color: var(--dsw-alias-label-primary, #0369a1);
 			}
 			.vk_callout_icon { font-size: 20px; line-height: 1.3; flex-shrink: 0; }
 			.vk_callout_body { flex: 1; font-size: 15px; }
@@ -63781,6 +63847,51 @@ const FILE_ICON_DIR_OPEN = "fti-FolderOpen";
 			.vk_open_chat_float:active {
 				transform: translateY(0);
 			}
+
+			/* In-Editor Find & Replace Widget (Ctrl+F / Ctrl+H) */
+			.vk_find_widget {
+				position: absolute; top: 38px; right: 24px; z-index: 90;
+				background: var(--dsw-alias-bg-elevated, #ffffff);
+				border: 1px solid var(--dsw-alias-border-l2, #e5e7eb);
+				border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.18);
+				padding: 6px 10px; display: flex; flex-direction: column; gap: 6px;
+				width: 360px; max-width: 90vw; animation: vk-pop-in 0.12s ease-out;
+			}
+			.vk_find_row { display: flex; align-items: center; gap: 6px; }
+			.vk_find_toggle_btn { border: none; background: transparent; cursor: pointer; color: #6b7280; font-size: 13px; transition: transform 0.1s; padding: 2px 4px; border-radius: 3px; }
+			.vk_find_toggle_btn:hover { background: rgba(0,0,0,0.06); }
+			.vk_find_toggle_open { transform: rotate(90deg); }
+			.vk_find_input_wrap { position: relative; flex: 1; display: flex; align-items: center; }
+			.vk_find_input { width: 100%; border: 1px solid var(--dsw-alias-border-l2, #d1d5db); border-radius: 5px; padding: 4px 54px 4px 8px; font-size: 12.5px; background: var(--dsw-alias-bg-base, #ffffff); color: var(--dsw-alias-label-primary, #111827); outline: none; }
+			.vk_find_input:focus { border-color: #2563eb; }
+			.vk_find_flags { position: absolute; right: 4px; display: flex; align-items: center; gap: 2px; }
+			.vk_flag_btn { border: 1px solid transparent; background: transparent; padding: 1px 4px; border-radius: 3px; font-size: 10.5px; font-weight: 700; cursor: pointer; color: #6b7280; }
+			.vk_flag_btn:hover { background: rgba(0,0,0,0.06); }
+			.vk_flag_btn_active { background: #dbeafe; color: #1d4ed8; border-color: #93c5fd; }
+			.vk_find_count { font-size: 11px; color: #6b7280; white-space: nowrap; min-width: 48px; text-align: center; }
+			.vk_find_icon_btn { border: none; background: transparent; border-radius: 4px; padding: 3px 6px; cursor: pointer; color: var(--dsw-alias-label-primary, #374151); font-size: 13px; }
+			.vk_find_icon_btn:hover { background: rgba(0,0,0,0.06); }
+			.vk_replace_btn { border: 1px solid var(--dsw-alias-border-l2, #d1d5db); background: var(--dsw-alias-bg-base, #ffffff); border-radius: 4px; padding: 3px 8px; font-size: 11.5px; font-weight: 600; cursor: pointer; color: var(--dsw-alias-label-primary, #374151); }
+			.vk_replace_btn:hover { background: rgba(0,0,0,0.05); }
+
+			/* Global Workspace Search Panel (Ctrl+Shift+F) */
+			.vk_search_panel { display: flex; flex-direction: column; height: 100%; width: 100%; overflow: hidden; }
+			.vk_search_opts { display: flex; align-items: center; gap: 4px; }
+			.vk_opt_btn { border: 1px solid transparent; background: transparent; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: 700; cursor: pointer; color: #6b7280; }
+			.vk_opt_btn:hover { background: rgba(0,0,0,0.06); }
+			.vk_opt_btn_active { background: #dbeafe; color: #1d4ed8; border-color: #93c5fd; }
+			.vk_search_input_box { padding: 8px 12px; border-bottom: 1px solid var(--dsw-alias-border-l1, #e5e7eb); flex-shrink: 0; }
+			.vk_search_results { display: flex; flex-direction: column; gap: 4px; padding: 4px 0; }
+			.vk_search_count { padding: 4px 12px; font-size: 11px; font-weight: 600; color: #6b7280; text-transform: uppercase; }
+			.vk_search_file_group { display: flex; flex-direction: column; margin-bottom: 6px; }
+			.vk_search_file_head { display: flex; align-items: center; gap: 6px; padding: 5px 12px; cursor: pointer; font-size: 12.5px; font-weight: 600; color: var(--dsw-alias-label-primary, #111827); border-radius: 4px; }
+			.vk_search_file_head:hover { background: var(--dsw-alias-interactive-bg-hover, rgba(0,0,0,0.04)); }
+			.vk_search_file_name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+			.vk_search_file_badge { font-size: 10.5px; background: rgba(37,99,235,0.12); color: #2563eb; padding: 1px 6px; border-radius: 10px; font-weight: 700; }
+			.vk_search_match_item { display: flex; align-items: flex-start; gap: 8px; padding: 3px 12px 3px 28px; cursor: pointer; font-size: 12px; font-family: monospace; border-radius: 3px; }
+			.vk_search_match_item:hover { background: var(--dsw-alias-interactive-bg-hover, rgba(0,0,0,0.04)); color: #2563eb; }
+			.vk_search_match_line { color: #9ca3af; flex-shrink: 0; min-width: 22px; text-align: right; }
+			.vk_search_match_text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
 		`;
 
 		if (typeof document !== "undefined" && !document.getElementById("vk-tiptap-styles")) {
@@ -63788,6 +63899,220 @@ const FILE_ICON_DIR_OPEN = "fti-FolderOpen";
 			s.id = "vk-tiptap-styles";
 			s.textContent = tiptapStyles;
 			document.head.appendChild(s);
+		}
+
+		// ── Global Full-Text Workspace Search Panel (Ctrl+Shift+F) ──
+		function GlobalSearchPanel({ root, onOpenFile }) {
+			const [query, setQuery] = react.useState("");
+			const [caseSensitive, setCaseSensitive] = react.useState(false);
+			const [isRegex, setIsRegex] = react.useState(false);
+			const [results, setResults] = react.useState(null);
+			const [searching, setSearching] = react.useState(false);
+			const [error, setError] = react.useState(null);
+			const inputRef = react.useRef(null);
+
+			const doSearch = react.useCallback((q) => {
+				if (!q || q.trim().length === 0) {
+					setResults(null);
+					setSearching(false);
+					return;
+				}
+				setSearching(true);
+				setError(null);
+				const targetRoot = root || ".";
+				fetch("/vscode-files/search?path=" + encodeURIComponent(targetRoot) + "&type=content&q=" + encodeURIComponent(q.trim()) + "&caseSensitive=" + caseSensitive + "&isRegex=" + isRegex)
+					.then((r) => r.json())
+					.then((d) => {
+						setSearching(false);
+						if (d && d.ok && d.results) {
+							setResults(d.results);
+						} else {
+							setError((d && d.error) || "Search failed");
+						}
+					})
+					.catch((err) => {
+						setSearching(false);
+						setError(String(err));
+					});
+			}, [root, caseSensitive, isRegex]);
+
+			react.useEffect(() => {
+				const timer = setTimeout(() => doSearch(query), 300);
+				return () => clearTimeout(timer);
+			}, [query, doSearch]);
+
+			const grouped = react.useMemo(() => {
+				if (!results) return [];
+				const map = new Map();
+				for (const r of results) {
+					if (!map.has(r.path)) {
+						map.set(r.path, { name: r.name, path: r.path, rel: r.rel, matches: [] });
+					}
+					map.get(r.path).matches.push(r);
+				}
+				return Array.from(map.values());
+			}, [results]);
+
+			return h("div", { className: "vk_search_panel" },
+				h("div", { className: "vk_treeHead" },
+					h("span", { className: "vk_treeTitle" }, "SEARCH"),
+					h("div", { className: "vk_search_opts" },
+						h("button", {
+							className: "vk_opt_btn" + (caseSensitive ? " vk_opt_btn_active" : ""),
+							title: "Match Case (Alt+C)",
+							onClick: () => setCaseSensitive(!caseSensitive)
+						}, "Aa"),
+						h("button", {
+							className: "vk_opt_btn" + (isRegex ? " vk_opt_btn_active" : ""),
+							title: "Use Regular Expression (Alt+R)",
+							onClick: () => setIsRegex(!isRegex)
+						}, ".*")
+					)
+				),
+				h("div", { className: "vk_search_input_box" },
+					h("input", {
+						ref: inputRef,
+						id: "global-search-input",
+						className: "vk_pickInput",
+						placeholder: "Search in files (e.g. function, class)...",
+						value: query,
+						autoFocus: true,
+						onChange: (e) => setQuery(e.target.value),
+						onKeyDown: (e) => { if (e.key === "Enter") doSearch(query); }
+					})
+				),
+				h("div", { className: "vk_tree" },
+					searching ? h("div", { className: "vk_empty" }, "Searching workspace...") :
+					error ? h("div", { className: "vk_err" }, error) :
+					results === null ? h("div", { className: "vk_empty" }, "Type keyword to search across all project files") :
+					results.length === 0 ? h("div", { className: "vk_empty" }, "No matching results found") :
+					h("div", { className: "vk_search_results" },
+						h("div", { className: "vk_search_count" }, results.length + " results in " + grouped.length + " files"),
+						grouped.map((g) => h("div", { key: g.path, className: "vk_search_file_group" },
+							h("div", {
+								className: "vk_search_file_head",
+								onClick: () => onOpenFile({ path: g.path, name: g.name })
+							},
+								h(FileTypeIcon, { symbolId: fileIconId(g.name, "file", false) }),
+								h("span", { className: "vk_search_file_name" }, g.name),
+								h("span", { className: "vk_search_file_badge" }, g.matches.length)
+							),
+							g.matches.map((m) => h("div", {
+								key: m.path + ":" + m.line,
+								className: "vk_search_match_item",
+								onClick: () => onOpenFile({ path: m.path, name: m.name, line: m.line })
+							},
+								h("span", { className: "vk_search_match_line" }, m.line),
+								h("span", { className: "vk_search_match_text" }, m.preview)
+							))
+						))
+					)
+				)
+			);
+		}
+
+		// ── In-Editor Find & Replace Widget (Ctrl+F / Ctrl+H) ──
+		function FindWidget({ isOpen, isReplace, onClose, onFindNext, onFindPrev, onReplace, onReplaceAll, matchCount, activeIndex, onToggleReplace }) {
+			const [findVal, setFindVal] = react.useState("");
+			const [replaceVal, setReplaceVal] = react.useState("");
+			const [matchCase, setMatchCase] = react.useState(false);
+			const [wholeWord, setWholeWord] = react.useState(false);
+			const [isRegex, setIsRegex] = react.useState(false);
+			const inputRef = react.useRef(null);
+
+			react.useEffect(() => {
+				if (isOpen && inputRef.current) {
+					inputRef.current.focus();
+					inputRef.current.select();
+				}
+			}, [isOpen]);
+
+			if (!isOpen) return null;
+
+			return h("div", { className: "vk_find_widget", "data-vk-find": true },
+				h("div", { className: "vk_find_row" },
+					h("button", {
+						className: "vk_find_toggle_btn" + (isReplace ? " vk_find_toggle_open" : ""),
+						title: isReplace ? "Collapse Replace (Ctrl+H)" : "Expand Replace (Ctrl+H)",
+						onClick: onToggleReplace
+					}, "▸"),
+					h("div", { className: "vk_find_input_wrap" },
+						h("input", {
+							ref: inputRef,
+							className: "vk_find_input",
+							placeholder: "Find...",
+							value: findVal,
+							onChange: (e) => {
+								setFindVal(e.target.value);
+								if (onFindNext) onFindNext(e.target.value, 0, { matchCase, wholeWord, isRegex });
+							},
+							onKeyDown: (e) => {
+								if (e.key === "Enter") {
+									e.preventDefault();
+									if (e.shiftKey && onFindPrev) onFindPrev(findVal, { matchCase, wholeWord, isRegex });
+									else if (onFindNext) onFindNext(findVal, 1, { matchCase, wholeWord, isRegex });
+								}
+								if (e.key === "Escape") onClose();
+							}
+						}),
+						h("div", { className: "vk_find_flags" },
+							h("button", {
+								className: "vk_flag_btn" + (matchCase ? " vk_flag_btn_active" : ""),
+								title: "Match Case (Alt+C)",
+								onClick: () => {
+									const next = !matchCase;
+									setMatchCase(next);
+									if (onFindNext) onFindNext(findVal, 0, { matchCase: next, wholeWord, isRegex });
+								}
+							}, "Aa"),
+							h("button", {
+								className: "vk_flag_btn" + (wholeWord ? " vk_flag_btn_active" : ""),
+								title: "Match Whole Word (Alt+W)",
+								onClick: () => {
+									const next = !wholeWord;
+									setWholeWord(next);
+									if (onFindNext) onFindNext(findVal, 0, { matchCase, wholeWord: next, isRegex });
+								}
+							}, "\\b"),
+							h("button", {
+								className: "vk_flag_btn" + (isRegex ? " vk_flag_btn_active" : ""),
+								title: "Use Regular Expression (Alt+R)",
+								onClick: () => {
+									const next = !isRegex;
+									setIsRegex(next);
+									if (onFindNext) onFindNext(findVal, 0, { matchCase, wholeWord, isRegex: next });
+								}
+							}, ".*")
+						)
+					),
+					h("span", { className: "vk_find_count" },
+						findVal.length === 0 ? "No results" :
+						matchCount === 0 ? "No results" :
+						(activeIndex + 1) + " of " + matchCount
+					),
+					h("button", { className: "vk_find_icon_btn", title: "Previous Match (Shift+Enter)", onClick: () => onFindPrev && onFindPrev(findVal, { matchCase, wholeWord, isRegex }) }, "↑"),
+					h("button", { className: "vk_find_icon_btn", title: "Next Match (Enter)", onClick: () => onFindNext && onFindNext(findVal, 1, { matchCase, wholeWord, isRegex }) }, "↓"),
+					h("button", { className: "vk_find_icon_btn", title: "Close (Escape)", onClick: onClose }, "✕")
+				),
+				isReplace ? h("div", { className: "vk_find_row vk_replace_row" },
+					h("div", { style: { width: "18px" } }),
+					h("input", {
+						className: "vk_find_input vk_replace_input",
+						placeholder: "Replace...",
+						value: replaceVal,
+						onChange: (e) => setReplaceVal(e.target.value),
+						onKeyDown: (e) => {
+							if (e.key === "Enter") {
+								e.preventDefault();
+								if (onReplace) onReplace(findVal, replaceVal, { matchCase, wholeWord, isRegex });
+							}
+							if (e.key === "Escape") onClose();
+						}
+					}),
+					h("button", { className: "vk_replace_btn", title: "Replace Current Match", onClick: () => onReplace && onReplace(findVal, replaceVal, { matchCase, wholeWord, isRegex }) }, "Replace"),
+					h("button", { className: "vk_replace_btn", title: "Replace All Matches", onClick: () => onReplaceAll && onReplaceAll(findVal, replaceVal, { matchCase, wholeWord, isRegex }) }, "Replace All")
+				) : null
+			);
 		}
 
 		// ── TipTap Notion Suite WYSIWYG Component ──
@@ -63859,60 +64184,39 @@ const FILE_ICON_DIR_OPEN = "fti-FolderOpen";
 				if (selection.empty) {
 					const { $from } = selection;
 					const blockText = $from.parent.textContent;
-					const offset = $from.parentOffset;
-					const textBefore = blockText.slice(0, offset);
-					const slashPos = textBefore.lastIndexOf('/');
-					if (slashPos === -1 || (slashPos > 0 && !/\s/.test(textBefore[slashPos - 1]))) {
+					const slashPos = blockText.lastIndexOf('/');
+					if (slashPos !== -1 && slashPos === blockText.length - 1) {
+						const coords = editor.view.coordsAtPos($from.pos);
+						const containerRect = canvasRef.current.getBoundingClientRect();
+						const top = coords.bottom - containerRect.top + canvasRef.current.scrollTop + 8;
+						const left = Math.max(10, Math.min(coords.left - containerRect.left + canvasRef.current.scrollLeft, containerRect.width - 320));
+						setSlashMenu({ top, left, range: { from: $from.pos - 1, to: $from.pos } });
+						setSlashQuery('');
+						setSlashIdx(0);
+					} else if (slashStateRef.current.menu && slashPos !== -1) {
+						setSlashQuery(blockText.slice(slashPos + 1));
+					} else {
 						setSlashMenu(null);
-						return;
 					}
-					const query = textBefore.slice(slashPos + 1);
-					if (query.includes(' ') || query.includes('\n')) {
-						setSlashMenu(null);
-						return;
-					}
-					const containerRect = canvasRef.current.getBoundingClientRect();
-					const slashAbsPos = $from.pos - query.length - 1;
-					const coords = editor.view.coordsAtPos(slashAbsPos);
-					const top = coords.bottom - containerRect.top + canvasRef.current.scrollTop + 6;
-					const left = Math.min(coords.left - containerRect.left + canvasRef.current.scrollLeft, containerRect.width - 320);
-					setSlashMenu({ top, left });
-					setSlashQuery(query);
 				} else {
 					setSlashMenu(null);
 				}
+
+				setIsInTable(editor.isActive('table'));
+			};
+
+			const runCommand = (cmd) => {
+				if (!editorRef.current) return;
+				cmd(editorRef.current.chain().focus()).run();
 			};
 
 			const executeSlashItem = (item) => {
 				if (!editorRef.current) return;
 				const editor = editorRef.current;
+				const range = slashStateRef.current.menu?.range;
 				setSlashMenu(null);
-				const { $from } = editor.state.selection;
-				const blockText = $from.parent.textContent;
-				const posInBlock = $from.parentOffset;
-				const textBeforeCursor = blockText.slice(0, posInBlock);
-				const slashIndex = textBeforeCursor.lastIndexOf('/');
-				let from = $from.pos - posInBlock + (slashIndex >= 0 ? slashIndex : 0);
-				let to = $from.pos;
-
-				if (item.label === 'Table') {
-					if (from < to) editor.chain().focus().deleteRange({ from, to }).run();
-					setEmbedModal({ type: 'table', rows: 3, cols: 3, withHeaderRow: true });
-					return;
-				}
-				if (item.label === 'YouTube Video') {
-					if (from < to) editor.chain().focus().deleteRange({ from, to }).run();
-					setEmbedModal({ type: 'youtube', url: '' });
-					return;
-				}
-				if (item.label === 'Image') {
-					if (from < to) editor.chain().focus().deleteRange({ from, to }).run();
-					setEmbedModal({ type: 'image', url: '' });
-					return;
-				}
-
-				const chain = editor.chain().focus();
-				if (from < to) chain.deleteRange({ from, to });
+				let chain = editor.chain().focus();
+				if (range) chain = chain.deleteRange(range);
 
 				if (item.label === 'Heading 1') chain.setNode('heading', { level: 1 }).run();
 				else if (item.label === 'Heading 2') chain.setNode('heading', { level: 2 }).run();
@@ -63924,6 +64228,9 @@ const FILE_ICON_DIR_OPEN = "fti-FolderOpen";
 				else if (item.label === 'Code Block') chain.toggleCodeBlock().run();
 				else if (item.label === 'Blockquote') chain.toggleBlockquote().run();
 				else if (item.label === 'Divider Line') chain.setHorizontalRule().run();
+				else if (item.label === 'Table') setEmbedModal({ type: 'table', rows: 3, cols: 3, withHeaderRow: true });
+				else if (item.label === 'YouTube Video') setEmbedModal({ type: 'youtube', url: '' });
+				else if (item.label === 'Image') setEmbedModal({ type: 'image', url: '' });
 			};
 
 			const sendSelectionToAI = (text) => {
@@ -63977,58 +64284,56 @@ const FILE_ICON_DIR_OPEN = "fti-FolderOpen";
 						}
 					},
 					onSelectionUpdate: ({ editor: ed }) => {
-						setIsInTable(ed.isActive('table'));
 						updateDocState(ed);
-					},
-					editorProps: {
-						attributes: { class: 'vk_tiptap_prose prose' },
-						handleKeyDown: (view, event) => {
-							if ((event.ctrlKey || event.metaKey) && (event.key === 's' || event.key === 'S')) {
-								event.preventDefault();
-								if (editorRef.current && editorRef.current.storage && editorRef.current.storage.markdown) {
-									onSave(editorRef.current.storage.markdown.getMarkdown());
-								}
-								return true;
-							}
-							const current = slashStateRef.current;
-							if (current.menu) {
-								const q = current.query.toLowerCase();
-								const filtered = slashItems.filter(item => item.label.toLowerCase().includes(q) || item.desc.toLowerCase().includes(q));
-								if (event.key === 'ArrowDown') {
-									event.preventDefault();
-									setSlashIdx((i) => (i + 1) % Math.max(1, filtered.length));
-									return true;
-								}
-								if (event.key === 'ArrowUp') {
-									event.preventDefault();
-									setSlashIdx((i) => (i - 1 + filtered.length) % Math.max(1, filtered.length));
-									return true;
-								}
-								if (event.key === 'Enter') {
-									event.preventDefault();
-									const item = filtered[current.index] || filtered[0];
-									if (item) executeSlashItem(item);
-									return true;
-								}
-								if (event.key === 'Escape') {
-									setSlashMenu(null);
-									return true;
-								}
-							}
-							return false;
-						}
 					}
 				});
 
 				editorRef.current = editor;
-				return () => { editor.destroy(); editorRef.current = null; };
-			}, [file.path]);
+				updateDocState(editor);
 
-			const runCommand = (action) => {
-				if (editorRef.current) action(editorRef.current.chain().focus()).run();
-			};
+				const handleKeyDown = (e) => {
+					const cur = slashStateRef.current;
+					if (cur.menu) {
+						const items = filteredSlashItems;
+						if (e.key === 'ArrowDown') {
+							e.preventDefault();
+							setSlashIdx((cur.index + 1) % items.length);
+						} else if (e.key === 'ArrowUp') {
+							e.preventDefault();
+							setSlashIdx((cur.index - 1 + items.length) % items.length);
+						} else if (e.key === 'Enter') {
+							e.preventDefault();
+							if (items[cur.index]) executeSlashItem(items[cur.index]);
+						} else if (e.key === 'Escape') {
+							setSlashMenu(null);
+						}
+					}
+					if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+						e.preventDefault();
+						if (editor.storage && editor.storage.markdown) {
+							onSave(editor.storage.markdown.getMarkdown());
+						}
+					}
+				};
 
-			const handleEmbedSubmit = (e) => {
+				containerRef.current.addEventListener('keydown', handleKeyDown, true);
+
+				return () => {
+					containerRef.current?.removeEventListener('keydown', handleKeyDown, true);
+					editor.destroy();
+				};
+			}, []);
+
+			react.useEffect(() => {
+				if (editorRef.current && content !== undefined) {
+					const currentMd = editorRef.current.storage?.markdown?.getMarkdown();
+					if (currentMd !== content && !editorRef.current.isFocused) {
+						editorRef.current.commands.setContent(content);
+					}
+				}
+			}, [content]);
+
+			const submitEmbedModal = (e) => {
 				e.preventDefault();
 				if (!embedModal) return;
 				if (embedModal.type === 'youtube' && embedModal.url) {
@@ -64107,10 +64412,8 @@ const FILE_ICON_DIR_OPEN = "fti-FolderOpen";
 						react.createElement('button', { key: 'i', type: 'button', className: 'vk_bubble_btn', onMouseDown: (e) => e.preventDefault(), onClick: () => runCommand(c => c.toggleItalic()) }, 'I'),
 						react.createElement('button', { key: 'u', type: 'button', className: 'vk_bubble_btn', onMouseDown: (e) => e.preventDefault(), onClick: () => runCommand(c => c.toggleUnderline()) }, 'U'),
 						react.createElement('button', { key: 's', type: 'button', className: 'vk_bubble_btn', onMouseDown: (e) => e.preventDefault(), onClick: () => runCommand(c => c.toggleStrike()) }, 'S'),
-						react.createElement('button', { key: 'hl', type: 'button', className: 'vk_bubble_btn', onMouseDown: (e) => e.preventDefault(), onClick: () => runCommand(c => c.toggleHighlight()) }, '🎨 Mark'),
-						react.createElement('button', { key: 'code', type: 'button', className: 'vk_bubble_btn', onMouseDown: (e) => e.preventDefault(), onClick: () => runCommand(c => c.toggleCode()) }, '</> Code'),
 						react.createElement('button', {
-							key: 'ai-btn',
+							key: 'ask-ai',
 							type: 'button',
 							className: 'vk_bubble_ai_btn',
 							onMouseDown: (e) => e.preventDefault(),
@@ -64154,13 +64457,12 @@ const FILE_ICON_DIR_OPEN = "fti-FolderOpen";
 				}, react.createElement('div', { className: 'dsh-modal-card' }, [
 					react.createElement('div', { key: 'head', className: 'dsh-modal-head' }, [
 						react.createElement('span', { key: 'title' },
-							embedModal.type === 'youtube' ? '🎥 Embed YouTube Video' :
-							embedModal.type === 'image' ? '🖼️ Insert Image URL' : '📊 Configure Table (Rows × Columns)'
+							embedModal.type === 'youtube' ? '🎥 Embed YouTube Video' : embedModal.type === 'image' ? '🖼️ Insert Image URL' : '📊 Insert Table'
 						),
-						react.createElement('button', { key: 'close', className: 'vk_tabClose', onClick: () => setEmbedModal(null) }, '✕')
+						react.createElement('button', { key: 'close', type: 'button', className: 'dsh-modal-close', onClick: () => setEmbedModal(null) }, '✕')
 					]),
-					react.createElement('form', { key: 'form', onSubmit: handleEmbedSubmit }, [
-						react.createElement('div', { key: 'body', className: 'dsh-modal-body' },
+					react.createElement('form', { key: 'body', onSubmit: submitEmbedModal }, [
+						react.createElement('div', { key: 'content', className: 'dsh-modal-body' },
 							embedModal.type === 'table' ? [
 								react.createElement('div', { key: 'row-input', className: 'dsh-modal-row' }, [
 									react.createElement('span', { key: 'lbl1', className: 'dsh-modal-label' }, 'Number of Rows:'),
@@ -64317,6 +64619,31 @@ function Viewer({ file, rev, onStartEdit, onSaveDirect, onUpdateDirect, isDirect
 			const [saveMsg, setSaveMsg] = react.useState(null);
 			const [dragged, setDragged] = react.useState(null);
 			const [ctxMenu, setCtxMenu] = react.useState(null);
+
+			// In-Editor Find & Replace state (Ctrl+F / Ctrl+H)
+			const [findOpen, setFindOpen] = react.useState(false);
+			const [replaceOpen, setReplaceOpen] = react.useState(false);
+			const [findMatchCount, setFindMatchCount] = react.useState(0);
+			const [findActiveIndex, setFindActiveIndex] = react.useState(0);
+
+			react.useEffect(() => {
+				const onKeyDown = (e) => {
+					if ((e.ctrlKey || e.metaKey) && (e.key === "f" || e.key === "F") && !e.shiftKey) {
+						e.preventDefault();
+						setFindOpen(true);
+						setReplaceOpen(false);
+					} else if ((e.ctrlKey || e.metaKey) && (e.key === "h" || e.key === "H")) {
+						e.preventDefault();
+						setFindOpen(true);
+						setReplaceOpen(true);
+					} else if (e.key === "Escape" && findOpen) {
+						setFindOpen(false);
+					}
+				};
+				window.addEventListener("keydown", onKeyDown);
+				return () => window.removeEventListener("keydown", onKeyDown);
+			}, [findOpen]);
+
 			react.useEffect(() => {
 				if (ctxMenu === null) return;
 				const onDown = (e) => {
@@ -64331,19 +64658,32 @@ function Viewer({ file, rev, onStartEdit, onSaveDirect, onUpdateDirect, isDirect
 					document.removeEventListener("keydown", onKey);
 				};
 			}, [ctxMenu]);
+
 			react.useEffect(() => {
-				if (typeof document === "undefined" || currentPath === null) return;
-				const el = document.querySelector(`[data-vk-path="${CSS.escape(currentPath)}"]`);
-				el?.scrollIntoView({ inline: "nearest", block: "nearest" });
+				if (typeof document === "undefined") return;
+				const cur = currentPath;
+				if (cur === null || cur === TRAJECTORY_TAB_PATH) return;
+				const onKey = (e) => {
+					if ((e.ctrlKey || e.metaKey) && (e.key === "s" || e.key === "S")) {
+						e.preventDefault();
+						save();
+					}
+				};
+				document.addEventListener("keydown", onKey);
+				return () => document.removeEventListener("keydown", onKey);
+			});
+
+			const onEditText = react.useCallback((text) => {
+				if (currentPath === null) return;
+				setEdits((prev) => ({ ...prev, [currentPath]: { text, dirty: true } }));
 			}, [currentPath]);
-			const editing = currentPath !== null && edits[currentPath] !== void 0;
-			const dirty = editing && edits[currentPath].dirty === true;
+
 			const saveWithText = react.useCallback(async (textToSave) => {
-				if (busy) return;
+				if (currentPath === null || busy) return;
 				setBusy(true);
 				setSaveMsg("Saving...");
 				try {
-					const r = await fetch("/vscode-files/write?path=" + encodeURIComponent(currentPath), {
+					const r = await fetch("/vscode-files/write", {
 						method: "POST",
 						headers: { "content-type": "application/json" },
 						body: JSON.stringify({ path: currentPath, content: textToSave })
@@ -64373,7 +64713,9 @@ function Viewer({ file, rev, onStartEdit, onSaveDirect, onUpdateDirect, isDirect
 				if (edit === void 0 || busy) return;
 				saveWithText(edit.text);
 			}, [currentPath, edits, busy, saveWithText]);
+
 			const cancel = react.useCallback(() => {
+				if (currentPath === null) return;
 				const edit = edits[currentPath];
 				if (edit !== void 0 && edit.dirty && typeof confirm === "function" && !confirm("Discard unsaved changes?")) return;
 				setEdits((prev) => {
@@ -64383,117 +64725,156 @@ function Viewer({ file, rev, onStartEdit, onSaveDirect, onUpdateDirect, isDirect
 				});
 				setSaveMsg(null);
 			}, [currentPath, edits]);
-			const startEdit = react.useCallback((content) => {
-				setEdits((prev) => ({ ...prev, [currentPath]: { text: content, dirty: false } }));
-				setSaveMsg(null);
-			}, [currentPath]);
-			const onEditText = react.useCallback((text) => {
-				setEdits((prev) => ({ ...prev, [currentPath]: { text, dirty: true } }));
-			}, [currentPath]);
+
 			const closeTab = react.useCallback((path) => {
 				const edit = edits[path];
 				if (edit !== void 0 && edit.dirty && typeof confirm === "function" && !confirm("This tab has unsaved changes. Discard and close?")) return;
-				onClose(path);
 				setEdits((prev) => {
 					if (!(path in prev)) return prev;
 					const next = { ...prev };
 					delete next[path];
 					return next;
 				});
+				onClose(path);
 			}, [edits, onClose]);
+
 			const closePaths = react.useCallback((paths) => {
-				if (paths.length === 0) return;
-				const dirtyAny = paths.some((p) => edits[p]?.dirty === true);
+				const dirtyAny = paths.some((p) => edits[p]?.dirty);
 				if (dirtyAny && typeof confirm === "function" && !confirm("Some tabs have unsaved changes. Discard and close?")) return;
-				for (const p of paths) onClose(p);
 				setEdits((prev) => {
 					const next = { ...prev };
 					for (const p of paths) delete next[p];
 					return next;
 				});
+				for (const p of paths) onClose(p);
 			}, [edits, onClose]);
+
+			const startEdit = react.useCallback((text) => {
+				if (currentPath === null) return;
+				setEdits((prev) => ({ ...prev, [currentPath]: { text, dirty: false } }));
+			}, [currentPath]);
+
+			// Find / Replace helpers
+			const handleFindNext = react.useCallback((findVal, direction = 1, opts = {}) => {
+				if (!findVal || currentPath === null) {
+					setFindMatchCount(0);
+					setFindActiveIndex(0);
+					return;
+				}
+				const currentText = edits[currentPath]?.text;
+				if (typeof currentText !== "string") return;
+				let regex;
+				try {
+					const flags = opts.matchCase ? "g" : "gi";
+					const pattern = opts.isRegex ? findVal : (opts.wholeWord ? ("\\b" + findVal + "\\b") : findVal.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&"));
+					regex = new RegExp(pattern, flags);
+				} catch {
+					return;
+				}
+				const matches = [];
+				let m;
+				while ((m = regex.exec(currentText)) !== null) {
+					matches.push({ index: m.index, length: m[0].length });
+					if (!regex.global) break;
+				}
+				setFindMatchCount(matches.length);
+				if (matches.length > 0) {
+					setFindActiveIndex((prev) => {
+						const nextIdx = (prev + direction + matches.length) % matches.length;
+						return nextIdx;
+					});
+				} else {
+					setFindActiveIndex(0);
+				}
+			}, [currentPath, edits]);
+
+			const handleFindPrev = react.useCallback((findVal, opts) => {
+				handleFindNext(findVal, -1, opts);
+			}, [handleFindNext]);
+
+			const handleReplace = react.useCallback((findVal, replaceVal, opts = {}) => {
+				if (!findVal || currentPath === null) return;
+				const currentText = edits[currentPath]?.text;
+				if (typeof currentText !== "string") return;
+				try {
+					const flags = opts.matchCase ? "" : "i";
+					const pattern = opts.isRegex ? findVal : (opts.wholeWord ? ("\\b" + findVal + "\\b") : findVal.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&"));
+					const regex = new RegExp(pattern, flags);
+					const newText = currentText.replace(regex, replaceVal);
+					onEditText(newText);
+					handleFindNext(findVal, 0, opts);
+				} catch {}
+			}, [currentPath, edits, onEditText, handleFindNext]);
+
+			const handleReplaceAll = react.useCallback((findVal, replaceVal, opts = {}) => {
+				if (!findVal || currentPath === null) return;
+				const currentText = edits[currentPath]?.text;
+				if (typeof currentText !== "string") return;
+				try {
+					const flags = opts.matchCase ? "g" : "gi";
+					const pattern = opts.isRegex ? findVal : (opts.wholeWord ? ("\\b" + findVal + "\\b") : findVal.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&"));
+					const regex = new RegExp(pattern, flags);
+					const newText = currentText.replace(regex, replaceVal);
+					onEditText(newText);
+					handleFindNext(findVal, 0, opts);
+				} catch {}
+			}, [currentPath, edits, onEditText, handleFindNext]);
+
+			if (!hasTabs) {
+				return h("div", { className: "vk_editor" },
+					h("div", { className: "vk_empty" }, "Select a file from the Explorer\n(Click any file to view and edit in tabs)")
+				);
+			}
+
 			const menuItem = (label, action, danger) => h("button", {
+				key: label,
 				className: "vk_menuItem" + (danger ? " vk_menuItemDanger" : ""),
 				onClick: () => { setCtxMenu(null); action(); }
 			}, label);
-			if (!hasTabs) {
-				return h("div", { className: "vk_editor" }, h("div", { className: "vk_empty" }, "Select a file from the Explorer\n(Click any file to view and edit in tabs)"));
-			}
-			const editBar = editing
-				? h("div", { className: "vk_editBar" },
-					h("button", { className: "vk_editBtn vk_editBtnPrimary", disabled: busy, title: "Save (Ctrl+S)", onClick: save }, "💾 Save"),
-					h("button", { className: "vk_editBtn", disabled: busy, title: "Cancel Edit (Esc)", onClick: cancel }, "✕ Cancel"),
-					dirty ? h("span", { className: "vk_dirtyDot", title: "Unsaved changes" }) : null,
-					saveMsg !== null ? h("span", { className: "vk_saveMsg" }, saveMsg) : null,
-					h("div", { style: { flex: 1 } }),
-					h("span", { className: "vk_saveMsg" }, "Edit Mode")
-				)
-				: null;
+
+			const isMarkdown = active !== null && (active.path.endsWith(".md") || active.path.endsWith(".markdown"));
+			const editing = currentPath !== null && edits[currentPath] !== void 0;
+			const isTraj = active !== null && active.path === TRAJECTORY_TAB_PATH;
+
 			return h("div", { className: "vk_editor" },
-				h("div", {
-					className: "vk_tabStrip",
-					onWheel: (e) => {
-						if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) e.currentTarget.scrollLeft += e.deltaY;
-					},
-					onContextMenu: (e) => {
-						if (e.target instanceof Element && e.target.closest(".vk_fileTab")) return;
-						e.preventDefault();
-						setCtxMenu({ x: e.clientX, y: e.clientY, path: null });
-					}
-				}, tabs.map((t) => {
-					const ic = iconOf(t.name, false, false);
-					const isDirty = edits[t.path]?.dirty === true;
-					return h("div", {
-						key: t.path,
-						"data-vk-path": t.path,
-						className: "vk_fileTab" + (t.path === active.path ? " vk_fileTabActive" : "") + (isDirty ? " vk_fileTabDirty" : ""),
-						title: t.path,
-						draggable: true,
-						onDragStart: (e) => {
-							setDragged(t.path);
-							e.dataTransfer.effectAllowed = "move";
-							try { e.dataTransfer.setData("text/plain", t.path); } catch {}
+				h("div", { className: "vk_tabStrip" },
+					tabs.map((t) => {
+						const isAct = t.path === currentPath;
+						const isDirty = edits[t.path]?.dirty === true;
+						return h("div", {
+							key: t.path,
+							className: "vk_fileTab" + (isAct ? " vk_fileTabActive" : "") + (dragged === t.path ? " vk_fileTabDragging" : ""),
+							draggable: true,
+							onDragStart: (e) => { e.dataTransfer.setData("text/plain", t.path); setDragged(t.path); },
+							onDragEnd: () => setDragged(null),
+							onDragOver: (e) => { e.preventDefault(); },
+							onDrop: (e) => { e.preventDefault(); const from = e.dataTransfer.getData("text/plain"); if (from && from !== t.path) onMoveTab(from, t.path); },
+							onClick: () => onSelect(t.path),
+							onAuxClick: (e) => { if (e.button === 1) { e.preventDefault(); closeTab(t.path); } },
+							onContextMenu: (e) => { e.preventDefault(); setCtxMenu({ x: e.clientX, y: e.clientY, path: t.path }); }
 						},
-						onDragOver: (e) => {
-							e.preventDefault();
-							if (dragged !== null && dragged !== t.path) onMoveTab(dragged, t.path);
-						},
-						onDragEnd: () => setDragged(null),
-						onDrop: (e) => e.preventDefault(),
-						onClick: () => onSelect(t.path), onAuxClick: (e) => { if (e.button === 1) { e.preventDefault(); closeTab(t.path); } },
-						onContextMenu: (e) => { e.preventDefault(); setCtxMenu({ x: e.clientX, y: e.clientY, path: t.path }); }
-					},
-						h(FileTypeIcon, { symbolId: fileIconId(t.name, "file", false) }),
-						h("span", { className: "vk_tabName" }, t.name),
-						isDirty ? h("span", { className: "vk_dirtyDot vk_tabDot", title: "Unsaved changes" }) : null,
-						h("button", {
-							className: "vk_tabClose",
-							title: "Close Tab",
-							onClick: (e) => { e.stopPropagation(); closeTab(t.path); }
-						}, "×")
-					);
-				})),
-				(editing && !(active !== null && (active.path.endsWith(".md") || active.path.endsWith(".markdown"))))
-					? h(react.Fragment, null,
-						editBar,
-						h("textarea", {
-							className: "vk_editorInput",
-							value: edits[currentPath].text,
-							spellCheck: false,
-							autoFocus: true,
-							onChange: (e) => onEditText(e.target.value),
-							onKeyDown: (e) => {
-								if ((e.ctrlKey || e.metaKey) && (e.key === "s" || e.key === "S")) {
-									e.preventDefault();
-									save();
-								}
-								if (e.key === "Escape") cancel();
-							}
-						})
-					)
-					: (active !== null && active.path === TRAJECTORY_TAB_PATH)
-						? h("div", { className: "vk_editorBody vk_trajBody" }, trajectory ?? h("div", { className: "vk_notice" }, "Trajectory view unavailable"))
-						: (active !== null && (active.path.endsWith(".md") || active.path.endsWith(".markdown")) && edits[active.path] !== void 0)
+							h(FileTypeIcon, { symbolId: fileIconId(t.name, "file", false) }),
+							h("span", { className: "vk_tabName" }, t.name),
+							isDirty ? h("span", { className: "vk_dirtyDot vk_tabDot", title: "Unsaved changes" }) : null,
+							h("button", { className: "vk_tabClose", title: "Close Tab", onClick: (e) => { e.stopPropagation(); closeTab(t.path); } }, "×")
+						);
+					})
+				),
+				h(FindWidget, {
+					isOpen: findOpen,
+					isReplace: replaceOpen,
+					onClose: () => setFindOpen(false),
+					onToggleReplace: () => setReplaceOpen(!replaceOpen),
+					matchCount: findMatchCount,
+					activeIndex: findActiveIndex,
+					onFindNext: handleFindNext,
+					onFindPrev: handleFindPrev,
+					onReplace: handleReplace,
+					onReplaceAll: handleReplaceAll
+				}),
+				isTraj
+					? h("div", { className: "vk_editorBody vk_trajBody" }, trajectory ?? h("div", { className: "vk_notice" }, "Trajectory view unavailable"))
+					: (isMarkdown && editing)
 						? h(TipTapNotionEditor, {
 							file: active,
 							content: edits[active.path].text,
@@ -64505,14 +64886,34 @@ function Viewer({ file, rev, onStartEdit, onSaveDirect, onUpdateDirect, isDirect
 							saveMsg,
 							onToggleRawMode: cancel
 						})
-						: h(Viewer, {
-							file: active,
-							rev: revisions[active.path] ?? 0,
-							onStartEdit: startEdit,
-							onSaveDirect: (txt) => saveWithText(txt),
-							onUpdateDirect: onEditText,
-							isDirectDirty: edits[active.path]?.dirty === true
-						}),
+						: (editing && !isMarkdown)
+							? h(react.Fragment, null,
+								h("div", { className: "vk_bar" },
+									h("span", { className: "vk_barPath" }, active.path),
+									h("button", { className: "vk_editBtn vk_editBtnPrimary", disabled: busy, title: "Save (Ctrl+S)", onClick: save }, "💾 Save"),
+									h("button", { className: "vk_editBtn", disabled: busy, title: "Cancel Edit (Esc)", onClick: cancel }, "✕ Cancel"),
+									edits[active.path]?.dirty ? h("span", { className: "vk_dirtyDot", title: "Unsaved changes" }) : null,
+									saveMsg ? h("span", { className: "vk_saveMsg" }, saveMsg) : h("span", { className: "vk_saveMsg" }, "Edit Mode")
+								),
+								h("div", { className: "vk_editorBody" },
+									h("textarea", {
+										className: "vk_textarea",
+										value: edits[active.path].text,
+										autoFocus: true,
+										onChange: (e) => onEditText(e.target.value)
+									})
+								)
+							)
+							: h(Viewer, {
+								file: active,
+								rev: revisions[active.path] ?? 0,
+								onStartEdit: startEdit,
+								onSaveDirect: (txt) => saveWithText(txt),
+								onUpdateDirect: onEditText,
+								isDirectDirty: edits[active.path]?.dirty === true,
+								saveMsg,
+								busy
+							}),
 				ctxMenu !== null ? h("div", {
 					className: "vk_menu",
 					"data-vk-menu": true,
@@ -64521,12 +64922,12 @@ function Viewer({ file, rev, onStartEdit, onSaveDirect, onUpdateDirect, isDirect
 					ctxMenu.path !== null ? menuItem("Close", () => closeTab(ctxMenu.path)) : null,
 					ctxMenu.path !== null ? menuItem("Close Others", () => closePaths(tabs.map((t) => t.path).filter((p) => p !== ctxMenu.path))) : null,
 					ctxMenu.path !== null ? menuItem("Close to the Left", () => {
-						const i = tabs.findIndex((t) => t.path === ctxMenu.path);
-						closePaths(tabs.slice(0, i).map((t) => t.path));
+						const idx = tabs.findIndex((t) => t.path === ctxMenu.path);
+						if (idx > 0) closePaths(tabs.slice(0, idx).map((t) => t.path));
 					}) : null,
 					ctxMenu.path !== null ? menuItem("Close to the Right", () => {
-						const i = tabs.findIndex((t) => t.path === ctxMenu.path);
-						closePaths(tabs.slice(i + 1).map((t) => t.path));
+						const idx = tabs.findIndex((t) => t.path === ctxMenu.path);
+						if (idx !== -1 && idx < tabs.length - 1) closePaths(tabs.slice(idx + 1).map((t) => t.path));
 					}) : null,
 					menuItem("Close All", () => closePaths(tabs.map((t) => t.path)), true)
 				) : null
@@ -64572,10 +64973,11 @@ function Viewer({ file, rev, onStartEdit, onSaveDirect, onUpdateDirect, isDirect
 		// ──────────────────────────────────────────────────────────────
 		// 组件：左栏（文件/会话 双 Tab）与 右栏（对话/详情 双 Tab）
 		// ──────────────────────────────────────────────────────────────
-		function LeftPanel({ tab, onTab, tree, sessionSlot, collapsed, onExpand, onCollapse }) {
+		function LeftPanel({ tab, onTab, tree, searchPanel, sessionSlot, collapsed, onExpand, onCollapse }) {
 			if (collapsed) {
 				return h("div", { className: "vk_colLeft vk_rail" },
 					h("button", { className: "vk_railBtn" + (tab === "files" ? " vk_railBtnActive" : ""), title: "Explorer", onClick: () => { onTab("files"); onExpand(); } }, "📁"),
+					h("button", { className: "vk_railBtn" + (tab === "search" ? " vk_railBtnActive" : ""), title: "Search (Ctrl+Shift+F)", onClick: () => { onTab("search"); onExpand(); } }, "🔍"),
 					h("button", { className: "vk_railBtn" + (tab === "sessions" ? " vk_railBtnActive" : ""), title: "Quests", onClick: () => { onTab("sessions"); onExpand(); } }, "☰"),
 					h("div", { className: "vk_railSpacer" }),
 					h("button", { className: "vk_railBtn", title: "Expand Sidebar", onClick: onExpand }, "»"),
@@ -64585,11 +64987,13 @@ function Viewer({ file, rev, onStartEdit, onSaveDirect, onUpdateDirect, isDirect
 			return h("div", { className: "vk_colLeft" },
 				h("div", { className: "vk_tabBar" },
 					h("button", { className: "vk_tabBtn" + (tab === "files" ? " vk_tabBtnActive" : ""), onClick: () => onTab("files") }, "Explorer"),
+					h("button", { className: "vk_tabBtn" + (tab === "search" ? " vk_tabBtnActive" : ""), title: "Search in Workspace (Ctrl+Shift+F)", onClick: () => onTab("search") }, "Search"),
 					h("button", { className: "vk_tabBtn" + (tab === "sessions" ? " vk_tabBtnActive" : ""), onClick: () => onTab("sessions") }, "Quests"),
 					h("div", { className: "vk_tabBarSpacer" }),
 					h("button", { className: "vk_tabBtn", title: "Collapse Sidebar", onClick: onCollapse }, "«")
 				),
 				h("div", { className: "vk_tabBody" + (tab === "files" ? "" : " vk_tabBodyHidden") }, tree),
+				h("div", { className: "vk_tabBody" + (tab === "search" ? "" : " vk_tabBodyHidden") }, searchPanel),
 				h("div", { className: "vk_tabBody" + (tab === "sessions" ? "" : " vk_tabBodyHidden") }, sessionSlot)
 			);
 		}
@@ -64698,11 +65102,23 @@ function Viewer({ file, rev, onStartEdit, onSaveDirect, onUpdateDirect, isDirect
 				};
 			}, []);
 			const [tabsState, setTabsState] = react.useState(loadTabs);
+			react.useEffect(() => { saveTabs(tabsState); }, [tabsState]);
+			const narrow = viewport < SIDEBAR_AUTO_COLLAPSE;
+			react.useEffect(() => { actions.setNarrow(narrow); }, [actions, narrow]);
+			const sidebarCollapsed = narrow ? !panels.narrowExpanded : panels.sidebar === 0;
 
-			// Global Ctrl+L shortcut: If text is selected, send snippet to chat input & focus; otherwise toggle chat panel
+			// Global Keyboard Shortcuts: Ctrl+L (Chat / Selection Prompt) and Ctrl+Shift+F (Global Search)
 			react.useEffect(() => {
 				const onKeyDown = (e) => {
-					if ((e.ctrlKey || e.metaKey) && (e.key === 'l' || e.key === 'L')) {
+					if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'f' || e.key === 'F')) {
+						e.preventDefault();
+						setSidebarTab("search");
+						if (sidebarCollapsed) actions.toggleSidebar();
+						setTimeout(() => {
+							const inp = document.getElementById("global-search-input");
+							if (inp) { inp.focus(); inp.select(); }
+						}, 120);
+					} else if ((e.ctrlKey || e.metaKey) && (e.key === 'l' || e.key === 'L')) {
 						e.preventDefault();
 						const sel = window.getSelection();
 						const selectedText = sel ? sel.toString().trim() : "";
@@ -64740,11 +65156,7 @@ function Viewer({ file, rev, onStartEdit, onSaveDirect, onUpdateDirect, isDirect
 				};
 				window.addEventListener('keydown', onKeyDown);
 				return () => window.removeEventListener('keydown', onKeyDown);
-			}, [panels.right, panels.rightTab, tabsState, actions]);
-			react.useEffect(() => { saveTabs(tabsState); }, [tabsState]);
-			const narrow = viewport < SIDEBAR_AUTO_COLLAPSE;
-			react.useEffect(() => { actions.setNarrow(narrow); }, [actions, narrow]);
-			const sidebarCollapsed = narrow ? !panels.narrowExpanded : panels.sidebar === 0;
+			}, [panels.right, panels.rightTab, tabsState, sidebarCollapsed, actions]);
 			const cols = computeColumns(viewport, sidebarCollapsed ? 0 : (panels.sidebar === 0 ? 0 : (panels.sidebar ?? 280)), panels.right === 0 ? 0 : (panels.right ?? 440));
 			const colsRef = react.useRef(cols);
 			colsRef.current = cols;
@@ -64846,6 +65258,7 @@ function Viewer({ file, rev, onStartEdit, onSaveDirect, onUpdateDirect, isDirect
 				onExpand: () => actions.toggleSidebar(),
 				onCollapse: () => actions.toggleSidebar(),
 				tree: h(FileTree, { root: fileRoot, custom: tabsState.root != null, onOpenFolder: openFolder, onCloseFolder: closeFolder, onOpenFile: openFile, onPickNative: pickFolder, activePath: tabsState.active, onDeleted, onRenamed }),
+				searchPanel: h(GlobalSearchPanel, { root: fileRoot, onOpenFile: openFile }),
 				sessionSlot: renderSlot("sidebar", { collapsed: sidebarCollapsed, width: cols.sidebar })
 			});
 			const detailsSlot = renderSlot("details", {});
