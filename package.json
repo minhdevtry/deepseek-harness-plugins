@@ -51,9 +51,17 @@
 		"tiptap-markdown": "^0.9.0"
 	},
 	"dependencies": {
+		"@tiptap/extension-collaboration": "^3.30.1",
+		"@tiptap/extension-collaboration-cursor": "^3.0.0",
 		"@tiptap/extension-color": "^3.30.1",
 		"@tiptap/extension-link": "^3.30.1",
 		"@tiptap/extension-text-style": "^3.30.1",
-		"@tiptap/extension-typography": "^3.30.1"
+		"@tiptap/extension-typography": "^3.30.1",
+		"@tiptap/y-tiptap": "3.0.8",
+		"lib0": "^0.2.117",
+		"ws": "^8.21.3",
+		"y-protocols": "^1.0.7",
+		"y-websocket": "^3.1.0",
+		"yjs": "^13.6.32"
 	}
 }

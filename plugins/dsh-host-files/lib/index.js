@@ -1,10 +1,17 @@
 import { execFile } from "node:child_process";
-import { dirname, extname, join, resolve } from "node:path";
+import { basename, dirname, extname, isAbsolute, join, relative, resolve } from "node:path";
 import { existsSync, readFileSync } from "node:fs";
 import { mkdir, readdir, readFile, rename, stat, writeFile, rm } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { homedir } from "node:os";
 import { pathToFileURL } from "node:url";
+import crypto from "node:crypto";
+import { WebSocketServer, WebSocket } from "ws";
+import * as Y from "yjs";
+import * as syncProtocol from "y-protocols/sync";
+import * as awarenessProtocol from "y-protocols/awareness";
+import * as encoding from "lib0/encoding";
+import * as decoding from "lib0/decoding";
 
 /** Plugin name (for loader entry). */
 const name = "dsh-host-files";
@@ -29,11 +36,166 @@ const MAX_PERSONA_BYTES = 128 * 1024;
 const PERSONA_SECTION = "user:global-persona";
 const PERSONA_ORDER = 1;
 
+/** Workspace Sandbox Root Directory */
+const SANDBOX_ROOT = resolve(process.env.DSH_SANDBOX_ROOT || process.cwd());
+
+/** Code-Server Authentication System */
+const DSH_PASSWORD = process.env.DSH_PASSWORD || "";
+const activeSessions = new Map();
+
+/** Real-time Collaboration Engine (Yjs + WebSocket) */
+const collabDocs = new Map();
+const collabAwareness = new Map();
+let collabWss = null;
+let activeCollabPort = 3088;
+
+function getYDoc(room) {
+	let doc = collabDocs.get(room);
+	if (!doc) {
+		doc = new Y.Doc();
+		collabDocs.set(room, doc);
+	}
+	return doc;
+}
+
+function getAwareness(room, doc) {
+	let awareness = collabAwareness.get(room);
+	if (!awareness) {
+		awareness = new awarenessProtocol.Awareness(doc);
+		collabAwareness.set(room, awareness);
+	}
+	return awareness;
+}
+
+function initCollabServer(startPort = 3088) {
+	if (collabWss) return;
+	try {
+		const wss = new WebSocketServer({ port: startPort });
+		activeCollabPort = startPort;
+		collabWss = wss;
+		console.log(`[+] DeepSeek Harness Collab Server (Yjs) active on ws://0.0.0.0:${startPort}`);
+
+		wss.on("connection", (conn, req) => {
+			const url = new URL(req.url || "/", `http://localhost:${startPort}`);
+			const room = url.searchParams.get("room") || "default";
+			const doc = getYDoc(room);
+			const awareness = getAwareness(room, doc);
+
+			// 1. Send SyncStep1
+			const encoder = encoding.createEncoder();
+			encoding.writeVarUint(encoder, 0); // messageSync = 0
+			syncProtocol.writeSyncStep1(encoder, doc);
+			conn.send(encoding.toUint8Array(encoder));
+
+			// 2. Send current awareness states
+			if (awareness.getStates().size > 0) {
+				const awEncoder = encoding.createEncoder();
+				encoding.writeVarUint(awEncoder, 1); // messageAwareness = 1
+				encoding.writeVarUint8Array(awEncoder, awarenessProtocol.encodeAwarenessUpdate(awareness, Array.from(awareness.getStates().keys())));
+				conn.send(encoding.toUint8Array(awEncoder));
+			}
+
+			conn.on("message", (message) => {
+				try {
+					const decoder = decoding.createDecoder(new Uint8Array(message));
+					const messageType = decoding.readVarUint(decoder);
+					if (messageType === 0) { // Sync
+						const respEncoder = encoding.createEncoder();
+						encoding.writeVarUint(respEncoder, 0);
+						syncProtocol.readSyncMessage(decoder, respEncoder, doc, null);
+						if (encoding.length(respEncoder) > 1) {
+							conn.send(encoding.toUint8Array(respEncoder));
+						}
+					} else if (messageType === 1) { // Awareness
+						awarenessProtocol.applyAwarenessUpdate(awareness, decoding.readVarUint8Array(decoder), conn);
+					}
+				} catch (err) {
+					console.error("Collab WS message error:", err);
+				}
+			});
+
+			const updateHandler = (update, origin) => {
+				if (origin !== conn) {
+					const updEncoder = encoding.createEncoder();
+					encoding.writeVarUint(updEncoder, 0);
+					syncProtocol.writeUpdate(updEncoder, update);
+					if (conn.readyState === WebSocket.OPEN) {
+						conn.send(encoding.toUint8Array(updEncoder));
+					}
+				}
+			};
+			doc.on("update", updateHandler);
+
+			const awarenessHandler = ({ added, updated, removed }, origin) => {
+				if (origin !== conn) {
+					const changed = added.concat(updated, removed);
+					const awUpdateEncoder = encoding.createEncoder();
+					encoding.writeVarUint(awUpdateEncoder, 1);
+					encoding.writeVarUint8Array(awUpdateEncoder, awarenessProtocol.encodeAwarenessUpdate(awareness, changed));
+					if (conn.readyState === WebSocket.OPEN) {
+						conn.send(encoding.toUint8Array(awUpdateEncoder));
+					}
+				}
+			};
+			awareness.on("update", awarenessHandler);
+
+			conn.on("close", () => {
+				doc.off("update", updateHandler);
+				awareness.off("update", awarenessHandler);
+			});
+		});
+
+		wss.on("error", (err) => {
+			if (err.code === "EADDRINUSE" && startPort < 3095) {
+				console.log(`Port ${startPort} in use, trying ${startPort + 1}...`);
+				initCollabServer(startPort + 1);
+			} else {
+				console.error("Collab WS Server Error:", err);
+			}
+		});
+	} catch (err) {
+		console.error("Failed to start Collab WS Server:", err);
+	}
+}
+
+// Start Collab server on initialization
+initCollabServer();
+
+function isInsideSandbox(targetPath, root = SANDBOX_ROOT) {
+	if (!targetPath || typeof targetPath !== "string") return false;
+	const resolved = resolve(targetPath);
+	const rel = relative(root, resolved);
+	return !rel.startsWith("..") && !isAbsolute(rel);
+}
+
+function verifyAuth(req, url) {
+	if (!DSH_PASSWORD) {
+		return { authenticated: true, requiresAuth: false, user: { name: "Lucas", color: "#3b82f6", avatar: "👨‍💻" } };
+	}
+	const authHeader = req.headers["authorization"];
+	let token = null;
+	if (authHeader && authHeader.startsWith("Bearer ")) {
+		token = authHeader.slice(7).trim();
+	} else if (url.searchParams.has("token")) {
+		token = url.searchParams.get("token");
+	} else if (req.headers["cookie"]) {
+		const match = req.headers["cookie"].match(/(?:^|;\s*)dsh_token=([^;]+)/);
+		if (match) token = match[1];
+	}
+	if (token && activeSessions.has(token)) {
+		return { authenticated: true, requiresAuth: true, token, user: activeSessions.get(token).user };
+	}
+	return { authenticated: false, requiresAuth: true };
+}
+
 function sendJson(res, code, value) {
 	const body = JSON.stringify(value);
 	res.writeHead(code, {
 		"content-type": "application/json; charset=utf-8",
-		"cache-control": "no-store"
+		"cache-control": "no-store",
+		"access-control-allow-origin": "*",
+		"access-control-allow-headers": "authorization, content-type",
+		"access-control-allow-methods": "GET, POST, OPTIONS"
 	});
 	res.end(body);
 }
@@ -275,6 +437,12 @@ function shikiLangOf(path) {
 
 /**
  * Host interface for browser file tree / viewer.
+ * GET  /vscode-files/auth/status → { ok, requiresAuth, authenticated, user }
+ * POST /vscode-files/auth/login  body { password, name, color, avatar } → { ok, token, user }
+ * POST /vscode-files/auth/logout → { ok }
+ * GET  /vscode-files/sandbox-info → { ok, sandboxRoot, projectName }
+ * GET  /vscode-files/sandbox-folders → { ok, folders: [{ name, path, rel }] }
+ * GET  /vscode-files/collab-info → { ok, wsPort, wsUrl }
  * GET  /vscode-files/list?path=<absPath> → { ok, path, dirs, files }
  * GET  /vscode-files/read?path=<absPath> → { ok, kind, content, size }
  * GET  /vscode-files/git?path=<repoRoot>  → { ok, statuses } or { ok:false, notRepo:true }
@@ -308,7 +476,109 @@ function apply(ctx) {
 		path: "/vscode-files",
 		handler: async (req, res) => {
 			const url = new URL(req.url ?? "/", "http://x");
-			// 全局人设（无 path 参数，需在 path 校验之前处理）
+
+			// Handle CORS preflight
+			if (req.method === "OPTIONS") {
+				res.writeHead(204, {
+					"access-control-allow-origin": "*",
+					"access-control-allow-headers": "authorization, content-type",
+					"access-control-allow-methods": "GET, POST, OPTIONS"
+				});
+				return res.end();
+			}
+
+			// ── Public / Auth Endpoints ──
+			if (url.pathname === "/vscode-files/auth/status") {
+				const auth = verifyAuth(req, url);
+				return sendJson(res, 200, {
+					ok: true,
+					requiresAuth: auth.requiresAuth,
+					authenticated: auth.authenticated,
+					user: auth.user || null
+				});
+			}
+
+			if (url.pathname === "/vscode-files/auth/login" && req.method === "POST") {
+				try {
+					const body = await readJsonBody(req, 4096);
+					const inputPassword = body?.password || "";
+					if (DSH_PASSWORD && inputPassword !== DSH_PASSWORD) {
+						return sendJson(res, 401, { ok: false, error: "Invalid workspace password. Please try again." });
+					}
+					const token = crypto.randomBytes(24).toString("hex");
+					const user = {
+						name: body?.name || (body?.preset === "lona" ? "Lona" : "Lucas"),
+						color: body?.color || (body?.preset === "lona" ? "#ec4899" : "#3b82f6"),
+						avatar: body?.avatar || (body?.preset === "lona" ? "💖" : "👨‍💻")
+					};
+					activeSessions.set(token, { user, createdAt: Date.now() });
+					res.setHeader("Set-Cookie", `dsh_token=${token}; Path=/; SameSite=Lax; Max-Age=2592000`);
+					return sendJson(res, 200, { ok: true, token, user });
+				} catch (err) {
+					return sendJson(res, 400, { ok: false, error: err.message });
+				}
+			}
+
+			if (url.pathname === "/vscode-files/auth/logout" && req.method === "POST") {
+				const authHeader = req.headers["authorization"];
+				let token = authHeader && authHeader.startsWith("Bearer ") ? authHeader.slice(7).trim() : null;
+				if (token) activeSessions.delete(token);
+				res.setHeader("Set-Cookie", `dsh_token=; Path=/; Max-Age=0`);
+				return sendJson(res, 200, { ok: true });
+			}
+
+			if (url.pathname === "/vscode-files/sandbox-info") {
+				return sendJson(res, 200, {
+					ok: true,
+					sandboxed: true,
+					sandboxRoot: SANDBOX_ROOT,
+					projectName: basename(SANDBOX_ROOT)
+				});
+			}
+
+			if (url.pathname === "/vscode-files/collab-info") {
+				const hostName = (req.headers.host || "localhost:3080").split(":")[0];
+				return sendJson(res, 200, {
+					ok: true,
+					wsPort: activeCollabPort,
+					wsUrl: `ws://${hostName}:${activeCollabPort}`
+				});
+			}
+
+			// ── Auth Protection Middleware ──
+			const auth = verifyAuth(req, url);
+			if (auth.requiresAuth && !auth.authenticated) {
+				return sendJson(res, 401, {
+					ok: false,
+					error: "Unauthorized: Password authentication required to access this workspace."
+				});
+			}
+
+			// ── Sandbox Subdirectory Explorer for in-app folder picker ──
+			if (url.pathname === "/vscode-files/sandbox-folders") {
+				const folders = [{ name: basename(SANDBOX_ROOT) + " (Root)", path: SANDBOX_ROOT, rel: "." }];
+				async function walkFolders(dir, depth) {
+					if (depth > 3 || folders.length >= 50) return;
+					let entries;
+					try {
+						entries = await readdir(dir, { withFileTypes: true });
+					} catch { return; }
+					for (const entry of entries) {
+						if (!entry.isDirectory() || isHiddenName(entry.name)) continue;
+						const full = join(dir, entry.name);
+						folders.push({
+							name: entry.name,
+							path: full,
+							rel: full.slice(SANDBOX_ROOT.length + 1).replace(/\\/g, "/")
+						});
+						await walkFolders(full, depth + 1);
+					}
+				}
+				await walkFolders(SANDBOX_ROOT, 0);
+				return sendJson(res, 200, { ok: true, sandboxRoot: SANDBOX_ROOT, folders });
+			}
+
+			// 全局人设
 			if (url.pathname === "/vscode-files/persona") {
 				if (req.method === "POST") {
 					try {
@@ -328,6 +598,8 @@ function apply(ctx) {
 				} catch {}
 				return sendJson(res, 200, { ok: true, content });
 			}
+
+			// ── Protected POST Operations ──
 			if (req.method === "POST") {
 				let body;
 				try {
@@ -341,6 +613,9 @@ function apply(ctx) {
 					if (typeof writePath !== "string" || writePath.length === 0) {
 						return sendJson(res, 400, { ok: false, error: "body needs { path: string, content: string } or ?path= query" });
 					}
+					if (!isInsideSandbox(writePath, SANDBOX_ROOT)) {
+						return sendJson(res, 403, { ok: false, error: "Access Denied: Path is outside the sandboxed workspace directory" });
+					}
 					if (Buffer.byteLength(content, "utf8") > MAX_WRITE_BYTES) {
 						return sendJson(res, 400, { ok: false, error: "content too large" });
 					}
@@ -352,6 +627,9 @@ function apply(ctx) {
 				if (url.pathname === "/vscode-files/mkdir") {
 					const parent = body?.path;
 					if (typeof parent !== "string" || !validSegment(body?.name)) return sendJson(res, 400, { ok: false, error: "body needs { path: string, name: string }" });
+					if (!isInsideSandbox(parent, SANDBOX_ROOT)) {
+						return sendJson(res, 403, { ok: false, error: "Access Denied: Path is outside the sandboxed workspace directory" });
+					}
 					const full = join(parent, body.name);
 					try {
 						await mkdir(full);
@@ -363,6 +641,9 @@ function apply(ctx) {
 				if (url.pathname === "/vscode-files/mkfile") {
 					const parent = body?.path;
 					if (typeof parent !== "string" || !validSegment(body?.name)) return sendJson(res, 400, { ok: false, error: "body needs { path: string, name: string }" });
+					if (!isInsideSandbox(parent, SANDBOX_ROOT)) {
+						return sendJson(res, 403, { ok: false, error: "Access Denied: Path is outside the sandboxed workspace directory" });
+					}
 					const full = join(parent, body.name);
 					try {
 						await writeFile(full, "", { flag: "wx" });
@@ -374,13 +655,22 @@ function apply(ctx) {
 				if (url.pathname === "/vscode-files/rename") {
 					const oldPath = body?.path;
 					if (typeof oldPath !== "string" || !validSegment(body?.newName)) return sendJson(res, 400, { ok: false, error: "body needs { path: string, newName: string }" });
+					if (!isInsideSandbox(oldPath, SANDBOX_ROOT)) {
+						return sendJson(res, 403, { ok: false, error: "Access Denied: Path is outside the sandboxed workspace directory" });
+					}
 					const newPath = join(dirname(oldPath), body.newName);
+					if (!isInsideSandbox(newPath, SANDBOX_ROOT)) {
+						return sendJson(res, 403, { ok: false, error: "Access Denied: Target path is outside the sandboxed workspace directory" });
+					}
 					await rename(oldPath, newPath);
 					return sendJson(res, 200, { ok: true, path: newPath });
 				}
 				if (url.pathname === "/vscode-files/delete") {
 					const delPath = body?.path;
 					if (typeof delPath !== "string" || delPath.length === 0) return sendJson(res, 400, { ok: false, error: "body needs { path: string }" });
+					if (!isInsideSandbox(delPath, SANDBOX_ROOT) || resolve(delPath) === SANDBOX_ROOT) {
+						return sendJson(res, 403, { ok: false, error: "Access Denied: Cannot delete paths outside the sandboxed workspace or the workspace root itself" });
+					}
 					const info = await stat(delPath).catch(() => void 0);
 					if (info === void 0) return sendJson(res, 404, { ok: false, error: "not found" });
 					await recycleBinDelete(delPath, info.isDirectory());
@@ -388,11 +678,14 @@ function apply(ctx) {
 				}
 			}
 
-			const rawTarget = url.searchParams.get("path");
-			if (typeof rawTarget !== "string" || rawTarget.length === 0) {
-				return sendJson(res, 400, { ok: false, error: "missing path" });
-			}
+			// ── Protected GET Operations ──
+			const rawTarget = url.searchParams.get("path") || SANDBOX_ROOT;
 			const target = resolve(rawTarget);
+
+			if (!isInsideSandbox(target, SANDBOX_ROOT)) {
+				return sendJson(res, 403, { ok: false, error: "Access Denied: Path is outside the sandboxed workspace directory (" + SANDBOX_ROOT + ")" });
+			}
+
 			try {
 				if (url.pathname === "/vscode-files/list") {
 					const entries = await readdir(target, { withFileTypes: true });
@@ -415,7 +708,7 @@ function apply(ctx) {
 					}
 					dirs.sort((a, b) => a.name.localeCompare(b.name));
 					files.sort((a, b) => a.name.localeCompare(b.name));
-					return sendJson(res, 200, { ok: true, path: target, root: target, dirs, files });
+					return sendJson(res, 200, { ok: true, path: target, root: target, sandboxRoot: SANDBOX_ROOT, dirs, files });
 				}
 				if (url.pathname === "/vscode-files/read") {
 					const info = await stat(target);

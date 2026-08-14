@@ -681,6 +681,125 @@ const customComponentsCode = `
 				background: rgba(30, 41, 59, 0.05); border: 1px solid var(--dsw-alias-border-l1, #e2e8f0);
 				border-radius: 8px; padding: 8px 12px; margin: 8px 0; font-size: 12px; color: #64748b;
 			}
+
+			/* TipTap Collaboration Multi-User Cursors */
+			.collaboration-cursor__caret {
+				position: relative;
+				margin-left: -1px;
+				margin-right: -1px;
+				border-left: 2px solid #3b82f6;
+				border-right: 0;
+				word-break: normal;
+				pointer-events: none;
+			}
+			.collaboration-cursor__label {
+				position: absolute;
+				top: -1.4em;
+				left: -2px;
+				font-size: 10.5px;
+				font-weight: 600;
+				line-height: normal;
+				user-select: none;
+				color: #fff;
+				padding: 1px 6px;
+				border-radius: 4px;
+				white-space: nowrap;
+				pointer-events: none;
+				box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+			}
+
+			/* Code-Server Login Modal (Password Protection Gate) */
+			.vk_login_backdrop {
+				position: fixed; inset: 0; z-index: 9999999;
+				background: radial-gradient(circle at 50% 30%, rgba(37, 99, 235, 0.15), rgba(15, 23, 42, 0.85) 70%), rgba(15, 23, 42, 0.95);
+				backdrop-filter: blur(16px);
+				display: flex; justify-content: center; align-items: center; padding: 20px;
+				animation: vk-pop-in 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+			}
+			.vk_login_card {
+				width: 460px; max-width: 92vw;
+				background: rgba(30, 41, 59, 0.95);
+				border: 1px solid rgba(255, 255, 255, 0.12);
+				border-radius: 16px;
+				box-shadow: 0 25px 60px rgba(0, 0, 0, 0.5), 0 0 40px rgba(59, 130, 246, 0.2);
+				padding: 32px; display: flex; flex-direction: column; gap: 20px;
+				color: #f8fafc;
+			}
+			.vk_login_header { text-align: center; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+			.vk_login_badge {
+				background: rgba(59, 130, 246, 0.2); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.3);
+				padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 700; letter-spacing: 0.5px;
+			}
+			.vk_login_title { font-size: 22px; font-weight: 800; color: #ffffff; margin: 4px 0 0 0; }
+			.vk_login_subtitle { font-size: 13px; color: #94a3b8; margin: 0; line-height: 1.4; }
+			.vk_login_section { display: flex; flex-direction: column; gap: 8px; }
+			.vk_login_label { font-size: 12px; font-weight: 700; color: #cbd5e1; text-transform: uppercase; letter-spacing: 0.5px; }
+			.vk_profile_grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+			.vk_profile_card {
+				background: rgba(15, 23, 42, 0.6); border: 2px solid rgba(255, 255, 255, 0.08);
+				border-radius: 12px; padding: 12px 8px; text-align: center; cursor: pointer;
+				transition: all 0.15s ease; display: flex; flex-direction: column; align-items: center; gap: 4px;
+			}
+			.vk_profile_card:hover { border-color: rgba(255, 255, 255, 0.25); transform: translateY(-2px); }
+			.vk_profile_card_active { transform: translateY(-2px); }
+			.vk_profile_lucas.vk_profile_card_active { border-color: #3b82f6; background: rgba(59, 130, 246, 0.15); box-shadow: 0 0 15px rgba(59, 130, 246, 0.3); }
+			.vk_profile_lona.vk_profile_card_active { border-color: #ec4899; background: rgba(236, 72, 153, 0.15); box-shadow: 0 0 15px rgba(236, 72, 153, 0.3); }
+			.vk_profile_custom.vk_profile_card_active { border-color: #10b981; background: rgba(16, 185, 129, 0.15); box-shadow: 0 0 15px rgba(16, 185, 129, 0.3); }
+			.vk_profile_avatar { font-size: 26px; line-height: 1; }
+			.vk_profile_name { font-size: 13.5px; font-weight: 700; color: #ffffff; }
+			.vk_profile_role { font-size: 10.5px; color: #94a3b8; }
+			.vk_login_input_wrap {
+				display: flex; align-items: center; background: rgba(15, 23, 42, 0.8);
+				border: 1.5px solid rgba(255, 255, 255, 0.15); border-radius: 10px; padding: 4px 12px;
+				transition: border-color 0.15s;
+			}
+			.vk_login_input_wrap:focus-within { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25); }
+			.vk_login_input {
+				flex: 1; background: transparent; border: none; outline: none; padding: 8px 0;
+				font-size: 14px; color: #ffffff;
+			}
+			.vk_login_input::placeholder { color: #64748b; }
+			.vk_login_eye_btn { background: transparent; border: none; cursor: pointer; font-size: 16px; opacity: 0.7; }
+			.vk_login_eye_btn:hover { opacity: 1; }
+			.vk_login_error {
+				background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.3);
+				color: #fca5a5; padding: 8px 12px; border-radius: 8px; font-size: 12.5px;
+			}
+			.vk_login_submit_btn {
+				background: linear-gradient(135deg, #2563eb, #7c3aed); color: #ffffff;
+				border: none; border-radius: 10px; padding: 12px; font-size: 14px; font-weight: 700;
+				cursor: pointer; transition: all 0.15s ease; box-shadow: 0 4px 14px rgba(37, 99, 235, 0.4);
+				width: 100%; margin-top: 4px;
+			}
+			.vk_login_submit_btn:hover { opacity: 0.92; transform: translateY(-1px); box-shadow: 0 6px 20px rgba(37, 99, 235, 0.5); }
+			.vk_login_submit_btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+			/* Presence & Sandbox Badges */
+			.vk_collab_pill {
+				display: inline-flex; align-items: center; gap: 5px; background: rgba(34, 197, 94, 0.15);
+				color: #15803d; border: 1px solid rgba(34, 197, 94, 0.3); border-radius: 20px;
+				padding: 2px 8px; font-size: 11px; font-weight: 600;
+			}
+			.vk_sandbox_pill {
+				display: inline-flex; align-items: center; gap: 4px; background: rgba(59, 130, 246, 0.1);
+				color: #2563eb; border: 1px solid rgba(59, 130, 246, 0.25); border-radius: 6px;
+				padding: 2px 7px; font-size: 11px; font-weight: 600; cursor: pointer;
+			}
+			.vk_sandbox_pill:hover { background: rgba(59, 130, 246, 0.18); }
+			.vk_user_profile_pill {
+				display: inline-flex; align-items: center; gap: 5px; background: var(--dsw-alias-bg-elevated, #ffffff);
+				border: 1px solid var(--dsw-alias-border-l2, #e5e7eb); border-radius: 20px;
+				padding: 2px 8px; font-size: 11.5px; font-weight: 600; cursor: pointer;
+				color: var(--dsw-alias-label-primary, #374151); transition: all 0.12s;
+			}
+			.vk_user_profile_pill:hover { border-color: #3b82f6; }
+			.vk_profile_quick_btn {
+				background: var(--dsw-alias-bg-subtle, #f3f4f6); border: 2px solid transparent;
+				border-radius: 8px; padding: 8px 12px; font-size: 12.5px; font-weight: 600;
+				cursor: pointer; transition: all 0.12s;
+			}
+			.vk_profile_quick_btn:hover { background: #e5e7eb; }
+			.vk_profile_quick_btn_active { background: #eff6ff; font-weight: 700; }
 		\`;
 
 		if (typeof document !== "undefined" && !document.getElementById("vk-tiptap-styles")) {
@@ -688,6 +807,259 @@ const customComponentsCode = `
 			s.id = "vk-tiptap-styles";
 			s.textContent = tiptapStyles;
 			document.head.appendChild(s);
+		}
+
+		// ── Code-Server Password Login Gate ──
+		function LoginModal({ isOpen, onLoginSuccess }) {
+			if (!isOpen) return null;
+			const [preset, setPreset] = react.useState('lucas');
+			const [customName, setCustomName] = react.useState('');
+			const [customColor, setCustomColor] = react.useState('#10b981');
+			const [customAvatar, setCustomAvatar] = react.useState('✨');
+			const [password, setPassword] = react.useState('');
+			const [showPass, setShowPass] = react.useState(false);
+			const [remember, setRemember] = react.useState(true);
+			const [error, setError] = react.useState('');
+			const [loading, setLoading] = react.useState(false);
+
+			const handleSubmit = async (e) => {
+				if (e) e.preventDefault();
+				setError('');
+				setLoading(true);
+				try {
+					const name = preset === 'lucas' ? 'Lucas' : (preset === 'lona' ? 'Lona' : (customName || 'Collaborator'));
+					const color = preset === 'lucas' ? '#3b82f6' : (preset === 'lona' ? '#ec4899' : customColor);
+					const avatar = preset === 'lucas' ? '👨‍💻' : (preset === 'lona' ? '💖' : customAvatar);
+					const res = await fetch('/vscode-files/auth/login', {
+						method: 'POST',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify({ password, name, color, avatar, preset })
+					});
+					const data = await res.json();
+					if (data && data.ok) {
+						if (remember && data.token) {
+							try {
+								localStorage.setItem('dsh_auth_token', data.token);
+								localStorage.setItem('dsh_user_profile', JSON.stringify(data.user));
+							} catch {}
+						}
+						onLoginSuccess(data.token, data.user);
+					} else {
+						setError(data?.error || 'Invalid password. Please try again.');
+					}
+				} catch (err) {
+					setError('Network error during login: ' + err.message);
+				} finally {
+					setLoading(false);
+				}
+			};
+
+			return h('div', { className: 'vk_login_backdrop' },
+				h('div', { className: 'vk_login_card' },
+					h('div', { className: 'vk_login_header' },
+						h('div', { className: 'vk_login_badge' }, '🚀 DeepSeek Harness Cloud'),
+						h('h2', { className: 'vk_login_title' }, 'Workspace Access'),
+						h('p', { className: 'vk_login_subtitle' }, 'Select your profile and enter workspace password to collaborate.')
+					),
+					h('div', { className: 'vk_login_section' },
+						h('label', { className: 'vk_login_label' }, '1. Who is logging in?'),
+						h('div', { className: 'vk_profile_grid' },
+							h('div', {
+								className: 'vk_profile_card' + (preset === 'lucas' ? ' vk_profile_card_active vk_profile_lucas' : ''),
+								onClick: () => setPreset('lucas')
+							},
+								h('div', { className: 'vk_profile_avatar' }, '👨‍💻'),
+								h('div', { className: 'vk_profile_name' }, 'Lucas'),
+								h('div', { className: 'vk_profile_role' }, 'Host (Blue)')
+							),
+							h('div', {
+								className: 'vk_profile_card' + (preset === 'lona' ? ' vk_profile_card_active vk_profile_lona' : ''),
+								onClick: () => setPreset('lona')
+							},
+								h('div', { className: 'vk_profile_avatar' }, '💖'),
+								h('div', { className: 'vk_profile_name' }, 'Lona'),
+								h('div', { className: 'vk_profile_role' }, 'Collaborator (Pink)')
+							),
+							h('div', {
+								className: 'vk_profile_card' + (preset === 'custom' ? ' vk_profile_card_active vk_profile_custom' : ''),
+								onClick: () => setPreset('custom')
+							},
+								h('div', { className: 'vk_profile_avatar' }, customAvatar || '✨'),
+								h('div', { className: 'vk_profile_name' }, customName || 'Custom'),
+								h('div', { className: 'vk_profile_role' }, 'Custom User')
+							)
+						),
+						preset === 'custom' ? h('div', { style: { display: 'flex', gap: '8px', marginTop: '10px' } },
+							h('input', {
+								type: 'text',
+								placeholder: 'Your Name (e.g. Alex)',
+								value: customName,
+								onChange: (e) => setCustomName(e.target.value),
+								className: 'vk_login_input',
+								style: { flex: 1, background: 'rgba(15, 23, 42, 0.6)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '6px', padding: '6px 10px' }
+							}),
+							h('input', {
+								type: 'color',
+								value: customColor,
+								onChange: (e) => setCustomColor(e.target.value),
+								style: { width: '40px', height: '36px', padding: '0', border: 'none', borderRadius: '6px', cursor: 'pointer' }
+							})
+						) : null
+					),
+					h('form', { onSubmit: handleSubmit, className: 'vk_login_form', style: { display: 'flex', flexDirection: 'column', gap: '10px' } },
+						h('label', { className: 'vk_login_label' }, '2. Workspace Password'),
+						h('div', { className: 'vk_login_input_wrap' },
+							h('input', {
+								type: showPass ? 'text' : 'password',
+								placeholder: 'Enter password...',
+								value: password,
+								autoFocus: true,
+								onChange: (e) => setPassword(e.target.value),
+								className: 'vk_login_input'
+							}),
+							h('button', {
+								type: 'button',
+								onClick: () => setShowPass(!showPass),
+								className: 'vk_login_eye_btn'
+							}, showPass ? '👁️' : '🙈')
+						),
+						error ? h('div', { className: 'vk_login_error' }, '⚠️ ' + error) : null,
+						h('div', { className: 'vk_login_remember_row' },
+							h('label', { style: { display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '12.5px', color: '#94a3b8' } },
+								h('input', {
+									type: 'checkbox',
+									checked: remember,
+									onChange: (e) => setRemember(e.target.checked)
+								}),
+								'Remember me on this device'
+							)
+						),
+						h('button', {
+							type: 'submit',
+							disabled: loading,
+							className: 'vk_login_submit_btn'
+						}, loading ? 'Verifying...' : '🚀 Unlock Workspace & Collab')
+					)
+				)
+			);
+		}
+
+		// ── Sandboxed In-App Workspace Folder Switcher ──
+		function OpenFolderModal({ isOpen, onClose, onSelectFolder }) {
+			if (!isOpen) return null;
+			const [folders, setFolders] = react.useState([]);
+			const [sandboxRoot, setSandboxRoot] = react.useState('');
+			const [loading, setLoading] = react.useState(true);
+			const [search, setSearch] = react.useState('');
+
+			react.useEffect(() => {
+				setLoading(true);
+				fetch('/vscode-files/sandbox-folders')
+					.then(r => r.json())
+					.then(d => {
+						if (d && d.ok) {
+							setFolders(d.folders || []);
+							setSandboxRoot(d.sandboxRoot || '');
+						}
+					})
+					.catch(() => {})
+					.finally(() => setLoading(false));
+			}, []);
+
+			const filtered = folders.filter(f => f.name.toLowerCase().includes(search.toLowerCase()) || f.rel.toLowerCase().includes(search.toLowerCase()));
+
+			return h('div', { className: 'vk_quick_open_backdrop', onClick: (e) => { if (e.target === e.currentTarget) onClose(); } },
+				h('div', { className: 'vk_quick_open_palette', style: { width: '600px' } },
+					h('div', { className: 'vk_quick_open_input_wrap' },
+						h('span', { className: 'vk_quick_open_icon' }, '🔒'),
+						h('input', {
+							type: 'text',
+							placeholder: 'Select sandboxed folder in workspace...',
+							value: search,
+							autoFocus: true,
+							onChange: (e) => setSearch(e.target.value),
+							className: 'vk_quick_open_input'
+						}),
+						h('span', { className: 'vk_quick_open_hint' }, 'Sandboxed')
+					),
+					h('div', { style: { padding: '8px 14px', background: 'rgba(59, 130, 246, 0.06)', borderBottom: '1px solid #e5e7eb', fontSize: '11.5px', color: '#2563eb' } },
+						'Sandbox Root: ', h('strong', null, sandboxRoot || 'Current Project'), ' (Strictly Sandboxed)'
+					),
+					h('div', { className: 'vk_quick_open_list' },
+						loading ? h('div', { style: { padding: '20px', textAlign: 'center', color: '#9ca3af' } }, 'Loading sandboxed folders...') :
+						filtered.length === 0 ? h('div', { style: { padding: '20px', textAlign: 'center', color: '#9ca3af' } }, 'No subfolders found') :
+						filtered.map(f => h('div', {
+							key: f.path,
+							className: 'vk_quick_open_item',
+							onClick: () => onSelectFolder(f.path)
+						},
+							h('span', null, '📁'),
+							h('span', { style: { fontWeight: 600 } }, f.name),
+							h('span', { style: { marginLeft: 'auto', fontSize: '11px', color: '#9ca3af' } }, f.rel)
+						))
+					)
+				)
+			);
+		}
+
+		// ── User Profile & Live Cursor Settings Modal ──
+		function UserProfileModal({ isOpen, currentUser, onClose, onSaveProfile }) {
+			if (!isOpen) return null;
+			const [name, setName] = react.useState(currentUser?.name || 'Lucas');
+			const [color, setColor] = react.useState(currentUser?.color || '#3b82f6');
+			const [avatar, setAvatar] = react.useState(currentUser?.avatar || '👨‍💻');
+
+			const setPreset = (p) => {
+				if (p === 'lucas') { setName('Lucas'); setColor('#3b82f6'); setAvatar('👨‍💻'); }
+				else if (p === 'lona') { setName('Lona'); setColor('#ec4899'); setAvatar('💖'); }
+			};
+
+			const handleSave = (e) => {
+				if (e) e.preventDefault();
+				onSaveProfile({ name, color, avatar });
+				onClose();
+			};
+
+			return h('div', { className: 'vk_quick_open_backdrop', onClick: (e) => { if (e.target === e.currentTarget) onClose(); } },
+				h('div', { className: 'vk_quick_open_palette', style: { width: '420px', padding: '20px' } },
+					h('h3', { style: { margin: '0 0 8px 0', fontSize: '16px', color: 'var(--dsw-alias-label-primary, #111827)' } }, '👤 Collaborator Profile'),
+					h('p', { style: { margin: '0 0 16px 0', fontSize: '12.5px', color: '#6b7280' } }, 'Set your live cursor color and nickname for real-time collaboration.'),
+					h('div', { style: { display: 'flex', gap: '8px', marginBottom: '16px' } },
+						h('button', {
+							type: 'button',
+							onClick: () => setPreset('lucas'),
+							className: 'vk_profile_quick_btn' + (name === 'Lucas' ? ' vk_profile_quick_btn_active' : ''),
+							style: { flex: 1, borderColor: '#3b82f6' }
+						}, '👨‍💻 Lucas (Blue)'),
+						h('button', {
+							type: 'button',
+							onClick: () => setPreset('lona'),
+							className: 'vk_profile_quick_btn' + (name === 'Lona' ? ' vk_profile_quick_btn_active' : ''),
+							style: { flex: 1, borderColor: '#ec4899' }
+						}, '💖 Lona (Pink)')
+					),
+					h('form', { onSubmit: handleSave, style: { display: 'flex', flexDirection: 'column', gap: '12px' } },
+						h('div', null,
+							h('label', { style: { display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--dsw-alias-label-primary, #374151)', marginBottom: '4px' } }, 'Display Name'),
+							h('input', { type: 'text', value: name, onChange: (e) => setName(e.target.value), className: 'vk_login_input', style: { width: '100%', boxSizing: 'border-box', border: '1px solid #d1d5db', borderRadius: '6px', padding: '6px 10px', color: '#111827' } })
+						),
+						h('div', { style: { display: 'flex', gap: '12px', alignItems: 'center' } },
+							h('div', { style: { flex: 1 } },
+								h('label', { style: { display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--dsw-alias-label-primary, #374151)', marginBottom: '4px' } }, 'Cursor Color'),
+								h('input', { type: 'color', value: color, onChange: (e) => setColor(e.target.value), style: { width: '100%', height: '36px', padding: '0', border: 'none', borderRadius: '6px', cursor: 'pointer' } })
+							),
+							h('div', { style: { flex: 1 } },
+								h('label', { style: { display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--dsw-alias-label-primary, #374151)', marginBottom: '4px' } }, 'Emoji Avatar'),
+								h('input', { type: 'text', value: avatar, onChange: (e) => setAvatar(e.target.value), className: 'vk_login_input', style: { width: '100%', boxSizing: 'border-box', textAlign: 'center', border: '1px solid #d1d5db', borderRadius: '6px', padding: '6px 10px', color: '#111827' } })
+							)
+						),
+						h('div', { style: { display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '12px' } },
+							h('button', { type: 'button', onClick: onClose, className: 'vk_editBtn' }, 'Cancel'),
+							h('button', { type: 'submit', className: 'vk_editBtn vk_editBtnPrimary' }, 'Save Profile')
+						)
+					)
+				)
+			);
 		}
 
 		// ── Breadcrumb Navigation Component ──
@@ -994,6 +1366,8 @@ const customComponentsCode = `
 
 			const commands = [
 				{ id: "quick_open", title: "File: Quick Open File...", shortcut: "Ctrl+P", icon: "📄" },
+				{ id: "open_folder", title: "File: Open Sandboxed Folder in Workspace...", icon: "🔒" },
+				{ id: "user_profile", title: "Collab: Switch User Profile / Cursor Color...", icon: "👤" },
 				{ id: "global_search", title: "Search: Find in Workspace Files", shortcut: "Ctrl+Shift+F", icon: "🔍" },
 				{ id: "save_file", title: "File: Save Current File", shortcut: "Ctrl+S", icon: "💾" },
 				{ id: "toggle_diff", title: "Diff: Toggle File Diff Viewer", icon: "⚡" },
@@ -1523,6 +1897,8 @@ const customComponentsCode = `
 			const [inlineAIOpen, setInlineAIOpen] = react.useState(false);
 			const [inlineSelection, setInlineSelection] = react.useState("");
 			const [exportOpen, setExportOpen] = react.useState(false);
+			const [collaborators, setCollaborators] = react.useState([]);
+			const [collabConnected, setCollabConnected] = react.useState(false);
 
 			const handleInlineAISubmit = (instruction, selText) => {
 				const activeName = file?.name || "document.md";
@@ -1558,6 +1934,8 @@ const customComponentsCode = `
 			const containerRef = react.useRef(null);
 			const canvasRef = react.useRef(null);
 			const slashStateRef = react.useRef({ menu: null, query: '', index: 0 });
+			const providerRef = react.useRef(null);
+			const ydocRef = react.useRef(null);
 
 			const setSlashMenu = (val) => { slashStateRef.current.menu = val; _setSlashMenu(val); };
 			const setSlashQuery = (val) => {
@@ -1698,20 +2076,82 @@ const customComponentsCode = `
 				if (!containerRef.current || !window.TipTapBundle) return;
 				const {
 					Editor, StarterKit, TaskList, TaskItem, Table, TableRow, TableCell, TableHeader,
-					Image, Youtube, Highlight, Typography, TextAlign, Link, Color, TextStyle, CodeBlockLowlight, lowlight, Markdown
+					Image, Youtube, Highlight, Typography, TextAlign, Link, Color, TextStyle, CodeBlockLowlight, lowlight, Markdown,
+					Collaboration, CollaborationCursor, Y, WebsocketProvider
 				} = window.TipTapBundle;
+
+				let activeUser = { name: 'Lucas', color: '#3b82f6', avatar: '👨‍💻' };
+				try {
+					const saved = localStorage.getItem('dsh_user_profile');
+					if (saved) activeUser = JSON.parse(saved);
+				} catch {}
+
+				let ydoc = null;
+				let provider = null;
+
+				if (Y && WebsocketProvider && Collaboration && CollaborationCursor) {
+					try {
+						ydoc = new Y.Doc();
+						ydocRef.current = ydoc;
+						const room = 'doc:' + encodeURIComponent(file?.path || 'note.md');
+						const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+						const wsHost = window.location.hostname || 'localhost';
+						const wsUrl = wsProtocol + '//' + wsHost + ':3088';
+
+						provider = new WebsocketProvider(wsUrl, room, ydoc);
+						providerRef.current = provider;
+
+						provider.on('status', ({ status }) => {
+							setCollabConnected(status === 'connected');
+						});
+
+						provider.awareness.setLocalStateField('user', {
+							name: activeUser.name,
+							color: activeUser.color,
+							avatar: activeUser.avatar
+						});
+
+						const onAwarenessChange = () => {
+							const states = provider.awareness.getStates();
+							const users = [];
+							states.forEach((state, clientId) => {
+								if (state.user) users.push({ clientId, ...state.user });
+							});
+							setCollaborators(users);
+						};
+						provider.awareness.on('change', onAwarenessChange);
+					} catch (err) {
+						console.warn('Collab WS skipped:', err);
+					}
+				}
 
 				const editor = new Editor({
 					element: containerRef.current,
 					extensions: [
-						StarterKit.configure({ heading: { levels: [1, 2, 3, 4, 5, 6] }, codeBlock: false, link: false, underline: false }),
+						StarterKit.configure({
+							heading: { levels: [1, 2, 3, 4, 5, 6] },
+							codeBlock: false,
+							link: false,
+							underline: false,
+							history: !provider
+						}),
 						TaskList, TaskItem.configure({ nested: true }),
 						Table.configure({ resizable: true }), TableRow, TableCell, TableHeader,
 						Image, Youtube.configure({ inline: false, nocookie: true }),
 						Highlight, Typography, TextAlign.configure({ types: ['heading', 'paragraph'] }),
 						Link.configure({ openOnClick: false }), Color, TextStyle,
 						CodeBlockLowlight.configure({ lowlight }),
-						Markdown.configure({ html: true, transformPastedText: true, transformCopiedText: true })
+						Markdown.configure({ html: true, transformPastedText: true, transformCopiedText: true }),
+						...(provider ? [
+							Collaboration.configure({ document: ydoc }),
+							CollaborationCursor.configure({
+								provider: provider,
+								user: {
+									name: activeUser.name,
+									color: activeUser.color
+								}
+							})
+						] : [])
 					],
 					content: content,
 					onUpdate: ({ editor: ed }) => {
@@ -1772,13 +2212,21 @@ const customComponentsCode = `
 				return () => {
 					containerRef.current?.removeEventListener('keydown', handleKeyDown, true);
 					editor.destroy();
+					if (providerRef.current) {
+						providerRef.current.destroy();
+						providerRef.current = null;
+					}
+					if (ydocRef.current) {
+						ydocRef.current.destroy();
+						ydocRef.current = null;
+					}
 				};
-			}, []);
+			}, [file?.path]);
 
 			react.useEffect(() => {
 				if (editorRef.current && content !== undefined) {
 					const currentMd = editorRef.current.storage?.markdown?.getMarkdown();
-					if (currentMd !== content && !editorRef.current.isFocused) {
+					if (currentMd !== content && !editorRef.current.isFocused && !providerRef.current) {
 						editorRef.current.commands.setContent(content);
 					}
 				}
@@ -1845,6 +2293,13 @@ const customComponentsCode = `
 					]),
 					react.createElement('button', { key: 'inline-ai-btn', type: 'button', className: 'vk_ai_assist_btn', title: 'Inline AI Assist (Ctrl+K)', onClick: () => { setInlineSelection(editorRef.current?.getText()?.slice(0, 300) || ""); setInlineAIOpen(true); } }, '🤖 AI (Ctrl+K)'),
 					react.createElement('div', { key: 'spacer', style: { flex: 1 } }),
+					collabConnected ? react.createElement('div', { key: 'collab-badge', className: 'vk_collab_pill', title: 'Real-time collaborative editing active' }, [
+						react.createElement('span', { key: 'collab-dot', style: { width: '6px', height: '6px', borderRadius: '50%', background: '#22c55e' } }),
+						'Live (' + (collaborators.length || 1) + ')',
+						collaborators.length > 0 ? react.createElement('span', { key: 'collab-users', style: { marginLeft: '3px', opacity: 0.85 } },
+							collaborators.map(u => u.name).join(', ')
+						) : null
+					]) : null,
 					react.createElement('button', { key: 'raw-mode', type: 'button', className: 'vk_editBtn', title: 'Switch to Code / Shiki Source View', onClick: onToggleRawMode }, '💻 Code Source')
 				]),
 
@@ -3083,9 +3538,42 @@ clientSource = clientSource.replace(
 	`const sidebarCollapsed = narrow ? !panels.narrowExpanded : panels.sidebar === 0;
 			const [quickOpen, setQuickOpen] = react.useState(false);
 			const [cmdPalette, setCmdPalette] = react.useState(false);
+			const [folderModalOpen, setFolderModalOpen] = react.useState(false);
+			const [profileModalOpen, setProfileModalOpen] = react.useState(false);
+			const [sandboxInfo, setSandboxInfo] = react.useState(null);
+			const [authState, setAuthState] = react.useState({ checked: false, requiresAuth: false, authenticated: true, user: { name: 'Lucas', color: '#3b82f6', avatar: '👨‍💻' } });
+
+			react.useEffect(() => {
+				let token = '';
+				let user = { name: 'Lucas', color: '#3b82f6', avatar: '👨‍💻' };
+				try {
+					token = localStorage.getItem('dsh_auth_token') || '';
+					const saved = localStorage.getItem('dsh_user_profile');
+					if (saved) user = JSON.parse(saved);
+				} catch {}
+				fetch('/vscode-files/auth/status' + (token ? '?token=' + encodeURIComponent(token) : ''))
+					.then(r => r.json())
+					.then(d => {
+						if (d && d.ok) {
+							setAuthState({
+								checked: true,
+								requiresAuth: d.requiresAuth,
+								authenticated: d.authenticated,
+								user: d.user || user
+							});
+						}
+					})
+					.catch(() => {});
+				fetch('/vscode-files/sandbox-info')
+					.then(r => r.json())
+					.then(d => { if (d && d.ok) setSandboxInfo(d); })
+					.catch(() => {});
+			}, []);
 
 			const handleCommandPaletteAction = (cmdId) => {
 				if (cmdId === "quick_open") setQuickOpen(true);
+				else if (cmdId === "open_folder") setFolderModalOpen(true);
+				else if (cmdId === "user_profile") setProfileModalOpen(true);
 				else if (cmdId === "global_search") {
 					setSidebarTab("search");
 					if (sidebarCollapsed) actions.toggleSidebar();
@@ -3337,7 +3825,7 @@ const newLeftBlock = `const left = h(LeftPanel, {
 				collapsed: sidebarCollapsed,
 				onExpand: () => actions.toggleSidebar(),
 				onCollapse: () => actions.toggleSidebar(),
-				tree: h(FileTree, { root: fileRoot, custom: tabsState.root != null, onOpenFolder: openFolder, onCloseFolder: closeFolder, onOpenFile: openFile, onPickNative: pickFolder, activePath: tabsState.active, onDeleted, onRenamed }),
+				tree: h(FileTree, { root: fileRoot, custom: tabsState.root != null, onOpenFolder: openFolder, onCloseFolder: closeFolder, onOpenFile: openFile, onPickNative: () => setFolderModalOpen(true), activePath: tabsState.active, onDeleted, onRenamed }),
 				searchPanel: h(GlobalSearchPanel, { root: fileRoot, onOpenFile: openFile }),
 				sessionSlot: renderSlot("sidebar", { collapsed: sidebarCollapsed, width: cols.sidebar })
 			});`;
@@ -3367,6 +3855,32 @@ const newAppFrameReturn = `const showOpenChatBtn = cols.right === 0 && panels.mo
 				"data-sidebar-collapsed": sidebarCollapsed || void 0,
 				"data-dragging": dragging || void 0,
 				children: [
+					h(LoginModal, {
+						isOpen: authState.requiresAuth && !authState.authenticated,
+						onLoginSuccess: (token, user) => {
+							setAuthState({ checked: true, requiresAuth: true, authenticated: true, user });
+							if (user) {
+								try { localStorage.setItem("dsh_user_profile", JSON.stringify(user)); } catch {}
+							}
+						}
+					}),
+					h(OpenFolderModal, {
+						isOpen: folderModalOpen,
+						onClose: () => setFolderModalOpen(false),
+						onSelectFolder: (p) => {
+							openFolder(p);
+							setFolderModalOpen(false);
+						}
+					}),
+					h(UserProfileModal, {
+						isOpen: profileModalOpen,
+						currentUser: authState.user,
+						onClose: () => setProfileModalOpen(false),
+						onSaveProfile: (u) => {
+							setAuthState(prev => ({ ...prev, user: u }));
+							try { localStorage.setItem("dsh_user_profile", JSON.stringify(u)); } catch {}
+						}
+					}),
 					h(QuickOpenModal, { isOpen: quickOpen, onClose: () => setQuickOpen(false), root: fileRoot, onOpenFile: openFile }),
 					h(CommandPaletteModal, { isOpen: cmdPalette, onClose: () => setCmdPalette(false), onExecuteAction: handleCommandPaletteAction }),
 					h(AtFileMentionDropdown, { isOpen: atFileOpen, query: atFileQuery, onSelect: handleSelectAtFile, onClose: () => setAtFileOpen(false) }),

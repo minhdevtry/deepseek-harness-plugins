@@ -47,6 +47,21 @@ copyDirRecursive(clientSrc, path.join(webNodeModules, 'dsh-client-vscode-layout'
 copyDirRecursive(hostSrc, path.join(globalProfileNodeModules, 'dsh-host-files'));
 copyDirRecursive(clientSrc, path.join(globalProfileNodeModules, 'dsh-client-vscode-layout'));
 
+// Copy dependencies for backend Yjs collaboration
+const backendDeps = ['yjs', 'ws', 'y-protocols', 'lib0'];
+const webRootNodeModules = path.join(webProfileDir, 'node_modules');
+const globalRootNodeModules = path.join(dshProfilesDir, 'node_modules');
+
+for (const dep of backendDeps) {
+  try {
+    const depPath = fs.realpathSync(path.join(__dirname, 'node_modules', dep));
+    copyDirRecursive(depPath, path.join(webRootNodeModules, dep));
+    copyDirRecursive(depPath, path.join(globalRootNodeModules, dep));
+  } catch (err) {
+    console.warn(`[!] Failed to copy ${dep}:`, err.message);
+  }
+}
+
 // Step 3: Update ~/.dsh/profiles/web/cordis.patch.yml
 const patchYamlFile = path.join(webProfileDir, 'cordis.patch.yml');
 let patchYaml = fs.existsSync(patchYamlFile) ? fs.readFileSync(patchYamlFile, 'utf8') : '';

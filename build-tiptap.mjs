@@ -27,8 +27,44 @@ import { FloatingMenu } from '@tiptap/extension-floating-menu';
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight';
 import { common, createLowlight } from 'lowlight';
 import { Markdown } from 'tiptap-markdown';
+import Collaboration from '@tiptap/extension-collaboration';
+import { yCursorPlugin, defaultSelectionBuilder } from '@tiptap/y-tiptap';
+import * as Y from 'yjs';
+import { WebsocketProvider } from 'y-websocket';
 
 const lowlight = createLowlight(common);
+
+const CollaborationCursor = Extension.create({
+  name: 'collaborationCursor',
+  addOptions() {
+    return {
+      provider: null,
+      user: { name: null, color: null },
+      render: user => {
+        const cursor = document.createElement('span');
+        cursor.classList.add('collaboration-cursor__caret');
+        cursor.setAttribute('style', 'border-left: 2px solid ' + (user.color || '#3b82f6') + ';');
+        const label = document.createElement('div');
+        label.classList.add('collaboration-cursor__label');
+        label.setAttribute('style', 'background-color: ' + (user.color || '#3b82f6') + ';');
+        label.innerText = user.name || 'Anonymous';
+        cursor.insertBefore(label, null);
+        return cursor;
+      },
+      selectionRender: defaultSelectionBuilder,
+    };
+  },
+  addProseMirrorPlugins() {
+    if (!this.options.provider || !this.options.provider.awareness) return [];
+    this.options.provider.awareness.setLocalStateField('user', this.options.user);
+    return [
+      yCursorPlugin(this.options.provider.awareness, {
+        cursorBuilder: this.options.render,
+        selectionBuilder: this.options.selectionRender,
+      })
+    ];
+  }
+});
 
 if (typeof window !== 'undefined') {
   window.TipTapBundle = {
@@ -54,7 +90,11 @@ if (typeof window !== 'undefined') {
     FloatingMenu,
     CodeBlockLowlight,
     lowlight,
-    Markdown
+    Markdown,
+    Collaboration,
+    CollaborationCursor,
+    Y,
+    WebsocketProvider
   };
 }
 
@@ -81,7 +121,11 @@ export {
   FloatingMenu,
   CodeBlockLowlight,
   lowlight,
-  Markdown
+  Markdown,
+  Collaboration,
+  CollaborationCursor,
+  Y,
+  WebsocketProvider
 };
 `;
 
