@@ -8,11 +8,28 @@ const indexFile = path.join(baseDir, 'index.js')
 
 if (fs.existsSync(clientFile)) {
   let content = fs.readFileSync(clientFile, 'utf8')
+
+  // 1. Force English dictionary
   if (!content.includes('function dictionary() { return en;')) {
     content = content.replace('function dictionary() {', 'function dictionary() { return en; ')
-    fs.writeFileSync(clientFile, content, 'utf8')
-    console.log('[✓] Successfully forced English dictionary in dsh-task-board client.js!')
   }
+
+  // 2. Add fallback for conversationColumn so Task Board mounts even when no session is open
+  const oldColumnFn = 'function conversationColumn() {\n\t\t\treturn document.querySelector(CONVERSATION_COLUMN_SELECTOR) ?? void 0;\n\t\t}'
+  const newColumnFn = `function conversationColumn() {
+			return document.querySelector(CONVERSATION_COLUMN_SELECTOR)
+				?? document.querySelector("[data-pane=\\"sidebar\\"]")?.nextElementSibling
+				?? document.querySelector("[class*=\\"sidebar\\"]")?.nextElementSibling
+				?? document.querySelector("#root > div > div:nth-child(2)")
+				?? document.body;
+		}`
+
+  if (content.includes(oldColumnFn)) {
+    content = content.replace(oldColumnFn, newColumnFn)
+  }
+
+  fs.writeFileSync(clientFile, content, 'utf8')
+  console.log('[✓] Successfully patched dsh-task-board client.js (English dictionary + mount fallback)!')
 }
 
 if (fs.existsSync(indexFile)) {

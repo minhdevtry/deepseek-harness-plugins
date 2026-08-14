@@ -1,13 +1,6 @@
 1. 🎨 Giao diện UI, Chợ Plugin & Input Triggers
 Chợ quản lý Plugin (In-app Plugin Inventory): Tích hợp sẵn gói @deepseek-ai/dsh-ui-settings-plugins & ui-settings-plugin-inventory. Bạn có thể quản lý, xem danh sách và bật/tắt các plugin trực tiếp trên Web UI.
 
-Giao diện Kanban / Kế hoạch (UI Widgets): Đã tích hợp gói ui-plan, ui-sidebar, ui-trajectory, ui-jobs để theo dõi các bước thực thi kế hoạch trực quan.
-
-2. 🧠 Quản lý Bộ nhớ & Nén Ngữ cảnh (Memory & Compaction)
-Compaction & Pruning: Tích hợp sẵn gói:
-@deepseek-ai/dsh-compaction-basic: Tự động nén tóm tắt hội thoại.
-@deepseek-ai/dsh-compaction-tool-result-pruner: Tự động cắt tỉa (prune) các đầu ra Tool Call quá dài (vượt ngưỡng token) để tiết kiệm ngữ cảnh.
-@deepseek-ai/dsh-command-compact: Cho phép gõ lệnh thu gọn hội thoại chủ động.
 
 3. 🤖 Subagents & Phân nhánh Luồng (Multi-Agent & Session Forking)
 Subagent Forking: Tích hợp sẵn các gói:
