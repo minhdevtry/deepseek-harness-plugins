@@ -14,14 +14,13 @@ if (fs.existsSync(clientFile)) {
     content = content.replace('function dictionary() {', 'function dictionary() { return en; ')
   }
 
-  // 2. Add fallback for conversationColumn so Task Board mounts even when no session is open
+  // 2. Tweak conversationColumn so Task Board mounts cleanly beside the sidebar without hiding left/right panels
   const oldColumnFn = 'function conversationColumn() {\n\t\t\treturn document.querySelector(CONVERSATION_COLUMN_SELECTOR) ?? void 0;\n\t\t}'
   const newColumnFn = `function conversationColumn() {
 			return document.querySelector(CONVERSATION_COLUMN_SELECTOR)
 				?? document.querySelector("[data-pane=\\"sidebar\\"]")?.nextElementSibling
 				?? document.querySelector("[class*=\\"sidebar\\"]")?.nextElementSibling
-				?? document.querySelector("#root > div > div:nth-child(2)")
-				?? document.body;
+				?? document.querySelector("#root > div > div:nth-child(2)");
 		}`
 
   if (content.includes(oldColumnFn)) {
@@ -29,7 +28,7 @@ if (fs.existsSync(clientFile)) {
   }
 
   fs.writeFileSync(clientFile, content, 'utf8')
-  console.log('[✓] Successfully patched dsh-task-board client.js (English dictionary + mount fallback)!')
+  console.log('[✓] Successfully patched dsh-task-board layout (English dictionary + sidebar preservation)!')
 }
 
 if (fs.existsSync(indexFile)) {

@@ -73,3 +73,17 @@ bash
 # Đã thực hiện lệnh gỡ repo cũ và cài đặt gói chuẩn:
 dsh plugin --profile web remove dsh-kanban
 dsh plugin --profile web add @linxin666/dsh-client-ui-task-board
+
+Nguyên nhân chính gây ra màn hình trắng:
+Trong mã nguồn của plugin dsh-task-board, hàm tìm kiếm khung hiển thị trung tâm (conversationColumn) chỉ tìm thẻ có attribute [data-pane="conversation"].
+
+Khi bạn mới mở Web UI và chưa bấm vào một Session cuộc hội thoại nào, khung chat chưa được React khởi tạo (undefined), dẫn đến việc Bảng Kanban bị hủy render và trả về màn hình trắng tinh.
+
+✅ Đã khắc phục thành công:
+Thêm cơ chế tự chọn vùng hiển thị fallback (Self-healing DOM Selector):
+
+Tôi đã bổ sung logic fallback trong file vá plugins/dsh-task-board/patch.js: nếu chưa mở session chat nào, Bảng Kanban sẽ tự động gắn vào ngay bên cạnh cột Sidebar.
+Giờ đây dù bạn chưa tạo session hay đã mở session, Bảng Kanban đều sẽ hiển thị khung làm việc (To Do, In Progress, Done, Backlog,...) đầy đủ 100%!
+Cập nhật lên Repo GitHub:
+
+Đã cập nhật bản patch này vào plugins/dsh-task-board/patch.js và push lên minhdevtry/deepseek-harness-plugins.
