@@ -75,7 +75,7 @@ if (fs.existsSync(tiptapBundleFile)) {
 }
 
 // ==========================================
-// 2. PATCH CLIENT (Ultimate TipTap Suite & VS Code Layout)
+// 2. PATCH CLIENT (Novel-Grade TipTap UI/UX & Precise Slash Commands)
 // ==========================================
 if (fs.existsSync(clientFile)) {
   let content = fs.readFileSync(clientFile, 'utf8')
@@ -164,7 +164,6 @@ if (fs.existsSync(clientFile)) {
 			display: inline-flex; align-items: center; gap: 4px;
 		}
 		.dsh-tb-tool:hover { background: var(--dsw-alias-interactive-bg-hover, #f3f4f6); border-color: var(--dsw-alias-border-l2, #d1d5db); }
-		.dsh-tb-tool-active { background: #e0e7ff; color: #3730a3; border-color: #c7d2fe; }
 		.dsh-tb-sep { width: 1px; height: 16px; background: var(--dsw-alias-border-l2, #e5e7eb); margin: 0 4px; }
 		.dsh-bold { font-weight: 800; }
 		.dsh-italic { font-style: italic; }
@@ -199,12 +198,16 @@ if (fs.existsSync(clientFile)) {
 		.dsh-tiptap-prose img { max-width: 100%; border-radius: 8px; margin: 14px 0; box-shadow: 0 4px 12px rgba(0,0,0,0.06); }
 		.dsh-tiptap-prose mark { background: #fef08a; padding: 2px 4px; border-radius: 3px; }
 		
-		/* Slash Commands Popup */
+		/* Caret-Anchored Slash Commands Popup */
 		.dsh-slash-menu {
 			position: absolute; z-index: 100; background: var(--dsw-alias-bg-base, #ffffff);
 			border: 1px solid var(--dsw-alias-border-l2, #e5e7eb); border-radius: 10px;
-			box-shadow: 0 12px 32px rgba(0,0,0,0.14); width: 280px; max-height: 340px;
+			box-shadow: 0 12px 32px rgba(0,0,0,0.15); width: 300px; max-height: 360px;
 			overflow-y: auto; padding: 6px; display: flex; flex-direction: column; gap: 2px;
+		}
+		.dsh-slash-header {
+			font-size: 11px; font-weight: 700; color: #9ca3af; padding: 6px 10px 2px;
+			text-transform: uppercase; letter-spacing: 0.5px;
 		}
 		.dsh-slash-item {
 			display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 6px;
@@ -214,9 +217,48 @@ if (fs.existsSync(clientFile)) {
 		.dsh-slash-item:hover, .dsh-slash-item-selected {
 			background: #eff6ff; color: #2563eb; font-weight: 600;
 		}
-		.dsh-slash-icon { font-size: 16px; width: 22px; text-align: center; flex-shrink: 0; }
-		.dsh-slash-desc { font-size: 11px; color: #6b7280; margin-left: auto; }
+		.dsh-slash-icon { font-size: 15px; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.04); border-radius: 4px; flex-shrink: 0; }
+		.dsh-slash-desc { font-size: 11.5px; color: #6b7280; margin-left: auto; }
 		
+		/* Sleek Embed Modal Dialog */
+		.dsh-modal-backdrop {
+			position: fixed; inset: 0; z-index: 1000;
+			background: rgba(0,0,0,0.45); backdrop-filter: blur(3px);
+			display: flex; justify-content: center; align-items: center; padding: 20px;
+		}
+		.dsh-modal-card {
+			background: var(--dsw-alias-bg-base, #ffffff);
+			border: 1px solid var(--dsw-alias-border-l2, #e5e7eb);
+			border-radius: 12px; box-shadow: 0 20px 45px rgba(0,0,0,0.25);
+			width: min(480px, 95vw); display: flex; flex-direction: column; overflow: hidden;
+			animation: dsh-modal-pop 0.15s ease-out;
+		}
+		@keyframes dsh-modal-pop { 0% { opacity: 0; transform: scale(0.95); } 100% { opacity: 1; transform: scale(1); } }
+		.dsh-modal-head {
+			padding: 14px 18px; border-bottom: 1px solid var(--dsw-alias-border-l1, #e5e7eb);
+			display: flex; align-items: center; justify-content: space-between;
+			font-size: 15px; font-weight: 700; color: var(--dsw-alias-label-primary, #111827);
+		}
+		.dsh-modal-body { padding: 18px; display: flex; flex-direction: column; gap: 10px; }
+		.dsh-modal-input {
+			width: 100%; border: 1.5px solid #3b82f6; border-radius: 8px; padding: 10px 14px;
+			font-size: 14px; outline: none; box-sizing: border-box; background: var(--dsw-alias-bg-base, #ffffff);
+			color: var(--dsw-alias-label-primary, #111827);
+		}
+		.dsh-modal-foot {
+			padding: 12px 18px; border-top: 1px solid var(--dsw-alias-border-l1, #e5e7eb);
+			background: var(--dsw-alias-bg-subtle, #f9fafb); display: flex; justify-content: flex-end; gap: 8px;
+		}
+		.dsh-modal-btn-cancel {
+			padding: 6px 14px; border-radius: 6px; border: 1px solid #d1d5db; background: #fff;
+			font-size: 13px; font-weight: 600; cursor: pointer; color: #4b5563;
+		}
+		.dsh-modal-btn-submit {
+			padding: 6px 16px; border-radius: 6px; border: none; background: #2563eb;
+			font-size: 13px; font-weight: 600; cursor: pointer; color: #fff;
+		}
+		.dsh-modal-btn-submit:hover { background: #1d4ed8; }
+
 		/* Code Syntax Highlighting colors */
 		.hljs-keyword, .hljs-selector-tag { color: #f43f5e; font-weight: 700; }
 		.hljs-string, .hljs-title { color: #10b981; }
@@ -245,32 +287,46 @@ if (fs.existsSync(clientFile)) {
 			const [savedToast, setSavedToast] = react.useState(false);
 			const [slashMenu, setSlashMenu] = react.useState(null);
 			const [slashIdx, setSlashIdx] = react.useState(0);
+			const [slashQuery, setSlashQuery] = react.useState('');
+			const [embedModal, setEmbedModal] = react.useState(null); // { type: 'youtube'|'image', url: '' }
 			const editorRef = react.useRef(null);
 			const containerRef = react.useRef(null);
+			const canvasRef = react.useRef(null);
 
 			const isMarkdown = filePath.endsWith('.md');
 			const fileName = filePath.split('/').pop() || filePath;
 
 			const slashItems = [
-				{ label: 'Heading 1', desc: 'Large title', icon: 'H1', action: (c) => c.toggleHeading({ level: 1 }) },
-				{ label: 'Heading 2', desc: 'Section title', icon: 'H2', action: (c) => c.toggleHeading({ level: 2 }) },
-				{ label: 'Heading 3', desc: 'Subsection title', icon: 'H3', action: (c) => c.toggleHeading({ level: 3 }) },
-				{ label: 'Task List', desc: 'Todo checkboxes', icon: '☑', action: (c) => c.toggleTaskList() },
-				{ label: 'Bullet List', desc: 'Unordered list', icon: '•', action: (c) => c.toggleBulletList() },
-				{ label: 'Numbered List', desc: 'Ordered list', icon: '1.', action: (c) => c.toggleOrderedList() },
-				{ label: 'Table', desc: '3x3 grid table', icon: '📊', action: (c) => c.insertTable({ rows: 3, cols: 3, withHeaderRow: true }) },
-				{ label: 'Code Block', desc: 'Syntax highlighting', icon: '</>', action: (c) => c.toggleCodeBlock() },
-				{ label: 'Blockquote', desc: 'Capture quote', icon: '❝', action: (c) => c.toggleBlockquote() },
-				{ label: 'YouTube Video', desc: 'Embed YouTube video', icon: '🎥', action: (c) => {
-					const url = prompt('Enter YouTube Video URL:');
-					if (url) c.setYoutubeVideo({ src: url });
-				}},
-				{ label: 'Image', desc: 'Insert image from URL', icon: '🖼️', action: (c) => {
-					const url = prompt('Enter Image URL:');
-					if (url) c.setImage({ src: url });
-				}},
-				{ label: 'Divider', desc: 'Horizontal rule', icon: '─', action: (c) => c.setHorizontalRule() }
+				{ category: 'BASIC BLOCKS', label: 'Heading 1', desc: 'Large title', icon: 'H1', action: (c) => c.toggleHeading({ level: 1 }) },
+				{ category: 'BASIC BLOCKS', label: 'Heading 2', desc: 'Section title', icon: 'H2', action: (c) => c.toggleHeading({ level: 2 }) },
+				{ category: 'BASIC BLOCKS', label: 'Heading 3', desc: 'Subsection title', icon: 'H3', action: (c) => c.toggleHeading({ level: 3 }) },
+				{ category: 'LISTS & TASKS', label: 'Task List', desc: 'Todo checkboxes', icon: '☑', action: (c) => c.toggleTaskList() },
+				{ category: 'LISTS & TASKS', label: 'Bullet List', desc: 'Unordered list', icon: '•', action: (c) => c.toggleBulletList() },
+				{ category: 'LISTS & TASKS', label: 'Numbered List', desc: 'Ordered list', icon: '1.', action: (c) => c.toggleOrderedList() },
+				{ category: 'ADVANCED & MEDIA', label: 'Table', desc: 'Interactive table', icon: '📊', action: (c) => c.insertTable({ rows: 3, cols: 3, withHeaderRow: true }) },
+				{ category: 'ADVANCED & MEDIA', label: 'Code Block', desc: 'Syntax highlighting', icon: '</>', action: (c) => c.toggleCodeBlock() },
+				{ category: 'ADVANCED & MEDIA', label: 'Blockquote', desc: 'Capture quote', icon: '❝', action: (c) => c.toggleBlockquote() },
+				{ category: 'ADVANCED & MEDIA', label: 'YouTube Video', desc: 'Embed YouTube player', icon: '🎥', action: () => setEmbedModal({ type: 'youtube', url: '' }) },
+				{ category: 'ADVANCED & MEDIA', label: 'Image', desc: 'Insert image URL', icon: '🖼️', action: () => setEmbedModal({ type: 'image', url: '' }) },
+				{ category: 'ADVANCED & MEDIA', label: 'Divider Line', desc: 'Horizontal rule', icon: '─', action: (c) => c.setHorizontalRule() }
 			];
+
+			const filteredSlashItems = react.useMemo(() => {
+				if (!slashQuery) return slashItems;
+				const q = slashQuery.toLowerCase();
+				return slashItems.filter(item => item.label.toLowerCase().includes(q) || item.desc.toLowerCase().includes(q));
+			}, [slashQuery]);
+
+			// Close slash menu on outside click
+			react.useEffect(() => {
+				const onPointerDown = (e) => {
+					if (!e.target.closest('.dsh-slash-menu')) {
+						setSlashMenu(null);
+					}
+				};
+				window.addEventListener('pointerdown', onPointerDown);
+				return () => window.removeEventListener('pointerdown', onPointerDown);
+			}, []);
 
 			// Initialize Official TipTap 3 Suite
 			react.useEffect(() => {
@@ -314,31 +370,41 @@ if (fs.existsSync(clientFile)) {
 							},
 							handleKeyDown: (view, event) => {
 								if (event.key === '/' && !slashMenu) {
-									const { top, left } = view.coordsAtPos(view.state.selection.from);
-									setSlashMenu({ top: top + 24, left });
-									setSlashIdx(0);
+									setTimeout(() => {
+										if (!canvasRef.current) return;
+										const containerRect = canvasRef.current.getBoundingClientRect();
+										const coords = view.coordsAtPos(view.state.selection.from);
+										const top = coords.bottom - containerRect.top + canvasRef.current.scrollTop + 6;
+										const left = Math.min(coords.left - containerRect.left + canvasRef.current.scrollLeft, containerRect.width - 320);
+										setSlashMenu({ top, left });
+										setSlashIdx(0);
+										setSlashQuery('');
+									}, 0);
 								}
 								if (slashMenu) {
 									if (event.key === 'ArrowDown') {
 										event.preventDefault();
-										setSlashIdx((i) => (i + 1) % slashItems.length);
+										setSlashIdx((i) => (i + 1) % Math.max(1, filteredSlashItems.length));
 										return true;
 									}
 									if (event.key === 'ArrowUp') {
 										event.preventDefault();
-										setSlashIdx((i) => (i - 1 + slashItems.length) % slashItems.length);
+										setSlashIdx((i) => (i - 1 + filteredSlashItems.length) % Math.max(1, filteredSlashItems.length));
 										return true;
 									}
 									if (event.key === 'Enter') {
 										event.preventDefault();
-										const item = slashItems[slashIdx];
+										const item = filteredSlashItems[slashIdx];
 										if (item) {
-											// Delete the slash character
-											editorRef.current.chain().focus().deleteRange({
-												from: view.state.selection.from - 1,
-												to: view.state.selection.from
-											}).run();
-											item.action(editorRef.current.chain().focus()).run();
+											// Delete the slash trigger text
+											const sel = view.state.selection;
+											const textBefore = view.state.doc.textBetween(Math.max(0, sel.from - 10), sel.from, '\\n');
+											const slashOffset = textBefore.lastIndexOf('/');
+											if (slashOffset !== -1) {
+												const from = sel.from - (textBefore.length - slashOffset);
+												editorRef.current.chain().focus().deleteRange({ from, to: sel.from }).run();
+											}
+											item.action(editorRef.current.chain().focus());
 										}
 										setSlashMenu(null);
 										return true;
@@ -346,6 +412,17 @@ if (fs.existsSync(clientFile)) {
 									if (event.key === 'Escape') {
 										setSlashMenu(null);
 										return true;
+									}
+									if (event.key.length === 1 && !event.ctrlKey && !event.metaKey) {
+										setSlashQuery(q => q + event.key);
+									} else if (event.key === 'Backspace') {
+										setSlashQuery(q => {
+											if (!q) {
+												setSlashMenu(null);
+												return '';
+											}
+											return q.slice(0, -1);
+										});
 									}
 								}
 								return false;
@@ -396,6 +473,17 @@ if (fs.existsSync(clientFile)) {
 				}
 			};
 
+			const handleEmbedSubmit = (e) => {
+				e.preventDefault();
+				if (!embedModal || !embedModal.url) return;
+				if (embedModal.type === 'youtube') {
+					runCommand(c => c.setYoutubeVideo({ src: embedModal.url }));
+				} else if (embedModal.type === 'image') {
+					runCommand(c => c.setImage({ src: embedModal.url }));
+				}
+				setEmbedModal(null);
+			};
+
 			react.useEffect(() => {
 				const onKeyDown = (e) => {
 					if ((e.ctrlKey || e.metaKey) && e.key === 's') {
@@ -403,13 +491,20 @@ if (fs.existsSync(clientFile)) {
 						handleSave();
 					}
 					if (e.key === 'Escape') {
-						e.preventDefault();
-						onClose();
+						if (embedModal) {
+							e.preventDefault();
+							setEmbedModal(null);
+							return;
+						}
+						if (!slashMenu) {
+							e.preventDefault();
+							onClose();
+						}
 					}
 				};
 				window.addEventListener('keydown', onKeyDown);
 				return () => window.removeEventListener('keydown', onKeyDown);
-			}, [rawContent, filePath, isRichMode]);
+			}, [rawContent, filePath, isRichMode, embedModal, slashMenu]);
 
 			return react.createElement('div', { className: 'dsh-editor-panel-view' }, [
 				// Editor Top Tab Bar
@@ -477,19 +572,13 @@ if (fs.existsSync(clientFile)) {
 					react.createElement('button', { key: 'table', type: 'button', className: 'dsh-tb-tool', title: 'Insert Table', onClick: () => runCommand(c => c.insertTable({ rows: 3, cols: 3, withHeaderRow: true })) }, '📊 Table'),
 					react.createElement('button', { key: 'quote', type: 'button', className: 'dsh-tb-tool', title: 'Blockquote', onClick: () => runCommand(c => c.toggleBlockquote()) }, '❝ Quote'),
 					react.createElement('button', { key: 'code', type: 'button', className: 'dsh-tb-tool', title: 'Code Block (Syntax Highlighted)', onClick: () => runCommand(c => c.toggleCodeBlock()) }, '</> Code'),
-					react.createElement('button', { key: 'yt', type: 'button', className: 'dsh-tb-tool', title: 'Embed YouTube Video', onClick: () => {
-						const url = prompt('Enter YouTube URL:');
-						if (url) runCommand(c => c.setYoutubeVideo({ src: url }));
-					}}, '🎥 YouTube'),
-					react.createElement('button', { key: 'img', type: 'button', className: 'dsh-tb-tool', title: 'Insert Image URL', onClick: () => {
-						const url = prompt('Enter Image URL:');
-						if (url) runCommand(c => c.setImage({ src: url }));
-					}}, '🖼️ Image'),
+					react.createElement('button', { key: 'yt', type: 'button', className: 'dsh-tb-tool', title: 'Embed YouTube Video', onClick: () => setEmbedModal({ type: 'youtube', url: '' }) }, '🎥 YouTube'),
+					react.createElement('button', { key: 'img', type: 'button', className: 'dsh-tb-tool', title: 'Insert Image URL', onClick: () => setEmbedModal({ type: 'image', url: '' }) }, '🖼️ Image'),
 					react.createElement('button', { key: 'hr', type: 'button', className: 'dsh-tb-tool', title: 'Divider Line', onClick: () => runCommand(c => c.setHorizontalRule()) }, '─ Line')
 				]) : null,
 
 				// TipTap Canvas / Code Canvas
-				react.createElement('div', { key: 'workspace', className: 'dsh-editor-canvas' }, [
+				react.createElement('div', { key: 'workspace', ref: canvasRef, className: 'dsh-editor-canvas' }, [
 					isMarkdown && isRichMode
 						? react.createElement('div', {
 							key: 'tt-container',
@@ -517,27 +606,77 @@ if (fs.existsSync(clientFile)) {
 							})
 						),
 
-					// Slash Command Popup Menu
-					slashMenu ? react.createElement('div', {
+					// Caret-Anchored Slash Command Popup Menu
+					slashMenu && filteredSlashItems.length > 0 ? react.createElement('div', {
 						key: 'slash-popup',
 						className: 'dsh-slash-menu',
 						style: { top: slashMenu.top + 'px', left: slashMenu.left + 'px' }
-					}, slashItems.map((item, idx) => react.createElement('button', {
-						key: item.label,
-						type: 'button',
-						className: 'dsh-slash-item ' + (idx === slashIdx ? 'dsh-slash-item-selected' : ''),
-						onClick: () => {
-							if (editorRef.current) {
-								item.action(editorRef.current.chain().focus()).run();
-							}
-							setSlashMenu(null);
-						}
 					}, [
-						react.createElement('span', { key: 'icon', className: 'dsh-slash-icon' }, item.icon),
-						react.createElement('span', { key: 'label' }, item.label),
-						react.createElement('span', { key: 'desc', className: 'dsh-slash-desc' }, item.desc)
-					]))) : null
-				])
+						react.createElement('div', { key: 'hdr', className: 'dsh-slash-header' }, slashQuery ? 'Matching Commands (' + slashQuery + ')' : 'Insert Blocks & Media'),
+						...filteredSlashItems.map((item, idx) => react.createElement('button', {
+							key: item.label,
+							type: 'button',
+							className: 'dsh-slash-item ' + (idx === slashIdx ? 'dsh-slash-item-selected' : ''),
+							onClick: () => {
+								if (editorRef.current) {
+									// Delete slash trigger
+									const sel = editorRef.current.state.selection;
+									const textBefore = editorRef.current.state.doc.textBetween(Math.max(0, sel.from - 10), sel.from, '\\n');
+									const slashOffset = textBefore.lastIndexOf('/');
+									if (slashOffset !== -1) {
+										const from = sel.from - (textBefore.length - slashOffset);
+										editorRef.current.chain().focus().deleteRange({ from, to: sel.from }).run();
+									}
+									item.action(editorRef.current.chain().focus());
+								}
+								setSlashMenu(null);
+							}
+						}, [
+							react.createElement('span', { key: 'icon', className: 'dsh-slash-icon' }, item.icon),
+							react.createElement('span', { key: 'label' }, item.label),
+							react.createElement('span', { key: 'desc', className: 'dsh-slash-desc' }, item.desc)
+						]))
+					]) : null
+				]),
+
+				// Sleek Inline Modal Dialog for YouTube & Image Embeds (No window.prompt!)
+				embedModal ? react.createElement('div', {
+					key: 'embed-dialog-backdrop',
+					className: 'dsh-modal-backdrop',
+					onClick: (e) => { if (e.target === e.currentTarget) setEmbedModal(null); }
+				}, react.createElement('div', { className: 'dsh-modal-card' }, [
+					react.createElement('div', { key: 'head', className: 'dsh-modal-head' }, [
+						react.createElement('span', { key: 'title' }, embedModal.type === 'youtube' ? '🎥 Embed YouTube Video' : '🖼️ Insert Image URL'),
+						react.createElement('button', { key: 'close', className: 'dsh-tab-close', onClick: () => setEmbedModal(null) }, '✕')
+					]),
+					react.createElement('form', { key: 'form', onSubmit: handleEmbedSubmit }, [
+						react.createElement('div', { key: 'body', className: 'dsh-modal-body' }, [
+							react.createElement('input', {
+								key: 'input',
+								type: 'url',
+								autoFocus: true,
+								required: true,
+								placeholder: embedModal.type === 'youtube' ? 'https://www.youtube.com/watch?v=...' : 'https://example.com/image.png',
+								value: embedModal.url,
+								className: 'dsh-modal-input',
+								onChange: (e) => setEmbedModal({ ...embedModal, url: e.target.value })
+							})
+						]),
+						react.createElement('div', { key: 'foot', className: 'dsh-modal-foot' }, [
+							react.createElement('button', {
+								key: 'cancel',
+								type: 'button',
+								className: 'dsh-modal-btn-cancel',
+								onClick: () => setEmbedModal(null)
+							}, 'Cancel (Esc)'),
+							react.createElement('button', {
+								key: 'submit',
+								type: 'submit',
+								className: 'dsh-modal-btn-submit'
+							}, embedModal.type === 'youtube' ? 'Embed Video' : 'Insert Image')
+						])
+					])
+				])) : null
 			]);
 		}
   `
@@ -614,5 +753,5 @@ if (fs.existsSync(clientFile)) {
   }
 
   fs.writeFileSync(clientFile, content, 'utf8')
-  console.log('[✓] Successfully patched dsh-local-filetree with Ultimate TipTap Suite!')
+  console.log('[✓] Successfully patched dsh-local-filetree with Novel-Grade TipTap UI/UX!')
 }
