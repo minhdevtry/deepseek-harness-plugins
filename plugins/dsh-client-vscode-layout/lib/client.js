@@ -82898,13 +82898,75 @@ const FILE_ICON_DIR_OPEN = "fti-FolderOpen";
 				color: var(--dsw-alias-label-primary, #374151); transition: all 0.12s;
 			}
 			.vk_user_profile_pill:hover { border-color: #3b82f6; }
-			.vk_profile_quick_btn {
-				background: var(--dsw-alias-bg-subtle, #f3f4f6); border: 2px solid transparent;
-				border-radius: 8px; padding: 8px 12px; font-size: 12.5px; font-weight: 600;
-				cursor: pointer; transition: all 0.12s;
+			/* Shortcuts Cheat Sheet Modal */
+			.vk_shortcuts_grid {
+				display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+				gap: 14px; max-height: 480px; overflow-y: auto; padding: 4px;
 			}
-			.vk_profile_quick_btn:hover { background: #e5e7eb; }
-			.vk_profile_quick_btn_active { background: #eff6ff; font-weight: 700; }
+			.vk_shortcut_group {
+				background: var(--dsw-alias-bg-subtle, #f8fafc);
+				border: 1px solid var(--dsw-alias-border-l1, #e2e8f0);
+				border-radius: 8px; padding: 12px;
+			}
+			.vk_shortcut_group_title {
+				font-size: 11.5px; font-weight: 700; color: #64748b; text-transform: uppercase;
+				letter-spacing: 0.5px; margin-bottom: 8px; display: flex; align-items: center; gap: 6px;
+			}
+			.vk_shortcut_row {
+				display: flex; align-items: center; justify-content: space-between;
+				padding: 5px 0; border-bottom: 1px dashed rgba(0,0,0,0.06); font-size: 12px;
+			}
+			.vk_shortcut_row:last-child { border-bottom: none; }
+			.vk_shortcut_desc { color: var(--dsw-alias-label-primary, #334155); }
+			.vk_kbd {
+				background: var(--dsw-alias-bg-base, #ffffff);
+				border: 1px solid var(--dsw-alias-border-l2, #cbd5e1);
+				box-shadow: 0 1px 2px rgba(0,0,0,0.08); border-radius: 4px;
+				padding: 2px 6px; font-family: ui-monospace, SFMono-Regular, monospace;
+				font-size: 11px; font-weight: 600; color: #2563eb;
+			}
+
+			/* Document Statistics Modal */
+			.vk_stats_grid {
+				display: grid; grid-template-columns: repeat(2, 1fr);
+				gap: 12px; margin-bottom: 16px;
+			}
+			.vk_stat_card {
+				background: var(--dsw-alias-bg-subtle, #f8fafc);
+				border: 1px solid var(--dsw-alias-border-l1, #e2e8f0);
+				border-radius: 8px; padding: 12px 14px; display: flex; flex-direction: column; gap: 4px;
+			}
+			.vk_stat_label { font-size: 11.5px; color: #64748b; font-weight: 600; }
+			.vk_stat_val { font-size: 20px; font-weight: 800; color: #2563eb; }
+
+			/* Zen / Focus Mode Exit Banner */
+			.vk_zen_banner {
+				position: fixed; top: 12px; right: 16px; z-index: 9999;
+				background: rgba(15, 23, 42, 0.9); backdrop-filter: blur(8px);
+				color: #ffffff; border: 1px solid rgba(255, 255, 255, 0.18);
+				border-radius: 20px; padding: 6px 14px; font-size: 12px; font-weight: 600;
+				cursor: pointer; display: flex; align-items: center; gap: 6px;
+				box-shadow: 0 4px 16px rgba(0,0,0,0.3); transition: all 0.15s ease;
+			}
+			.vk_zen_banner:hover { background: #2563eb; transform: scale(1.03); }
+
+			/* Toast Notification */
+			.vk_toast_msg {
+				position: fixed; bottom: 34px; left: 50%; transform: translateX(-50%);
+				z-index: 10000; background: #0f172a; color: #f8fafc;
+				border: 1px solid #334155; border-radius: 8px; padding: 8px 18px;
+				font-size: 12px; font-weight: 600; box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+				display: flex; align-items: center; gap: 8px; animation: vk-pop-in 0.15s ease-out;
+			}
+
+			/* Clean Print / PDF styles */
+			@media print {
+				.vk_tiptap_toolbar, .vk_statusbar, .vk_colLeft, .vk_colRight, .vk_breadcrumb, .vk_open_chat_float, .vk_zen_banner, .vk_modal_backdrop { display: none !important; }
+				.vk_frame { display: block !important; }
+				.vk_colCenter { width: 100% !important; overflow: visible !important; }
+				.vk_tiptap_canvas { padding: 0 !important; overflow: visible !important; }
+				.tiptap.ProseMirror { font-size: 12pt !important; line-height: 1.5 !important; }
+			}
 		`;
 
 		if (typeof document !== "undefined" && !document.getElementById("vk-tiptap-styles")) {
@@ -83463,6 +83525,158 @@ const FILE_ICON_DIR_OPEN = "fti-FolderOpen";
 			);
 		}
 
+		// ── Keyboard Shortcuts Cheat Sheet Modal (Ctrl+/ or F1) ──
+		function ShortcutsCheatSheetModal({ isOpen, onClose }) {
+			const [search, setSearch] = react.useState("");
+			const inputRef = react.useRef(null);
+
+			react.useEffect(() => {
+				if (isOpen) {
+					setSearch("");
+					setTimeout(() => inputRef.current?.focus(), 50);
+				}
+			}, [isOpen]);
+
+			if (!isOpen) return null;
+
+			const categories = [
+				{
+					title: "🧭 Navigation & Windows",
+					items: [
+						{ desc: "Quick Open File", kbd: "Ctrl + P" },
+						{ desc: "Command Palette", kbd: "Ctrl + Shift + P / F1" },
+						{ desc: "Global Workspace Search", kbd: "Ctrl + Shift + F" },
+						{ desc: "Toggle Focus / Zen Mode", kbd: "Ctrl + Shift + Z" },
+						{ desc: "Open / Create Daily Scratchpad", kbd: "Ctrl + Shift + N" }
+					]
+				},
+				{
+					title: "✍️ Editing & Markdown",
+					items: [
+						{ desc: "Save Document", kbd: "Ctrl + S" },
+						{ desc: "Find in Document", kbd: "Ctrl + F" },
+						{ desc: "Find & Replace", kbd: "Ctrl + H" },
+						{ desc: "Undo Edit", kbd: "Ctrl + Z" },
+						{ desc: "Redo Edit", kbd: "Ctrl + Y / Ctrl+Shift+Z" },
+						{ desc: "Bold Text", kbd: "Ctrl + B" },
+						{ desc: "Italic Text", kbd: "Ctrl + I" },
+						{ desc: "Insert Slash Block (/)", kbd: "/" }
+					]
+				},
+				{
+					title: "🤖 AI Assistant & Collaboration",
+					items: [
+						{ desc: "Inline AI Assist", kbd: "Ctrl + K" },
+						{ desc: "Send Selection to AI Chat", kbd: "Ctrl + L" },
+						{ desc: "Mention File in Chat", kbd: "@" },
+						{ desc: "Chat Slash Commands", kbd: "/" },
+						{ desc: "Switch Collaborator Profile", kbd: "Palette -> Collab" }
+					]
+				},
+				{
+					title: "🔍 View & Zoom",
+					items: [
+						{ desc: "Zoom In Editor Font", kbd: "Ctrl + =" },
+						{ desc: "Zoom Out Editor Font", kbd: "Ctrl + -" },
+						{ desc: "Reset Editor Font", kbd: "Ctrl + 0" },
+						{ desc: "Toggle Code Diff Viewer", kbd: "Status Bar -> Diff" }
+					]
+				}
+			];
+
+			const filtered = categories.map(cat => ({
+				...cat,
+				items: cat.items.filter(i => i.desc.toLowerCase().includes(search.toLowerCase()) || i.kbd.toLowerCase().includes(search.toLowerCase()))
+			})).filter(cat => cat.items.length > 0);
+
+			return h("div", {
+				className: "vk_modal_backdrop",
+				"data-vk-shortcuts-modal": true,
+				onClick: (e) => { if (e.target === e.currentTarget) onClose(); }
+			},
+				h("div", { className: "vk_dialog_card", style: { width: "640px", maxWidth: "94vw", padding: "24px" } },
+					h("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px" } },
+						h("h3", { style: { margin: 0, fontSize: "16px", fontWeight: "700", display: "flex", alignItems: "center", gap: "8px" } }, "⌨️ Keyboard Shortcuts Cheat Sheet"),
+						h("button", { className: "vk_inline_ai_close", onClick: onClose }, "✕")
+					),
+					h("div", { style: { marginBottom: "14px" } },
+						h("input", {
+							ref: inputRef,
+							className: "vk_pickInput",
+							placeholder: "Search shortcuts (e.g. search, save, diff, ai)...",
+							value: search,
+							onChange: (e) => setSearch(e.target.value)
+						})
+					),
+					h("div", { className: "vk_shortcuts_grid" },
+						filtered.length === 0 ? h("div", { style: { padding: "20px", textAlign: "center", color: "#9ca3af", gridColumn: "1 / -1" } }, "No matching shortcuts found") :
+						filtered.map(cat => h("div", { key: cat.title, className: "vk_shortcut_group" },
+							h("div", { className: "vk_shortcut_group_title" }, cat.title),
+							cat.items.map(item => h("div", { key: item.desc, className: "vk_shortcut_row" },
+								h("span", { className: "vk_shortcut_desc" }, item.desc),
+								h("kbd", { className: "vk_kbd" }, item.kbd)
+							))
+						))
+					),
+					h("div", { style: { display: "flex", justifyContent: "flex-end", marginTop: "16px" } },
+						h("button", { className: "vk_dialog_btn vk_dialog_btn_primary", onClick: onClose }, "Got it (Esc)")
+					)
+				)
+			);
+		}
+
+		// ── Document Reading Metrics & Stats Modal ──
+		function DocumentStatsModal({ isOpen, stats, fileName, content, onClose }) {
+			if (!isOpen) return null;
+			const text = content || "";
+			const words = stats?.words || (text.trim() ? text.trim().split(/\s+/).length : 0);
+			const chars = stats?.chars || text.length;
+			const charsNoSpaces = text.replace(/\s/g, "").length;
+			const lines = text.split(String.fromCharCode(10)).length;
+			const paragraphs = text.split(/\n\s*\n/).filter(p => p.trim().length > 0).length;
+			const readTime = Math.max(1, Math.ceil(words / 200));
+			const speakTime = Math.max(1, Math.ceil(words / 130));
+
+			return h("div", {
+				className: "vk_modal_backdrop",
+				"data-vk-stats-modal": true,
+				onClick: (e) => { if (e.target === e.currentTarget) onClose(); }
+			},
+				h("div", { className: "vk_dialog_card", style: { width: "460px", maxWidth: "92vw", padding: "24px" } },
+					h("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "16px" } },
+						h("h3", { style: { margin: 0, fontSize: "16px", fontWeight: "700", display: "flex", alignItems: "center", gap: "8px" } }, "📊 Document Reading Metrics"),
+						h("button", { className: "vk_inline_ai_close", onClick: onClose }, "✕")
+					),
+					h("div", { style: { fontSize: "12px", color: "#64748b", marginBottom: "16px", fontWeight: "500" } }, "Document: " + (fileName || "Untitled")),
+					h("div", { className: "vk_stats_grid" },
+						h("div", { className: "vk_stat_card" },
+							h("span", { className: "vk_stat_label" }, "📖 Estimated Reading Time"),
+							h("span", { className: "vk_stat_val" }, readTime + " min"),
+							h("span", { style: { fontSize: "10.5px", color: "#94a3b8" } }, "Based on ~200 words/min")
+						),
+						h("div", { className: "vk_stat_card" },
+							h("span", { className: "vk_stat_label" }, "🎙️ Estimated Speaking Time"),
+							h("span", { className: "vk_stat_val" }, speakTime + " min"),
+							h("span", { style: { fontSize: "10.5px", color: "#94a3b8" } }, "Based on ~130 words/min")
+						),
+						h("div", { className: "vk_stat_card" },
+							h("span", { className: "vk_stat_label" }, "Total Words"),
+							h("span", { className: "vk_stat_val" }, words.toLocaleString()),
+							h("span", { style: { fontSize: "10.5px", color: "#94a3b8" } }, paragraphs + " paragraphs")
+						),
+						h("div", { className: "vk_stat_card" },
+							h("span", { className: "vk_stat_label" }, "Characters"),
+							h("span", { className: "vk_stat_val" }, chars.toLocaleString()),
+							h("span", { style: { fontSize: "10.5px", color: "#94a3b8" } }, charsNoSpaces.toLocaleString() + " without spaces")
+						)
+					),
+					h("div", { style: { display: "flex", justifyContent: "flex-end" } },
+						h("button", { className: "vk_dialog_btn vk_dialog_btn_primary", onClick: onClose }, "Close (Esc)")
+					)
+				)
+			);
+		}
+
 		// ── Command Palette (Ctrl+Shift+P / F1) ──
 		function CommandPaletteModal({ isOpen, onClose, onExecuteAction }) {
 			const [query, setQuery] = react.useState("");
@@ -83471,13 +83685,24 @@ const FILE_ICON_DIR_OPEN = "fti-FolderOpen";
 
 			const commands = [
 				{ id: "quick_open", title: "File: Quick Open File...", shortcut: "Ctrl+P", icon: "📄" },
+				{ id: "daily_scratchpad", title: "File: Open / Create Daily Scratchpad", shortcut: "Ctrl+Shift+N", icon: "📓" },
 				{ id: "open_folder", title: "File: Open Sandboxed Folder in Workspace...", icon: "🔒" },
 				{ id: "user_profile", title: "Collab: Switch User Profile / Cursor Color...", icon: "👤" },
+				{ id: "zen_mode", title: "View: Toggle Focus / Zen Mode", shortcut: "Ctrl+Shift+Z", icon: "🧘" },
+				{ id: "keyboard_shortcuts", title: "Help: Keyboard Shortcuts Cheat Sheet", shortcut: "Ctrl+/", icon: "⌨️" },
+				{ id: "doc_stats", title: "Document: View Reading Time & Statistics", icon: "📊" },
 				{ id: "global_search", title: "Search: Find in Workspace Files", shortcut: "Ctrl+Shift+F", icon: "🔍" },
 				{ id: "save_file", title: "File: Save Current File", shortcut: "Ctrl+S", icon: "💾" },
+				{ id: "export_download", title: "Export: Download Markdown File", icon: "📥" },
+				{ id: "export_markdown", title: "Export: Copy Clean Markdown to Clipboard", icon: "📋" },
+				{ id: "export_html", title: "Export: Copy Formatted HTML to Clipboard", icon: "📄" },
+				{ id: "export_pdf", title: "Export: Print / Save Document as PDF", icon: "🖨️" },
 				{ id: "toggle_diff", title: "Diff: Toggle File Diff Viewer", icon: "⚡" },
 				{ id: "undo", title: "Edit: Undo", shortcut: "Ctrl+Z", icon: "↺" },
 				{ id: "redo", title: "Edit: Redo", shortcut: "Ctrl+Y", icon: "↻" },
+				{ id: "zoom_in", title: "View: Zoom In Editor Font", shortcut: "Ctrl+=", icon: "🔍" },
+				{ id: "zoom_out", title: "View: Zoom Out Editor Font", shortcut: "Ctrl+-", icon: "🔍" },
+				{ id: "zoom_reset", title: "View: Reset Editor Zoom", shortcut: "Ctrl+0", icon: "↺" },
 				{ id: "ai_explain", title: "AI Assist: Explain Current File", shortcut: "Ctrl+L", icon: "🤖" },
 				{ id: "ai_tests", title: "AI Assist: Generate Unit Tests", icon: "🧪" },
 				{ id: "ai_refactor", title: "AI Assist: Refactor & Optimize Code", icon: "🔧" },
@@ -85415,11 +85640,100 @@ function Viewer({ file, rev, onStartEdit, onSaveDirect, onUpdateDirect, isDirect
 					.catch(() => {});
 			}, []);
 
+			const [shortcutsModalOpen, setShortcutsModalOpen] = react.useState(false);
+			const [statsModalOpen, setStatsModalOpen] = react.useState(false);
+			const [isZenMode, setIsZenMode] = react.useState(false);
+			const [toastMsg, setToastMsg] = react.useState(null);
+			const savedPanelsRef = react.useRef({ left: 280, right: 440 });
+
+			const showToast = (msg) => {
+				setToastMsg(msg);
+				setTimeout(() => setToastMsg(null), 3000);
+			};
+
 			const handleCommandPaletteAction = (cmdId) => {
 				if (cmdId === "quick_open") setQuickOpen(true);
 				else if (cmdId === "open_folder") setFolderModalOpen(true);
 				else if (cmdId === "user_profile") setProfileModalOpen(true);
-				else if (cmdId === "global_search") {
+				else if (cmdId === "keyboard_shortcuts") setShortcutsModalOpen(true);
+				else if (cmdId === "doc_stats") setStatsModalOpen(true);
+				else if (cmdId === "zen_mode") {
+					setIsZenMode(prev => {
+						const nextZen = !prev;
+						if (nextZen) {
+							savedPanelsRef.current = { left: panels.sidebar, right: panels.right };
+							if (!sidebarCollapsed) actions.toggleSidebar();
+							actions.setRight(0);
+							showToast("🧘 Entered Zen Mode. Press Esc or Ctrl+Shift+Z to exit.");
+						} else {
+							if (sidebarCollapsed) actions.toggleSidebar();
+							actions.setRight(savedPanelsRef.current.right || 440);
+							showToast("Exited Zen Mode.");
+						}
+						return nextZen;
+					});
+				} else if (cmdId === "daily_scratchpad") {
+					const today = new Date().toISOString().slice(0, 10);
+					const scratchPath = "scratchpad.md";
+					fetch("/vscode-files/read?path=" + encodeURIComponent(scratchPath))
+						.then(r => r.json())
+						.then(d => {
+							if (!d || !d.ok) {
+								const template = "# 📓 Daily Scratchpad - " + today + "\n> Quick capture for thoughts, code snippets, task lists, and AI discussions.\n\n## 🎯 Today's Goals\n- [ ] Review daily priorities\n- [ ] Document project architecture\n- [ ] Test real-time collaboration with team\n\n## 💡 Quick Notes & Ideas\n- Type / anywhere in the document to insert blocks, tables, callouts, or YouTube embeds!\n- Use Ctrl+K on any selection for Instant AI polishing and table generation.\n";
+								fetch("/vscode-files/write", {
+									method: "POST",
+									headers: { "content-type": "application/json" },
+									body: JSON.stringify({ path: scratchPath, content: template })
+								}).then(() => {
+									openFile({ path: scratchPath, name: "scratchpad.md" });
+									showToast("📓 Created Daily Scratchpad: scratchpad.md");
+								});
+							} else {
+								openFile({ path: scratchPath, name: "scratchpad.md" });
+								showToast("📓 Opened Daily Scratchpad: scratchpad.md");
+							}
+						});
+				} else if (cmdId === "export_download") {
+					const md = document.querySelector('.tiptap.ProseMirror')?.innerText || "";
+					const blob = new Blob([md], { type: "text/markdown;charset=utf-8" });
+					const a = document.createElement("a");
+					a.href = URL.createObjectURL(blob);
+					a.download = (tabsState && tabsState.active ? tabsState.active.split(/[\\/]/).pop() : "document.md");
+					a.click();
+					showToast("📥 Downloading markdown file...");
+				} else if (cmdId === "export_markdown") {
+					const md = document.querySelector('.tiptap.ProseMirror')?.innerText || "";
+					navigator.clipboard?.writeText(md);
+					showToast("📋 Copied Markdown to clipboard!");
+				} else if (cmdId === "export_html") {
+					const html = document.querySelector('.tiptap.ProseMirror')?.innerHTML || "";
+					navigator.clipboard?.writeText(html);
+					showToast("📄 Copied HTML to clipboard!");
+				} else if (cmdId === "export_pdf") {
+					window.print();
+				} else if (cmdId === "zoom_in") {
+					const el = document.querySelector('.tiptap.ProseMirror, .vk_tiptap_prose');
+					if (el) {
+						const cur = parseFloat(window.getComputedStyle(el).fontSize) || 15.5;
+						const next = Math.min(24, cur + 2);
+						el.style.fontSize = next + "px";
+						showToast("🔍 Editor Font Zoom: " + Math.round((next / 15.5) * 100) + "% (" + next + "px)");
+					}
+				} else if (cmdId === "zoom_out") {
+					const el = document.querySelector('.tiptap.ProseMirror, .vk_tiptap_prose');
+					if (el) {
+						const cur = parseFloat(window.getComputedStyle(el).fontSize) || 15.5;
+						const next = Math.max(11, cur - 2);
+						el.style.fontSize = next + "px";
+						showToast("🔍 Editor Font Zoom: " + Math.round((next / 15.5) * 100) + "% (" + next + "px)");
+					}
+				} else if (cmdId === "zoom_reset") {
+					const el = document.querySelector('.tiptap.ProseMirror, .vk_tiptap_prose');
+					if (el) {
+						el.style.fontSize = "15.5px";
+						showToast("↺ Reset Editor Font Zoom to 100% (15.5px)");
+					}
+				} else if (cmdId === "global_search") {
 					setSidebarTab("search");
 					if (sidebarCollapsed) actions.toggleSidebar();
 					setTimeout(() => document.getElementById("global-search-input")?.focus(), 100);
@@ -85488,7 +85802,7 @@ function Viewer({ file, rev, onStartEdit, onSaveDirect, onUpdateDirect, isDirect
 				trySet();
 			};
 
-			// Global Keyboard Shortcuts: Ctrl+P (Quick Open), Ctrl+Shift+P / F1 (Command Palette), Ctrl+L (Chat / Prompt), Ctrl+Shift+F (Global Search)
+			// Global Keyboard Shortcuts: Ctrl+P (Quick Open), Ctrl+Shift+P / F1 (Command Palette), Ctrl+L (Chat), Ctrl+Shift+F (Search), Ctrl+Shift+Z (Zen), Ctrl+/ (Shortcuts)
 			react.useEffect(() => {
 				const onKeyDown = (e) => {
 					if (((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'p' || e.key === 'P')) || e.key === 'F1') {
@@ -85497,6 +85811,26 @@ function Viewer({ file, rev, onStartEdit, onSaveDirect, onUpdateDirect, isDirect
 					} else if ((e.ctrlKey || e.metaKey) && (e.key === 'p' || e.key === 'P') && !e.shiftKey) {
 						e.preventDefault();
 						setQuickOpen((prev) => !prev);
+					} else if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'z' || e.key === 'Z')) {
+						e.preventDefault();
+						handleCommandPaletteAction("zen_mode");
+					} else if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'n' || e.key === 'N')) {
+						e.preventDefault();
+						handleCommandPaletteAction("daily_scratchpad");
+					} else if ((e.ctrlKey || e.metaKey) && (e.key === '/' || e.key === '?')) {
+						e.preventDefault();
+						setShortcutsModalOpen((prev) => !prev);
+					} else if (e.key === 'Escape' && isZenMode) {
+						handleCommandPaletteAction("zen_mode");
+					} else if ((e.ctrlKey || e.metaKey) && (e.key === '=' || e.key === '+')) {
+						e.preventDefault();
+						handleCommandPaletteAction("zoom_in");
+					} else if ((e.ctrlKey || e.metaKey) && (e.key === '-' || e.key === '_')) {
+						e.preventDefault();
+						handleCommandPaletteAction("zoom_out");
+					} else if ((e.ctrlKey || e.metaKey) && e.key === '0') {
+						e.preventDefault();
+						handleCommandPaletteAction("zoom_reset");
 					} else if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'f' || e.key === 'F')) {
 						e.preventDefault();
 						setSidebarTab("search");
@@ -85527,7 +85861,7 @@ function Viewer({ file, rev, onStartEdit, onSaveDirect, onUpdateDirect, isDirect
 				};
 				window.addEventListener('keydown', onKeyDown);
 				return () => window.removeEventListener('keydown', onKeyDown);
-			}, [panels.right, panels.rightTab, tabsState, sidebarCollapsed, actions]);
+			}, [panels.right, panels.rightTab, tabsState, sidebarCollapsed, isZenMode, actions]);
 			const cols = computeColumns(viewport, sidebarCollapsed ? 0 : (panels.sidebar === 0 ? 0 : (panels.sidebar ?? 280)), panels.right === 0 ? 0 : (panels.right ?? 440));
 			const colsRef = react.useRef(cols);
 			colsRef.current = cols;
@@ -85807,8 +86141,12 @@ function Viewer({ file, rev, onStartEdit, onSaveDirect, onUpdateDirect, isDirect
 					}),
 					h(QuickOpenModal, { isOpen: quickOpen, onClose: () => setQuickOpen(false), root: fileRoot, onOpenFile: openFile }),
 					h(CommandPaletteModal, { isOpen: cmdPalette, onClose: () => setCmdPalette(false), onExecuteAction: handleCommandPaletteAction }),
+					h(ShortcutsCheatSheetModal, { isOpen: shortcutsModalOpen, onClose: () => setShortcutsModalOpen(false) }),
+					h(DocumentStatsModal, { isOpen: statsModalOpen, fileName: tabsState && tabsState.active ? tabsState.active.split(/[\\/]/).pop() : "document.md", content: tabsState && tabsState.active && tabsState[tabsState.active] ? tabsState[tabsState.active].content : "", onClose: () => setStatsModalOpen(false) }),
 					h(AtFileMentionDropdown, { isOpen: atFileOpen, query: atFileQuery, onSelect: handleSelectAtFile, onClose: () => setAtFileOpen(false) }),
 					h(ChatSlashCommandDropdown, { isOpen: slashCmdOpen, query: slashCmdQuery, onSelect: handleSelectSlashCmd, onClose: () => setSlashCmdOpen(false) }),
+					isZenMode ? h("div", { className: "vk_zen_banner", onClick: () => handleCommandPaletteAction("zen_mode") }, "🧘 Zen Mode Active — Press Esc or Click to Exit") : null,
+					toastMsg ? h("div", { className: "vk_toast_msg" }, toastMsg) : null,
 					showOpenChatBtn ? h("button", {
 						className: "vk_open_chat_float",
 						title: "Open AI Chat Panel (Ctrl+L)",
