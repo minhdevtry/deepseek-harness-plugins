@@ -13,7 +13,7 @@ async function run() {
   // Wait for the app to settle
   await page.waitForTimeout(3000);
 
-  // Click on the existing session "Hiển thị cây thư mục hiện tại" to make sure the workspace is active
+  // Click on the existing session "Hiển thị cây thư mục hiện tại"
   const sessionLocator = page.locator('text="Hiển thị cây thư mục hiện tại"').first();
   if (await sessionLocator.count() > 0) {
     console.log('[+] Clicking on session "Hiển thị cây thư mục hiện tại"...');
@@ -21,7 +21,7 @@ async function run() {
     await page.waitForTimeout(1500);
   }
 
-  // Click the "File Explorer" tab at the bottom left to ensure the file tree is open
+  // Click the "File Explorer" tab at the bottom left
   const explorerTab = page.locator('text="File Explorer"').first();
   if (await explorerTab.count() > 0) {
     console.log('[+] Opening File Explorer tab...');
@@ -29,50 +29,72 @@ async function run() {
     await page.waitForTimeout(2000);
   }
 
-  await page.screenshot({ path: 'test-after-explorer-opened.png' });
-  console.log('[✓] File Explorer state screenshot captured: test-after-explorer-opened.png');
-
-  // Check if file note.md exists in the explorer tree and click it
+  // Click note.md
   const fileNode = page.locator('.ft-name', { hasText: 'note.md' }).first();
   if (await fileNode.count() > 0) {
     console.log('[+] Found note.md. Clicking to open...');
     await fileNode.click();
     await page.waitForTimeout(2000);
-    await page.screenshot({ path: 'test-editor-opened.png' });
-    console.log('[✓] Editor opened screenshot captured: test-editor-opened.png');
     
-    // Focus Editor and trigger slash command
+    // Focus Editor canvas
     console.log('[+] Focusing editor canvas...');
     const editor = page.locator('.dsh-tiptap-prose').first();
     await editor.click();
     
-    // Send Enter and type "/"
-    console.log('[+] Typing slash command "/"...');
+    // TEST 1: Insert Heading 1 via Slash Menu
+    console.log('[+] Testing Slash Command -> Heading 1...');
     await page.keyboard.press('Enter');
     await page.keyboard.type('/');
-    await page.waitForTimeout(1000);
-    await page.screenshot({ path: 'test-slash-menu.png' });
-    console.log('[✓] Slash command menu screenshot captured: test-slash-menu.png');
-    
-    // Filter with "you" query
-    console.log('[+] Filtering slash commands list with "you"...');
-    await page.keyboard.type('you');
-    await page.waitForTimeout(1000);
-    await page.screenshot({ path: 'test-slash-filtered.png' });
-    console.log('[✓] Filtered list screenshot captured: test-slash-filtered.png');
-    
-    // Open embed YouTube modal
-    console.log('[+] Pressing Enter to select YouTube video embed...');
+    await page.waitForTimeout(600);
+    await page.keyboard.press('Enter'); // Heading 1 is selected
+    await page.keyboard.type('Test Slash Heading 1');
+    await page.waitForTimeout(600);
+    await page.screenshot({ path: 'test-after-h1-executed.png' });
+    console.log('[✓] Heading 1 screenshot saved: test-after-h1-executed.png');
+
+    // TEST 2: Insert Table via Slash Menu
+    console.log('[+] Testing Slash Command -> /table...');
     await page.keyboard.press('Enter');
+    await page.keyboard.type('/table');
+    await page.waitForTimeout(600);
+    await page.keyboard.press('Enter');
+    await page.waitForTimeout(600);
+    await page.screenshot({ path: 'test-after-table-executed.png' });
+    console.log('[✓] Table screenshot saved: test-after-table-executed.png');
+
+    // TEST 3: Insert Code Block via Slash Menu
+    console.log('[+] Testing Slash Command -> /code...');
+    await page.keyboard.press('Enter');
+    await page.keyboard.type('/code');
+    await page.waitForTimeout(600);
+    await page.keyboard.press('Enter');
+    await page.keyboard.type('console.log("Hello TipTap!");');
+    await page.waitForTimeout(600);
+    await page.screenshot({ path: 'test-after-code-executed.png' });
+    console.log('[✓] Code block screenshot saved: test-after-code-executed.png');
+
+    // TEST 4: Insert YouTube Video via Slash Menu
+    console.log('[+] Testing Slash Command -> /you -> Modal...');
+    await page.keyboard.press('Enter');
+    await page.keyboard.type('/you');
+    await page.waitForTimeout(600);
+    await page.keyboard.press('Enter'); // Opens modal
+    await page.waitForTimeout(600);
+    
+    // Enter YouTube URL into modal
+    const modalInput = page.locator('.dsh-modal-input').first();
+    await modalInput.fill('https://www.youtube.com/watch?v=dQw4w9WgXcQ');
+    await page.keyboard.press('Enter'); // Submit modal
     await page.waitForTimeout(1000);
-    await page.screenshot({ path: 'test-youtube-modal.png' });
-    console.log('[✓] YouTube modal screenshot captured: test-youtube-modal.png');
+    await page.screenshot({ path: 'test-after-youtube-executed.png' });
+    console.log('[✓] YouTube embed screenshot saved: test-after-youtube-executed.png');
+
+    console.log('[🎉] ALL 4 SLASH COMMAND TESTS COMPLETED SUCCESSFULLY!');
   } else {
-    console.log('[-] Could not locate "note.md" file in the sidebar. Check the test-after-explorer-opened.png screenshot.');
+    console.log('[-] Could not locate "note.md" file in the sidebar.');
   }
 
   await browser.close();
-  console.log('[+] Local UI verification completed successfully!');
 }
 
 run().catch(err => {

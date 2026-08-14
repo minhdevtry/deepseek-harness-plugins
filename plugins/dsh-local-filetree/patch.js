@@ -321,19 +321,78 @@ if (fs.existsSync(clientFile)) {
 			const fileName = filePath.split('/').pop() || filePath;
 
 			const slashItems = [
-				{ category: 'BASIC BLOCKS', label: 'Heading 1', desc: 'Large title', icon: 'H1', action: (c) => c.toggleHeading({ level: 1 }) },
-				{ category: 'BASIC BLOCKS', label: 'Heading 2', desc: 'Section title', icon: 'H2', action: (c) => c.toggleHeading({ level: 2 }) },
-				{ category: 'BASIC BLOCKS', label: 'Heading 3', desc: 'Subsection title', icon: 'H3', action: (c) => c.toggleHeading({ level: 3 }) },
-				{ category: 'LISTS & TASKS', label: 'Task List', desc: 'Todo checkboxes', icon: '☑', action: (c) => c.toggleTaskList() },
-				{ category: 'LISTS & TASKS', label: 'Bullet List', desc: 'Unordered list', icon: '•', action: (c) => c.toggleBulletList() },
-				{ category: 'LISTS & TASKS', label: 'Numbered List', desc: 'Ordered list', icon: '1.', action: (c) => c.toggleOrderedList() },
-				{ category: 'ADVANCED & MEDIA', label: 'Table', desc: 'Interactive table', icon: '📊', action: (c) => c.insertTable({ rows: 3, cols: 3, withHeaderRow: true }) },
-				{ category: 'ADVANCED & MEDIA', label: 'Code Block', desc: 'Syntax highlighting', icon: '</>', action: (c) => c.toggleCodeBlock() },
-				{ category: 'ADVANCED & MEDIA', label: 'Blockquote', desc: 'Capture quote', icon: '❝', action: (c) => c.toggleBlockquote() },
-				{ category: 'ADVANCED & MEDIA', label: 'YouTube Video', desc: 'Embed YouTube player', icon: '🎥', action: () => setEmbedModal({ type: 'youtube', url: '' }) },
-				{ category: 'ADVANCED & MEDIA', label: 'Image', desc: 'Insert image URL', icon: '🖼️', action: () => setEmbedModal({ type: 'image', url: '' }) },
-				{ category: 'ADVANCED & MEDIA', label: 'Divider Line', desc: 'Horizontal rule', icon: '─', action: (c) => c.setHorizontalRule() }
+				{ category: 'BASIC BLOCKS', label: 'Heading 1', desc: 'Large title', icon: 'H1' },
+				{ category: 'BASIC BLOCKS', label: 'Heading 2', desc: 'Section title', icon: 'H2' },
+				{ category: 'BASIC BLOCKS', label: 'Heading 3', desc: 'Subsection title', icon: 'H3' },
+				{ category: 'LISTS & TASKS', label: 'Task List', desc: 'Todo checkboxes', icon: '☑' },
+				{ category: 'LISTS & TASKS', label: 'Bullet List', desc: 'Unordered list', icon: '•' },
+				{ category: 'LISTS & TASKS', label: 'Numbered List', desc: 'Ordered list', icon: '1.' },
+				{ category: 'ADVANCED & MEDIA', label: 'Table', desc: 'Interactive table', icon: '📊' },
+				{ category: 'ADVANCED & MEDIA', label: 'Code Block', desc: 'Syntax highlighting', icon: '</>' },
+				{ category: 'ADVANCED & MEDIA', label: 'Blockquote', desc: 'Capture quote', icon: '❝' },
+				{ category: 'ADVANCED & MEDIA', label: 'YouTube Video', desc: 'Embed YouTube player', icon: '🎥' },
+				{ category: 'ADVANCED & MEDIA', label: 'Image', desc: 'Insert image URL', icon: '🖼️' },
+				{ category: 'ADVANCED & MEDIA', label: 'Divider Line', desc: 'Horizontal rule', icon: '─' }
 			];
+
+			const executeSlashItem = (item) => {
+				if (!editorRef.current) return;
+				const editor = editorRef.current;
+
+				setSlashMenu(null);
+
+				const { $from } = editor.state.selection;
+				const blockText = $from.parent.textContent;
+				const posInBlock = $from.parentOffset;
+				const textBeforeCursor = blockText.slice(0, posInBlock);
+				const slashIndex = textBeforeCursor.lastIndexOf('/');
+
+				let from = $from.pos - posInBlock + (slashIndex >= 0 ? slashIndex : 0);
+				let to = $from.pos;
+
+				if (item.label === 'YouTube Video') {
+					if (from < to) {
+						editor.chain().focus().deleteRange({ from, to }).run();
+					}
+					setEmbedModal({ type: 'youtube', url: '' });
+					return;
+				}
+
+				if (item.label === 'Image') {
+					if (from < to) {
+						editor.chain().focus().deleteRange({ from, to }).run();
+					}
+					setEmbedModal({ type: 'image', url: '' });
+					return;
+				}
+
+				const chain = editor.chain().focus();
+				if (from < to) {
+					chain.deleteRange({ from, to });
+				}
+
+				if (item.label === 'Heading 1') {
+					chain.setNode('heading', { level: 1 }).run();
+				} else if (item.label === 'Heading 2') {
+					chain.setNode('heading', { level: 2 }).run();
+				} else if (item.label === 'Heading 3') {
+					chain.setNode('heading', { level: 3 }).run();
+				} else if (item.label === 'Task List') {
+					chain.toggleTaskList().run();
+				} else if (item.label === 'Bullet List') {
+					chain.toggleBulletList().run();
+				} else if (item.label === 'Numbered List') {
+					chain.toggleOrderedList().run();
+				} else if (item.label === 'Table') {
+					chain.insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run();
+				} else if (item.label === 'Code Block') {
+					chain.toggleCodeBlock().run();
+				} else if (item.label === 'Blockquote') {
+					chain.toggleBlockquote().run();
+				} else if (item.label === 'Divider Line') {
+					chain.setHorizontalRule().run();
+				}
+			};
 
 			const filteredSlashItems = react.useMemo(() => {
 				if (!slashQuery) return slashItems;
@@ -424,16 +483,8 @@ if (fs.existsSync(clientFile)) {
 										event.preventDefault();
 										const item = filtered[current.index];
 										if (item) {
-											// Delete the slash trigger text including the query!
-											const sel = view.state.selection;
-											const charsToDelete = 1 + current.query.length;
-											editorRef.current.chain().focus().deleteRange({
-												from: sel.from - charsToDelete,
-												to: sel.from
-											}).run();
-											item.action(editorRef.current.chain().focus());
+											executeSlashItem(item);
 										}
-										setSlashMenu(null);
 										return true;
 									}
 									if (event.key === 'Escape') {
@@ -585,25 +636,25 @@ if (fs.existsSync(clientFile)) {
 
 				// TipTap Toolbar (Driven directly by TipTap chain commands)
 				isMarkdown && isRichMode ? react.createElement('div', { key: 'toolbar', className: 'dsh-tiptap-toolbar' }, [
-					react.createElement('button', { key: 'h1', type: 'button', className: 'dsh-tb-tool', title: 'Heading 1 (or type /h1)', onClick: () => runCommand(c => c.toggleHeading({ level: 1 })) }, 'H1'),
-					react.createElement('button', { key: 'h2', type: 'button', className: 'dsh-tb-tool', title: 'Heading 2 (or type /h2)', onClick: () => runCommand(c => c.toggleHeading({ level: 2 })) }, 'H2'),
-					react.createElement('button', { key: 'h3', type: 'button', className: 'dsh-tb-tool', title: 'Heading 3 (or type /h3)', onClick: () => runCommand(c => c.toggleHeading({ level: 3 })) }, 'H3'),
+					react.createElement('button', { key: 'h1', type: 'button', className: 'dsh-tb-tool', title: 'Heading 1 (or type /h1)', onMouseDown: (e) => e.preventDefault(), onClick: () => runCommand(c => c.toggleHeading({ level: 1 })) }, 'H1'),
+					react.createElement('button', { key: 'h2', type: 'button', className: 'dsh-tb-tool', title: 'Heading 2 (or type /h2)', onMouseDown: (e) => e.preventDefault(), onClick: () => runCommand(c => c.toggleHeading({ level: 2 })) }, 'H2'),
+					react.createElement('button', { key: 'h3', type: 'button', className: 'dsh-tb-tool', title: 'Heading 3 (or type /h3)', onMouseDown: (e) => e.preventDefault(), onClick: () => runCommand(c => c.toggleHeading({ level: 3 })) }, 'H3'),
 					react.createElement('span', { key: 'sep1', className: 'dsh-tb-sep' }),
-					react.createElement('button', { key: 'b', type: 'button', className: 'dsh-tb-tool dsh-bold', title: 'Bold (Ctrl+B)', onClick: () => runCommand(c => c.toggleBold()) }, 'B'),
-					react.createElement('button', { key: 'i', type: 'button', className: 'dsh-tb-tool dsh-italic', title: 'Italic (Ctrl+I)', onClick: () => runCommand(c => c.toggleItalic()) }, 'I'),
-					react.createElement('button', { key: 'u', type: 'button', className: 'dsh-tb-tool dsh-underline', title: 'Underline (Ctrl+U)', onClick: () => runCommand(c => c.toggleUnderline()) }, 'U'),
-					react.createElement('button', { key: 's', type: 'button', className: 'dsh-tb-tool dsh-strike', title: 'Strikethrough', onClick: () => runCommand(c => c.toggleStrike()) }, 'S'),
-					react.createElement('button', { key: 'hl', type: 'button', className: 'dsh-tb-tool', title: 'Highlight Text', onClick: () => runCommand(c => c.toggleHighlight()) }, '🎨 Mark'),
+					react.createElement('button', { key: 'b', type: 'button', className: 'dsh-tb-tool dsh-bold', title: 'Bold (Ctrl+B)', onMouseDown: (e) => e.preventDefault(), onClick: () => runCommand(c => c.toggleBold()) }, 'B'),
+					react.createElement('button', { key: 'i', type: 'button', className: 'dsh-tb-tool dsh-italic', title: 'Italic (Ctrl+I)', onMouseDown: (e) => e.preventDefault(), onClick: () => runCommand(c => c.toggleItalic()) }, 'I'),
+					react.createElement('button', { key: 'u', type: 'button', className: 'dsh-tb-tool dsh-underline', title: 'Underline (Ctrl+U)', onMouseDown: (e) => e.preventDefault(), onClick: () => runCommand(c => c.toggleUnderline()) }, 'U'),
+					react.createElement('button', { key: 's', type: 'button', className: 'dsh-tb-tool dsh-strike', title: 'Strikethrough', onMouseDown: (e) => e.preventDefault(), onClick: () => runCommand(c => c.toggleStrike()) }, 'S'),
+					react.createElement('button', { key: 'hl', type: 'button', className: 'dsh-tb-tool', title: 'Highlight Text', onMouseDown: (e) => e.preventDefault(), onClick: () => runCommand(c => c.toggleHighlight()) }, '🎨 Mark'),
 					react.createElement('span', { key: 'sep2', className: 'dsh-tb-sep' }),
-					react.createElement('button', { key: 'ul', type: 'button', className: 'dsh-tb-tool', title: 'Bullet List', onClick: () => runCommand(c => c.toggleBulletList()) }, '• List'),
-					react.createElement('button', { key: 'ol', type: 'button', className: 'dsh-tb-tool', title: 'Numbered List', onClick: () => runCommand(c => c.toggleOrderedList()) }, '1. List'),
-					react.createElement('button', { key: 'task', type: 'button', className: 'dsh-tb-tool', title: 'Task List (Checkboxes)', onClick: () => runCommand(c => c.toggleTaskList()) }, '☑ Task'),
-					react.createElement('button', { key: 'table', type: 'button', className: 'dsh-tb-tool', title: 'Insert Table', onClick: () => runCommand(c => c.insertTable({ rows: 3, cols: 3, withHeaderRow: true })) }, '📊 Table'),
-					react.createElement('button', { key: 'quote', type: 'button', className: 'dsh-tb-tool', title: 'Blockquote', onClick: () => runCommand(c => c.toggleBlockquote()) }, '❝ Quote'),
-					react.createElement('button', { key: 'code', type: 'button', className: 'dsh-tb-tool', title: 'Code Block (Syntax Highlighted)', onClick: () => runCommand(c => c.toggleCodeBlock()) }, '</> Code'),
-					react.createElement('button', { key: 'yt', type: 'button', className: 'dsh-tb-tool', title: 'Embed YouTube Video', onClick: () => setEmbedModal({ type: 'youtube', url: '' }) }, '🎥 YouTube'),
-					react.createElement('button', { key: 'img', type: 'button', className: 'dsh-tb-tool', title: 'Insert Image URL', onClick: () => setEmbedModal({ type: 'image', url: '' }) }, '🖼️ Image'),
-					react.createElement('button', { key: 'hr', type: 'button', className: 'dsh-tb-tool', title: 'Divider Line', onClick: () => runCommand(c => c.setHorizontalRule()) }, '─ Line')
+					react.createElement('button', { key: 'ul', type: 'button', className: 'dsh-tb-tool', title: 'Bullet List', onMouseDown: (e) => e.preventDefault(), onClick: () => runCommand(c => c.toggleBulletList()) }, '• List'),
+					react.createElement('button', { key: 'ol', type: 'button', className: 'dsh-tb-tool', title: 'Numbered List', onMouseDown: (e) => e.preventDefault(), onClick: () => runCommand(c => c.toggleOrderedList()) }, '1. List'),
+					react.createElement('button', { key: 'task', type: 'button', className: 'dsh-tb-tool', title: 'Task List (Checkboxes)', onMouseDown: (e) => e.preventDefault(), onClick: () => runCommand(c => c.toggleTaskList()) }, '☑ Task'),
+					react.createElement('button', { key: 'table', type: 'button', className: 'dsh-tb-tool', title: 'Insert Table', onMouseDown: (e) => e.preventDefault(), onClick: () => runCommand(c => c.insertTable({ rows: 3, cols: 3, withHeaderRow: true })) }, '📊 Table'),
+					react.createElement('button', { key: 'quote', type: 'button', className: 'dsh-tb-tool', title: 'Blockquote', onMouseDown: (e) => e.preventDefault(), onClick: () => runCommand(c => c.toggleBlockquote()) }, '❝ Quote'),
+					react.createElement('button', { key: 'code', type: 'button', className: 'dsh-tb-tool', title: 'Code Block (Syntax Highlighted)', onMouseDown: (e) => e.preventDefault(), onClick: () => runCommand(c => c.toggleCodeBlock()) }, '</> Code'),
+					react.createElement('button', { key: 'yt', type: 'button', className: 'dsh-tb-tool', title: 'Embed YouTube Video', onMouseDown: (e) => e.preventDefault(), onClick: () => setEmbedModal({ type: 'youtube', url: '' }) }, '🎥 YouTube'),
+					react.createElement('button', { key: 'img', type: 'button', className: 'dsh-tb-tool', title: 'Insert Image URL', onMouseDown: (e) => e.preventDefault(), onClick: () => setEmbedModal({ type: 'image', url: '' }) }, '🖼️ Image'),
+					react.createElement('button', { key: 'hr', type: 'button', className: 'dsh-tb-tool', title: 'Divider Line', onMouseDown: (e) => e.preventDefault(), onClick: () => runCommand(c => c.setHorizontalRule()) }, '─ Line')
 				]) : null,
 
 				// TipTap Canvas / Code Canvas
@@ -646,18 +697,8 @@ if (fs.existsSync(clientFile)) {
 							key: item.label,
 							type: 'button',
 							className: 'dsh-slash-item ' + (idx === slashIdx ? 'dsh-slash-item-selected' : ''),
-							onClick: () => {
-								if (editorRef.current) {
-									const sel = editorRef.current.state.selection;
-									const charsToDelete = 1 + slashStateRef.current.query.length;
-									editorRef.current.chain().focus().deleteRange({
-										from: sel.from - charsToDelete,
-										to: sel.from
-									}).run();
-									item.action(editorRef.current.chain().focus());
-								}
-								setSlashMenu(null);
-							}
+							onMouseDown: (e) => e.preventDefault(),
+							onClick: () => executeSlashItem(item)
 						}, [
 							react.createElement('span', { key: 'icon', className: 'dsh-slash-icon' }, item.icon),
 							react.createElement('span', { key: 'label' }, item.label),
