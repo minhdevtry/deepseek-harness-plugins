@@ -1,20 +1,24 @@
-# `dsh-local-filetree` Plugin Guide & TipTap Markdown Editor Patch
+# `dsh-local-filetree` Plugin Guide & Ultimate TipTap Suite
 
-This folder contains setup instructions and feature patches for the **File Explorer & TipTap WYSIWYG Editor Plugin** (`dsh-local-filetree`).
+This folder contains setup instructions and feature patches for the **File Explorer & Ultimate TipTap 3 Suite** (`dsh-local-filetree`).
 
 ## 📌 Upstream Repository
 * Original Repository: [`github:Mongfayi/dsh-local-filetree`](https://github.com/Mongfayi/dsh-local-filetree)
 
-## 💡 Enhanced Features in this Patch:
-* 🌳 **File Explorer Sidebar**: View local workspace files and directories with color-coded VS Code file icons in English.
-* 🖥️ **VS Code + Codex Layout**: Clicking any file opens it directly into the central workspace editor canvas with tabs, closing, and AI Chat toggle (no popup modals!).
-* ✨ **TipTap-Style Rich WYSIWYG Markdown Editor**: Dedicated for `.md` files (ideal for both developers and non-technical writers):
-  * Headings: H1, H2, H3.
-  * Rich formatting: **Bold**, *Italic*, ~~Strikethrough~~.
-  * Lists: Bullet lists, Numbered lists, and interactive Todo Checklists (`[x]`).
-  * Blockquotes and Code Blocks.
-  * Dual-mode switch: **`[ ✨ TipTap Rich WYSIWYG ]`** and **`[ 💻 Code Source ]`**.
-* 💻 **Code Editor**: Syntax-styled editor for other programming languages (`.js`, `.py`, `.json`, `.go`, `.ts`, `.sh`, etc.) with tab-indentation and line numbers.
+## 💡 Ultimate TipTap Suite Features:
+* ⚡ **Notion-Style Slash Commands (`/`)**: Type `/` to open quick-insert menu:
+  * Headings H1, H2, H3
+  * Interactive Table (3x3 grid)
+  * Code Block with live multi-language syntax highlighting
+  * Task List (interactive todo checkboxes)
+  * Embed YouTube Videos
+  * Insert Images
+  * Blockquotes and Horizontal Divider lines
+* 📊 **Interactive Tables**: Insert tables (`@tiptap/extension-table`), add/remove rows and columns directly.
+* 🎥 **YouTube Embeds**: Embed responsive YouTube video player from URL (`@tiptap/extension-youtube`).
+* 🌈 **Code Syntax Highlighting**: Lowlight engine with live keyword coloring for Python, JS, TS, Go, Rust, Bash, HTML, CSS, JSON, YAML.
+* 🎨 **Rich Formatting & Floating Tools**: Bold, Italic, Underline, Strikethrough, Highlight (`Mark`), Alignments.
+* 🌳 **File Explorer Sidebar**: Color-coded VS Code file icons, folder tree, and file size badges.
 * 💾 **Direct Disk Persistence**: Instant save with `Ctrl+S` or top Save button via `/filetree/read` & `/filetree/save` server APIs.
 
 ## 🚀 Installation & Patching
@@ -24,7 +28,7 @@ This folder contains setup instructions and feature patches for the **File Explo
 dsh plugin --profile web add github:Mongfayi/dsh-local-filetree
 ```
 
-### 2. Apply English UI & TipTap Editor Patch
+### 2. Apply Ultimate TipTap Suite Patch
 ```bash
 node plugins/dsh-local-filetree/patch.js
 ```

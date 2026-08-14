@@ -1,10 +1,4 @@
-import { rollup } from 'rollup';
-import resolve from '@rollup/plugin-node-resolve';
-import commonjs from '@rollup/plugin-commonjs';
-import replace from '@rollup/plugin-replace';
-import fs from 'fs';
 
-const inputCode = `
 import { Editor, Extension } from '@tiptap/core';
 import StarterKit from '@tiptap/starter-kit';
 import TaskList from '@tiptap/extension-task-list';
@@ -71,33 +65,3 @@ export {
   lowlight,
   Markdown
 };
-`;
-
-fs.writeFileSync('tiptap-entry.js', inputCode);
-
-async function build() {
-  const bundle = await rollup({
-    input: 'tiptap-entry.js',
-    plugins: [
-      replace({
-        'process.env.NODE_ENV': JSON.stringify('production'),
-        preventAssignment: true
-      }),
-      resolve({ browser: true, preferBuiltins: false }),
-      commonjs()
-    ]
-  });
-
-  const { output } = await bundle.generate({
-    format: 'iife',
-    name: 'TipTapBundle'
-  });
-
-  fs.writeFileSync('plugins/dsh-local-filetree/tiptap.bundle.js', output[0].code);
-  console.log('[✓] Ultimate TipTap Suite Bundle built successfully! Size:', output[0].code.length);
-}
-
-build().catch(err => {
-  console.error('Build error:', err);
-  process.exit(1);
-});

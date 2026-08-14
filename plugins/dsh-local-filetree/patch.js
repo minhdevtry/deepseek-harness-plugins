@@ -75,7 +75,7 @@ if (fs.existsSync(tiptapBundleFile)) {
 }
 
 // ==========================================
-// 2. PATCH CLIENT (Official TipTap 3 Editor & VS Code Layout)
+// 2. PATCH CLIENT (Ultimate TipTap Suite & VS Code Layout)
 // ==========================================
 if (fs.existsSync(clientFile)) {
   let content = fs.readFileSync(clientFile, 'utf8')
@@ -118,14 +118,14 @@ if (fs.existsSync(clientFile)) {
 			.dsh-editor-panel-view { left: 60px; right: 0; }
 		}
 		.dsh-editor-topbar {
-			height: 40px; background: var(--dsw-alias-bg-subtle, #f9fafb);
+			height: 42px; background: var(--dsw-alias-bg-subtle, #f9fafb);
 			border-bottom: 1px solid var(--dsw-alias-border-l2, #e5e7eb);
 			display: flex; align-items: center; justify-content: space-between;
 			padding: 0 14px; flex-shrink: 0;
 		}
 		.dsh-editor-tab-active {
 			background: var(--dsw-alias-bg-base, #ffffff);
-			height: 40px; padding: 0 16px; display: flex; align-items: center; gap: 8px;
+			height: 42px; padding: 0 16px; display: flex; align-items: center; gap: 8px;
 			border-right: 1px solid var(--dsw-alias-border-l2, #e5e7eb);
 			border-top: 2.5px solid #3b82f6; font-size: 13px; font-weight: 600;
 			color: var(--dsw-alias-label-primary, #111827);
@@ -158,35 +158,73 @@ if (fs.existsSync(clientFile)) {
 			padding: 6px 14px; display: flex; align-items: center; gap: 4px; flex-wrap: wrap; flex-shrink: 0;
 		}
 		.dsh-tb-tool {
-			border: 1px solid transparent; background: transparent; padding: 3px 8px;
+			border: 1px solid transparent; background: transparent; padding: 4px 8px;
 			border-radius: 4px; font-size: 12px; font-weight: 600; cursor: pointer;
 			color: var(--dsw-alias-label-secondary, #374151); min-width: 26px; text-align: center;
+			display: inline-flex; align-items: center; gap: 4px;
 		}
 		.dsh-tb-tool:hover { background: var(--dsw-alias-interactive-bg-hover, #f3f4f6); border-color: var(--dsw-alias-border-l2, #d1d5db); }
+		.dsh-tb-tool-active { background: #e0e7ff; color: #3730a3; border-color: #c7d2fe; }
 		.dsh-tb-sep { width: 1px; height: 16px; background: var(--dsw-alias-border-l2, #e5e7eb); margin: 0 4px; }
 		.dsh-bold { font-weight: 800; }
 		.dsh-italic { font-style: italic; }
 		.dsh-strike { text-decoration: line-through; }
-		.dsh-editor-canvas { flex: 1; overflow-y: auto; display: flex; flex-direction: column; }
-		.dsh-tiptap-container { flex: 1; display: flex; flex-direction: column; padding: 28px 48px; max-width: 920px; margin: 0 auto; width: 100%; box-sizing: border-box; }
+		.dsh-underline { text-decoration: underline; }
+		.dsh-editor-canvas { flex: 1; overflow-y: auto; display: flex; flex-direction: column; position: relative; }
+		.dsh-tiptap-container { flex: 1; display: flex; flex-direction: column; padding: 28px 48px; max-width: 960px; margin: 0 auto; width: 100%; box-sizing: border-box; }
 		.dsh-tiptap-prose {
-			outline: none; font-size: 15px; line-height: 1.75; min-height: 500px;
+			outline: none; font-size: 15.5px; line-height: 1.75; min-height: 600px;
 			color: var(--dsw-alias-label-primary, #111827); width: 100%;
 			font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 		}
-		.dsh-tiptap-prose h1 { font-size: 28px; font-weight: 800; margin: 20px 0 10px; color: #111827; border-bottom: 1px solid #f3f4f6; padding-bottom: 6px; line-height: 1.3; }
-		.dsh-tiptap-prose h2 { font-size: 22px; font-weight: 700; margin: 16px 0 8px; color: #1f2937; line-height: 1.35; }
-		.dsh-tiptap-prose h3 { font-size: 17px; font-weight: 600; margin: 14px 0 6px; color: #374151; }
-		.dsh-tiptap-prose p { margin: 6px 0; }
-		.dsh-tiptap-prose blockquote { border-left: 4px solid #3b82f6; padding-left: 14px; color: #4b5563; margin: 10px 0; font-style: italic; background: rgba(59,130,246,0.03); border-radius: 0 6px 6px 0; }
-		.dsh-tiptap-prose pre { background: #1e293b; color: #f8fafc; padding: 14px; border-radius: 8px; font-family: monospace; font-size: 13px; margin: 12px 0; }
-		.dsh-tiptap-prose ul, .dsh-tiptap-prose ol { padding-left: 24px; margin: 6px 0; }
+		.dsh-tiptap-prose h1 { font-size: 28px; font-weight: 800; margin: 24px 0 12px; color: #111827; border-bottom: 1px solid #f3f4f6; padding-bottom: 8px; line-height: 1.3; }
+		.dsh-tiptap-prose h2 { font-size: 22px; font-weight: 700; margin: 20px 0 10px; color: #1f2937; line-height: 1.35; }
+		.dsh-tiptap-prose h3 { font-size: 18px; font-weight: 600; margin: 16px 0 8px; color: #374151; }
+		.dsh-tiptap-prose p { margin: 8px 0; }
+		.dsh-tiptap-prose blockquote { border-left: 4px solid #3b82f6; padding: 6px 16px; color: #4b5563; margin: 12px 0; font-style: italic; background: rgba(59,130,246,0.03); border-radius: 0 8px 8px 0; }
+		.dsh-tiptap-prose pre { background: #0f172a; color: #f8fafc; padding: 16px; border-radius: 8px; font-family: 'Fira Code', Consolas, Monaco, monospace; font-size: 13.5px; line-height: 1.6; margin: 14px 0; overflow-x: auto; }
+		.dsh-tiptap-prose pre code { background: transparent; padding: 0; color: inherit; font-size: inherit; }
+		.dsh-tiptap-prose code { background: rgba(59,130,246,0.08); color: #2563eb; padding: 2px 6px; border-radius: 4px; font-family: monospace; font-size: 13px; }
+		.dsh-tiptap-prose ul, .dsh-tiptap-prose ol { padding-left: 26px; margin: 8px 0; }
 		.dsh-tiptap-prose li { margin: 4px 0; }
 		.dsh-tiptap-prose ul[data-type="taskList"] { list-style: none; padding: 0; }
-		.dsh-tiptap-prose ul[data-type="taskList"] li { display: flex; align-items: center; gap: 8px; margin: 4px 0; }
-		.dsh-tiptap-prose ul[data-type="taskList"] li > label { display: flex; align-items: center; }
-		.dsh-tiptap-prose ul[data-type="taskList"] li > label input[type="checkbox"] { width: 16px; height: 16px; cursor: pointer; accent-color: #3b82f6; }
+		.dsh-tiptap-prose ul[data-type="taskList"] li { display: flex; align-items: center; gap: 10px; margin: 6px 0; }
+		.dsh-tiptap-prose ul[data-type="taskList"] li > label { display: flex; align-items: center; user-select: none; }
+		.dsh-tiptap-prose ul[data-type="taskList"] li > label input[type="checkbox"] { width: 17px; height: 17px; cursor: pointer; accent-color: #3b82f6; }
 		.dsh-tiptap-prose ul[data-type="taskList"] li[data-checked="true"] > div { text-decoration: line-through; opacity: 0.55; }
+		.dsh-tiptap-prose table { border-collapse: collapse; width: 100%; margin: 16px 0; overflow: hidden; border-radius: 8px; border: 1px solid #e5e7eb; }
+		.dsh-tiptap-prose th, .dsh-tiptap-prose td { border: 1px solid #e5e7eb; padding: 10px 14px; text-align: left; vertical-align: top; }
+		.dsh-tiptap-prose th { background: #f8fafc; font-weight: 700; color: #1e293b; }
+		.dsh-tiptap-prose iframe { width: 100%; aspect-ratio: 16/9; border-radius: 12px; margin: 16px 0; border: none; }
+		.dsh-tiptap-prose img { max-width: 100%; border-radius: 8px; margin: 14px 0; box-shadow: 0 4px 12px rgba(0,0,0,0.06); }
+		.dsh-tiptap-prose mark { background: #fef08a; padding: 2px 4px; border-radius: 3px; }
+		
+		/* Slash Commands Popup */
+		.dsh-slash-menu {
+			position: absolute; z-index: 100; background: var(--dsw-alias-bg-base, #ffffff);
+			border: 1px solid var(--dsw-alias-border-l2, #e5e7eb); border-radius: 10px;
+			box-shadow: 0 12px 32px rgba(0,0,0,0.14); width: 280px; max-height: 340px;
+			overflow-y: auto; padding: 6px; display: flex; flex-direction: column; gap: 2px;
+		}
+		.dsh-slash-item {
+			display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 6px;
+			cursor: pointer; font-size: 13px; color: var(--dsw-alias-label-primary, #1f2937);
+			border: none; background: transparent; width: 100%; text-align: left; transition: all 0.1s ease;
+		}
+		.dsh-slash-item:hover, .dsh-slash-item-selected {
+			background: #eff6ff; color: #2563eb; font-weight: 600;
+		}
+		.dsh-slash-icon { font-size: 16px; width: 22px; text-align: center; flex-shrink: 0; }
+		.dsh-slash-desc { font-size: 11px; color: #6b7280; margin-left: auto; }
+		
+		/* Code Syntax Highlighting colors */
+		.hljs-keyword, .hljs-selector-tag { color: #f43f5e; font-weight: 700; }
+		.hljs-string, .hljs-title { color: #10b981; }
+		.hljs-comment, .hljs-quote { color: #64748b; font-style: italic; }
+		.hljs-number, .hljs-literal { color: #fb923c; }
+		.hljs-function, .hljs-attr { color: #38bdf8; }
+		.hljs-built_in { color: #a855f7; }
+
 		.dsh-code-canvas { flex: 1; display: flex; }
 		.dsh-code-textarea {
 			width: 100%; height: 100%; min-height: 100%; border: none; outline: none; padding: 18px 24px;
@@ -205,25 +243,64 @@ if (fs.existsSync(clientFile)) {
 			const [rawContent, setRawContent] = react.useState(initialContent);
 			const [isSaving, setIsSaving] = react.useState(false);
 			const [savedToast, setSavedToast] = react.useState(false);
+			const [slashMenu, setSlashMenu] = react.useState(null);
+			const [slashIdx, setSlashIdx] = react.useState(0);
 			const editorRef = react.useRef(null);
 			const containerRef = react.useRef(null);
 
 			const isMarkdown = filePath.endsWith('.md');
 			const fileName = filePath.split('/').pop() || filePath;
 
+			const slashItems = [
+				{ label: 'Heading 1', desc: 'Large title', icon: 'H1', action: (c) => c.toggleHeading({ level: 1 }) },
+				{ label: 'Heading 2', desc: 'Section title', icon: 'H2', action: (c) => c.toggleHeading({ level: 2 }) },
+				{ label: 'Heading 3', desc: 'Subsection title', icon: 'H3', action: (c) => c.toggleHeading({ level: 3 }) },
+				{ label: 'Task List', desc: 'Todo checkboxes', icon: '☑', action: (c) => c.toggleTaskList() },
+				{ label: 'Bullet List', desc: 'Unordered list', icon: '•', action: (c) => c.toggleBulletList() },
+				{ label: 'Numbered List', desc: 'Ordered list', icon: '1.', action: (c) => c.toggleOrderedList() },
+				{ label: 'Table', desc: '3x3 grid table', icon: '📊', action: (c) => c.insertTable({ rows: 3, cols: 3, withHeaderRow: true }) },
+				{ label: 'Code Block', desc: 'Syntax highlighting', icon: '</>', action: (c) => c.toggleCodeBlock() },
+				{ label: 'Blockquote', desc: 'Capture quote', icon: '❝', action: (c) => c.toggleBlockquote() },
+				{ label: 'YouTube Video', desc: 'Embed YouTube video', icon: '🎥', action: (c) => {
+					const url = prompt('Enter YouTube Video URL:');
+					if (url) c.setYoutubeVideo({ src: url });
+				}},
+				{ label: 'Image', desc: 'Insert image from URL', icon: '🖼️', action: (c) => {
+					const url = prompt('Enter Image URL:');
+					if (url) c.setImage({ src: url });
+				}},
+				{ label: 'Divider', desc: 'Horizontal rule', icon: '─', action: (c) => c.setHorizontalRule() }
+			];
+
+			// Initialize Official TipTap 3 Suite
 			react.useEffect(() => {
 				if (!containerRef.current || !isMarkdown || !isRichMode) return;
 
 				if (window.TipTapBundle) {
-					const { Editor, StarterKit, TaskList, TaskItem, Markdown } = window.TipTapBundle;
+					const {
+						Editor, StarterKit, TaskList, TaskItem, Table, TableRow, TableCell, TableHeader,
+						Image, Youtube, Underline, Highlight, TextAlign, CodeBlockLowlight, lowlight, Markdown
+					} = window.TipTapBundle;
+
 					const editor = new Editor({
 						element: containerRef.current,
 						extensions: [
 							StarterKit.configure({
-								heading: { levels: [1, 2, 3] }
+								heading: { levels: [1, 2, 3] },
+								codeBlock: false
 							}),
 							TaskList,
 							TaskItem.configure({ nested: true }),
+							Table.configure({ resizable: true }),
+							TableRow,
+							TableCell,
+							TableHeader,
+							Image,
+							Youtube.configure({ inline: false, nocookie: true }),
+							Underline,
+							Highlight,
+							TextAlign.configure({ types: ['heading', 'paragraph'] }),
+							CodeBlockLowlight.configure({ lowlight }),
 							Markdown.configure({
 								html: true,
 								transformPastedText: true,
@@ -234,6 +311,44 @@ if (fs.existsSync(clientFile)) {
 						editorProps: {
 							attributes: {
 								class: 'dsh-tiptap-prose prose'
+							},
+							handleKeyDown: (view, event) => {
+								if (event.key === '/' && !slashMenu) {
+									const { top, left } = view.coordsAtPos(view.state.selection.from);
+									setSlashMenu({ top: top + 24, left });
+									setSlashIdx(0);
+								}
+								if (slashMenu) {
+									if (event.key === 'ArrowDown') {
+										event.preventDefault();
+										setSlashIdx((i) => (i + 1) % slashItems.length);
+										return true;
+									}
+									if (event.key === 'ArrowUp') {
+										event.preventDefault();
+										setSlashIdx((i) => (i - 1 + slashItems.length) % slashItems.length);
+										return true;
+									}
+									if (event.key === 'Enter') {
+										event.preventDefault();
+										const item = slashItems[slashIdx];
+										if (item) {
+											// Delete the slash character
+											editorRef.current.chain().focus().deleteRange({
+												from: view.state.selection.from - 1,
+												to: view.state.selection.from
+											}).run();
+											item.action(editorRef.current.chain().focus()).run();
+										}
+										setSlashMenu(null);
+										return true;
+									}
+									if (event.key === 'Escape') {
+										setSlashMenu(null);
+										return true;
+									}
+								}
+								return false;
 							}
 						}
 					});
@@ -311,11 +426,9 @@ if (fs.existsSync(clientFile)) {
 								type: 'button',
 								className: 'dsh-switch-btn ' + (isRichMode ? 'dsh-switch-btn-active' : ''),
 								onClick: () => {
-									if (!isRichMode) {
-										setIsRichMode(true);
-									}
+									if (!isRichMode) setIsRichMode(true);
 								}
-							}, '✨ Official TipTap WYSIWYG'),
+							}, '✨ Ultimate TipTap Suite'),
 							react.createElement('button', {
 								key: 'raw-btn',
 								type: 'button',
@@ -346,32 +459,44 @@ if (fs.existsSync(clientFile)) {
 					])
 				]),
 
-				// TipTap Toolbar
+				// TipTap Toolbar (Driven directly by TipTap chain commands)
 				isMarkdown && isRichMode ? react.createElement('div', { key: 'toolbar', className: 'dsh-tiptap-toolbar' }, [
-					react.createElement('button', { key: 'h1', type: 'button', className: 'dsh-tb-tool', title: 'Heading 1 (or type # + Space)', onClick: () => runCommand(c => c.toggleHeading({ level: 1 })) }, 'H1'),
-					react.createElement('button', { key: 'h2', type: 'button', className: 'dsh-tb-tool', title: 'Heading 2 (or type ## + Space)', onClick: () => runCommand(c => c.toggleHeading({ level: 2 })) }, 'H2'),
-					react.createElement('button', { key: 'h3', type: 'button', className: 'dsh-tb-tool', title: 'Heading 3 (or type ### + Space)', onClick: () => runCommand(c => c.toggleHeading({ level: 3 })) }, 'H3'),
+					react.createElement('button', { key: 'h1', type: 'button', className: 'dsh-tb-tool', title: 'Heading 1 (or type /h1)', onClick: () => runCommand(c => c.toggleHeading({ level: 1 })) }, 'H1'),
+					react.createElement('button', { key: 'h2', type: 'button', className: 'dsh-tb-tool', title: 'Heading 2 (or type /h2)', onClick: () => runCommand(c => c.toggleHeading({ level: 2 })) }, 'H2'),
+					react.createElement('button', { key: 'h3', type: 'button', className: 'dsh-tb-tool', title: 'Heading 3 (or type /h3)', onClick: () => runCommand(c => c.toggleHeading({ level: 3 })) }, 'H3'),
 					react.createElement('span', { key: 'sep1', className: 'dsh-tb-sep' }),
-					react.createElement('button', { key: 'b', type: 'button', className: 'dsh-tb-tool dsh-bold', title: 'Bold (Ctrl+B or **text**)', onClick: () => runCommand(c => c.toggleBold()) }, 'B'),
-					react.createElement('button', { key: 'i', type: 'button', className: 'dsh-tb-tool dsh-italic', title: 'Italic (Ctrl+I or *text*)', onClick: () => runCommand(c => c.toggleItalic()) }, 'I'),
-					react.createElement('button', { key: 's', type: 'button', className: 'dsh-tb-tool dsh-strike', title: 'Strikethrough (~~text~~)', onClick: () => runCommand(c => c.toggleStrike()) }, 'S'),
+					react.createElement('button', { key: 'b', type: 'button', className: 'dsh-tb-tool dsh-bold', title: 'Bold (Ctrl+B)', onClick: () => runCommand(c => c.toggleBold()) }, 'B'),
+					react.createElement('button', { key: 'i', type: 'button', className: 'dsh-tb-tool dsh-italic', title: 'Italic (Ctrl+I)', onClick: () => runCommand(c => c.toggleItalic()) }, 'I'),
+					react.createElement('button', { key: 'u', type: 'button', className: 'dsh-tb-tool dsh-underline', title: 'Underline (Ctrl+U)', onClick: () => runCommand(c => c.toggleUnderline()) }, 'U'),
+					react.createElement('button', { key: 's', type: 'button', className: 'dsh-tb-tool dsh-strike', title: 'Strikethrough', onClick: () => runCommand(c => c.toggleStrike()) }, 'S'),
+					react.createElement('button', { key: 'hl', type: 'button', className: 'dsh-tb-tool', title: 'Highlight Text', onClick: () => runCommand(c => c.toggleHighlight()) }, '🎨 Mark'),
 					react.createElement('span', { key: 'sep2', className: 'dsh-tb-sep' }),
-					react.createElement('button', { key: 'ul', type: 'button', className: 'dsh-tb-tool', title: 'Bullet List (or type - + Space)', onClick: () => runCommand(c => c.toggleBulletList()) }, '• List'),
-					react.createElement('button', { key: 'ol', type: 'button', className: 'dsh-tb-tool', title: 'Numbered List (or type 1. + Space)', onClick: () => runCommand(c => c.toggleOrderedList()) }, '1. List'),
-					react.createElement('button', { key: 'task', type: 'button', className: 'dsh-tb-tool', title: 'Task List (or type [ ] + Space)', onClick: () => runCommand(c => c.toggleTaskList()) }, '☑ Task'),
-					react.createElement('button', { key: 'quote', type: 'button', className: 'dsh-tb-tool', title: 'Blockquote (or type > + Space)', onClick: () => runCommand(c => c.toggleBlockquote()) }, '❝ Quote'),
-					react.createElement('button', { key: 'code', type: 'button', className: 'dsh-tb-tool', title: 'Code Block (or type \`\`\` + Enter)', onClick: () => runCommand(c => c.toggleCodeBlock()) }, '</> Code'),
-					react.createElement('button', { key: 'hr', type: 'button', className: 'dsh-tb-tool', title: 'Horizontal Line (or type --- + Enter)', onClick: () => runCommand(c => c.setHorizontalRule()) }, '─ Line')
+					react.createElement('button', { key: 'ul', type: 'button', className: 'dsh-tb-tool', title: 'Bullet List', onClick: () => runCommand(c => c.toggleBulletList()) }, '• List'),
+					react.createElement('button', { key: 'ol', type: 'button', className: 'dsh-tb-tool', title: 'Numbered List', onClick: () => runCommand(c => c.toggleOrderedList()) }, '1. List'),
+					react.createElement('button', { key: 'task', type: 'button', className: 'dsh-tb-tool', title: 'Task List (Checkboxes)', onClick: () => runCommand(c => c.toggleTaskList()) }, '☑ Task'),
+					react.createElement('button', { key: 'table', type: 'button', className: 'dsh-tb-tool', title: 'Insert Table', onClick: () => runCommand(c => c.insertTable({ rows: 3, cols: 3, withHeaderRow: true })) }, '📊 Table'),
+					react.createElement('button', { key: 'quote', type: 'button', className: 'dsh-tb-tool', title: 'Blockquote', onClick: () => runCommand(c => c.toggleBlockquote()) }, '❝ Quote'),
+					react.createElement('button', { key: 'code', type: 'button', className: 'dsh-tb-tool', title: 'Code Block (Syntax Highlighted)', onClick: () => runCommand(c => c.toggleCodeBlock()) }, '</> Code'),
+					react.createElement('button', { key: 'yt', type: 'button', className: 'dsh-tb-tool', title: 'Embed YouTube Video', onClick: () => {
+						const url = prompt('Enter YouTube URL:');
+						if (url) runCommand(c => c.setYoutubeVideo({ src: url }));
+					}}, '🎥 YouTube'),
+					react.createElement('button', { key: 'img', type: 'button', className: 'dsh-tb-tool', title: 'Insert Image URL', onClick: () => {
+						const url = prompt('Enter Image URL:');
+						if (url) runCommand(c => c.setImage({ src: url }));
+					}}, '🖼️ Image'),
+					react.createElement('button', { key: 'hr', type: 'button', className: 'dsh-tb-tool', title: 'Divider Line', onClick: () => runCommand(c => c.setHorizontalRule()) }, '─ Line')
 				]) : null,
 
 				// TipTap Canvas / Code Canvas
-				react.createElement('div', { key: 'workspace', className: 'dsh-editor-canvas' },
+				react.createElement('div', { key: 'workspace', className: 'dsh-editor-canvas' }, [
 					isMarkdown && isRichMode
 						? react.createElement('div', {
+							key: 'tt-container',
 							ref: containerRef,
 							className: 'dsh-tiptap-container'
 						})
-						: react.createElement('div', { className: 'dsh-code-canvas' },
+						: react.createElement('div', { key: 'code-container', className: 'dsh-code-canvas' },
 							react.createElement('textarea', {
 								className: 'dsh-code-textarea',
 								value: rawContent,
@@ -390,8 +515,29 @@ if (fs.existsSync(clientFile)) {
 									}
 								}
 							})
-						)
-				)
+						),
+
+					// Slash Command Popup Menu
+					slashMenu ? react.createElement('div', {
+						key: 'slash-popup',
+						className: 'dsh-slash-menu',
+						style: { top: slashMenu.top + 'px', left: slashMenu.left + 'px' }
+					}, slashItems.map((item, idx) => react.createElement('button', {
+						key: item.label,
+						type: 'button',
+						className: 'dsh-slash-item ' + (idx === slashIdx ? 'dsh-slash-item-selected' : ''),
+						onClick: () => {
+							if (editorRef.current) {
+								item.action(editorRef.current.chain().focus()).run();
+							}
+							setSlashMenu(null);
+						}
+					}, [
+						react.createElement('span', { key: 'icon', className: 'dsh-slash-icon' }, item.icon),
+						react.createElement('span', { key: 'label' }, item.label),
+						react.createElement('span', { key: 'desc', className: 'dsh-slash-desc' }, item.desc)
+					]))) : null
+				])
 			]);
 		}
   `
@@ -468,5 +614,5 @@ if (fs.existsSync(clientFile)) {
   }
 
   fs.writeFileSync(clientFile, content, 'utf8')
-  console.log('[✓] Successfully patched dsh-local-filetree with OFFICIAL TipTap 3 Editor Engine!')
+  console.log('[✓] Successfully patched dsh-local-filetree with Ultimate TipTap Suite!')
 }

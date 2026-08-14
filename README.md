@@ -10,9 +10,10 @@ deepseek-harness-plugins/
 ├── apply-config.js                  # Master setup script for all plugins & patches
 ├── cordis.patch.yml                 # Base profile patch configuration
 └── plugins/                         # Collection of individual plugins
-    ├── dsh-local-filetree/          # File Explorer & TipTap WYSIWYG Markdown Editor
+    ├── dsh-local-filetree/          # File Explorer & Ultimate TipTap 3 Suite
     │   ├── README.md                # Installation & patch instructions
-    │   └── patch.js                 # Editor & localization patch script
+    │   ├── patch.js                 # Ultimate TipTap & localization patch script
+    │   └── tiptap.bundle.js         # Compiled standalone TipTap 3 bundle
     ├── dsh-at-file/                 # @file mention autocomplete plugin guide
     │   └── README.md                # Installation & feature instructions
     └── dsh-task-board/              # Kanban Task Board UI plugin guide
@@ -22,7 +23,7 @@ deepseek-harness-plugins/
 
 ## 🔌 Managed Plugins
 
-* 🌳 **[`plugins/dsh-local-filetree`](plugins/dsh-local-filetree)**: File Explorer + **VS Code-Style TipTap WYSIWYG Markdown & Code Editor** (Upstream: `github:Mongfayi/dsh-local-filetree`).
+* 🌳 **[`plugins/dsh-local-filetree`](plugins/dsh-local-filetree)**: File Explorer + **Ultimate TipTap 3 Suite** (Slash Commands `/`, Tables, YouTube Embeds, Code Syntax Highlighting, Tasks, Images, Markdown Shortcuts) (Upstream: `github:Mongfayi/dsh-local-filetree`).
 * 📎 **[`plugins/dsh-at-file`](plugins/dsh-at-file)**: `@file` Mention Autocomplete plugin (Upstream: `github:omdsh-dev/dsh-at-file`) for mentioning & attaching workspace files directly in chat.
 * 📋 **[`plugins/dsh-task-board`](plugins/dsh-task-board)**: Multi-column Kanban Task Board plugin (Package: `@linxin666/dsh-client-ui-task-board`) for tracking task progress visually in the Web UI.
 * 🛠️ **Enabled Built-in Tools**:
