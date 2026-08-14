@@ -207,10 +207,7 @@ async function run() {
 	const chatTextarea = pageLucas.locator('.vk_colRight textarea, .vk_colRight [contenteditable="true"], textarea, [contenteditable="true"]').first();
 	assert.ok(await chatTextarea.isVisible(), 'Chat textarea should be visible');
 
-	const chatPrompt = await pageLucas.evaluate(() => {
-		const inp = document.querySelector('.vk_colRight textarea, .vk_colRight [contenteditable="true"], textarea, [contenteditable="true"]');
-		return inp ? (inp.value || inp.innerText || inp.textContent || "") : "";
-	});
+	const chatPrompt = await chatTextarea.inputValue().catch(() => chatTextarea.innerText());
 	console.log('[+] Prompt injected from selection:\n', chatPrompt.slice(0, 150) + '...');
 	assert.ok(chatPrompt.includes('note.md') || chatPrompt.includes('snippet') || chatPrompt.length > 10, 'Prompt must reference note.md or snippet');
 

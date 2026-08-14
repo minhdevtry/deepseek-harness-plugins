@@ -209,6 +209,7 @@ const customComponentsCode = `
 
 			/* Code Blocks & Inline Code in Notion Style */
 			.tiptap.ProseMirror pre, .vk_tiptap_container .ProseMirror pre {
+				position: relative !important;
 				background: #f8fafc !important; color: #1e293b !important;
 				padding: 14px 18px !important; border-radius: 8px !important;
 				font-family: 'Fira Code', 'Cascadia Code', ui-monospace, SFMono-Regular, Consolas, Monaco, monospace !important;
@@ -218,6 +219,36 @@ const customComponentsCode = `
 			}
 			.tiptap.ProseMirror pre code, .vk_tiptap_container .ProseMirror pre code {
 				background: transparent !important; padding: 0 !important; color: #1e293b !important; font-size: inherit !important;
+			}
+			.vk_code_copy_btn {
+				position: absolute !important; top: 8px !important; right: 8px !important;
+				background: rgba(255, 255, 255, 0.92) !important; border: 1px solid #cbd5e1 !important;
+				border-radius: 6px !important; padding: 3px 8px !important; font-size: 11px !important;
+				font-weight: 600 !important; color: #475569 !important; cursor: pointer !important;
+				transition: all 0.15s ease !important; opacity: 0 !important; pointer-events: none !important;
+				z-index: 5 !important; box-shadow: 0 1px 3px rgba(0,0,0,0.05) !important;
+			}
+			.tiptap.ProseMirror pre:hover .vk_code_copy_btn, .vk_tiptap_container .ProseMirror pre:hover .vk_code_copy_btn {
+				opacity: 1 !important; pointer-events: auto !important;
+			}
+			.vk_code_copy_btn:hover {
+				background: #3b82f6 !important; color: #ffffff !important; border-color: #3b82f6 !important;
+			}
+			.vk_sync_badge {
+				display: inline-flex !important; align-items: center !important; gap: 5px !important;
+				font-size: 11px !important; color: #64748b !important; background: #f8fafc !important;
+				border: 1px solid #e2e8f0 !important; border-radius: 12px !important;
+				padding: 2px 8px !important; font-weight: 500 !important; margin-right: 4px !important;
+			}
+			.vk_sync_dot {
+				width: 6px !important; height: 6px !important; border-radius: 50% !important;
+				background: #22c55e !important; box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.2) !important;
+				animation: vk-pulse 2s infinite !important;
+			}
+			@keyframes vk-pulse {
+				0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4); }
+				70% { transform: scale(1); box-shadow: 0 0 0 4px rgba(34, 197, 94, 0); }
+				100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
 			}
 			.tiptap.ProseMirror code:not(pre code), .vk_tiptap_container .ProseMirror code:not(pre code) {
 				background: rgba(59, 130, 246, 0.08) !important; color: #2563eb !important;
@@ -2185,11 +2216,14 @@ const customComponentsCode = `
 					a.href = URL.createObjectURL(blob);
 					a.download = (file?.name || "document.md");
 					a.click();
+					window.dispatchEvent(new CustomEvent('dsh-toast', { detail: '📥 Downloaded ' + (file?.name || 'document.md') }));
 				} else if (type === 'markdown') {
 					navigator.clipboard?.writeText(md);
+					window.dispatchEvent(new CustomEvent('dsh-toast', { detail: '📋 Copied Markdown to clipboard!' }));
 				} else if (type === 'html') {
 					const html = editorRef.current.getHTML();
 					navigator.clipboard?.writeText(html);
+					window.dispatchEvent(new CustomEvent('dsh-toast', { detail: '📋 Copied HTML to clipboard!' }));
 				} else if (type === 'print') {
 					window.print();
 				}
@@ -2201,6 +2235,43 @@ const customComponentsCode = `
 			const slashStateRef = react.useRef({ menu: null, query: '', index: 0 });
 			const providerRef = react.useRef(null);
 			const ydocRef = react.useRef(null);
+
+			react.useEffect(() => {
+				if (!containerRef.current) return;
+				const container = containerRef.current;
+				const attachCopyButtons = () => {
+					const pres = container.querySelectorAll('pre:not([data-copy-ready])');
+					pres.forEach(pre => {
+						pre.setAttribute('data-copy-ready', 'true');
+						pre.style.position = 'relative';
+						const btn = document.createElement('button');
+						btn.className = 'vk_code_copy_btn';
+						btn.innerText = '📋 Copy';
+						btn.title = 'Copy code snippet';
+						btn.onclick = (e) => {
+							e.stopPropagation();
+							const code = pre.querySelector('code')?.innerText || pre.innerText.replace('📋 Copy', '').replace('✓ Copied!', '').trim();
+							navigator.clipboard?.writeText(code);
+							btn.innerText = '✓ Copied!';
+							btn.style.background = '#22c55e';
+							btn.style.color = '#fff';
+							btn.style.borderColor = '#22c55e';
+							window.dispatchEvent(new CustomEvent('dsh-toast', { detail: '📋 Code snippet copied to clipboard!' }));
+							setTimeout(() => {
+								btn.innerText = '📋 Copy';
+								btn.style.background = '';
+								btn.style.color = '';
+								btn.style.borderColor = '';
+							}, 2000);
+						};
+						pre.appendChild(btn);
+					});
+				};
+				const observer = new MutationObserver(attachCopyButtons);
+				observer.observe(container, { childList: true, subtree: true });
+				attachCopyButtons();
+				return () => observer.disconnect();
+			}, []);
 
 			const setSlashMenu = (val) => { slashStateRef.current.menu = val; _setSlashMenu(val); };
 			const setSlashQuery = (val) => {
@@ -2559,6 +2630,10 @@ const customComponentsCode = `
 					]),
 					react.createElement('button', { key: 'inline-ai-btn', type: 'button', className: 'vk_ai_assist_btn', title: 'Inline AI Assist (Ctrl+K)', onClick: () => { setInlineSelection(editorRef.current?.getText()?.slice(0, 300) || ""); setInlineAIOpen(true); } }, '🤖 AI (Ctrl+K)'),
 					react.createElement('div', { key: 'spacer', style: { flex: 1 } }),
+					react.createElement('span', { key: 'sync-status', className: 'vk_sync_badge', title: collabConnected ? 'Real-time collaborative sync active' : 'Workspace cloud storage saved' }, [
+						react.createElement('span', { key: 'sync-dot', className: 'vk_sync_dot' }),
+						collabConnected ? 'Live Collab' : 'Cloud Saved'
+					]),
 					collabConnected ? react.createElement('div', { key: 'collab-badge', className: 'vk_collab_pill', title: 'Real-time collaborative editing active' }, [
 						react.createElement('span', { key: 'collab-dot', style: { width: '6px', height: '6px', borderRadius: '50%', background: '#22c55e' } }),
 						'Live (' + (collaborators.length || 1) + ')',
@@ -3861,6 +3936,14 @@ clientSource = clientSource.replace(
 				setToastMsg(msg);
 				setTimeout(() => setToastMsg(null), 3000);
 			};
+
+			react.useEffect(() => {
+				const onToast = (e) => {
+					if (e.detail) showToast(e.detail);
+				};
+				window.addEventListener('dsh-toast', onToast);
+				return () => window.removeEventListener('dsh-toast', onToast);
+			}, []);
 
 			const handleCommandPaletteAction = (cmdId) => {
 				if (cmdId === "quick_open") setQuickOpen(true);
