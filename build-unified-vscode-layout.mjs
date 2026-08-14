@@ -667,20 +667,55 @@ clientSource = clientSource.replace(
 					.then((r) => r.json())
 					.then((d) => { if (d && d.ok && (d.root || d.path)) setDefaultCwd(d.root || d.path); })
 					.catch(() => {});
-			}, []);
+			}, []);`
+);
 
-			// Global Ctrl+L shortcut to toggle right chat panel
+clientSource = clientSource.replace(
+	'const [tabsState, setTabsState] = react.useState(loadTabs);',
+	`const [tabsState, setTabsState] = react.useState(loadTabs);
+
+			// Global Ctrl+L shortcut: If text is selected, send snippet to chat input & focus; otherwise toggle chat panel
 			react.useEffect(() => {
 				const onKeyDown = (e) => {
 					if ((e.ctrlKey || e.metaKey) && (e.key === 'l' || e.key === 'L')) {
 						e.preventDefault();
-						const curRight = panels.right;
-						actions.setRight(curRight === 0 ? 440 : 0);
+						const sel = window.getSelection();
+						const selectedText = sel ? sel.toString().trim() : "";
+						if (selectedText.length > 0) {
+							if (panels.right === 0) actions.setRight(440);
+							if (panels.rightTab !== "conversation") actions.setRightTab("conversation");
+							const activeFile = tabsState && tabsState.active ? tabsState.active.split(/[\\\\/]/).pop() : "snippet";
+							const prompt = 'Please analyze and explain the following snippet from ' + activeFile + ':\\n\\n\`\`\`\\n' + selectedText + '\\n\`\`\`\\n';
+							setTimeout(() => {
+								const chatInput = document.querySelector('.vk_colRight textarea, .vk_colRight [contenteditable="true"], textarea, [contenteditable="true"]');
+								if (chatInput) {
+									if (chatInput.tagName === 'TEXTAREA' || chatInput.tagName === 'INPUT') {
+										chatInput.value = prompt;
+										chatInput.dispatchEvent(new Event('input', { bubbles: true }));
+										const len = chatInput.value.length;
+										if (typeof chatInput.setSelectionRange === 'function') chatInput.setSelectionRange(len, len);
+									} else {
+										chatInput.innerText = prompt;
+										chatInput.dispatchEvent(new Event('input', { bubbles: true }));
+									}
+									chatInput.focus();
+								}
+							}, 120);
+						} else {
+							const curRight = panels.right;
+							actions.setRight(curRight === 0 ? 440 : 0);
+							if (curRight === 0) {
+								setTimeout(() => {
+									const chatInput = document.querySelector('.vk_colRight textarea, .vk_colRight [contenteditable="true"], textarea, [contenteditable="true"]');
+									chatInput?.focus();
+								}, 120);
+							}
+						}
 					}
 				};
 				window.addEventListener('keydown', onKeyDown);
 				return () => window.removeEventListener('keydown', onKeyDown);
-			}, [panels.right, actions]);`
+			}, [panels.right, panels.rightTab, tabsState, actions]);`
 );
 
 clientSource = clientSource.replace(
