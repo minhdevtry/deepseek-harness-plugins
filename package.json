@@ -26,5 +26,8 @@
 		"rollup": "^4.62.4",
 		"tippy.js": "^6.3.7",
 		"tiptap-markdown": "^0.9.0"
+	},
+	"dependencies": {
+		"@tiptap/extension-typography": "^3.30.1"
 	}
 }

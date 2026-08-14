@@ -17,6 +17,7 @@ import Image from '@tiptap/extension-image';
 import Youtube from '@tiptap/extension-youtube';
 import Underline from '@tiptap/extension-underline';
 import Highlight from '@tiptap/extension-highlight';
+import Typography from '@tiptap/extension-typography';
 import TextAlign from '@tiptap/extension-text-align';
 import { BubbleMenu } from '@tiptap/extension-bubble-menu';
 import { FloatingMenu } from '@tiptap/extension-floating-menu';
@@ -41,6 +42,7 @@ if (typeof window !== 'undefined') {
     Youtube,
     Underline,
     Highlight,
+    Typography,
     TextAlign,
     BubbleMenu,
     FloatingMenu,
@@ -64,6 +66,7 @@ export {
   Youtube,
   Underline,
   Highlight,
+  Typography,
   TextAlign,
   BubbleMenu,
   FloatingMenu,

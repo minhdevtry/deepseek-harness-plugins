@@ -194,6 +194,9 @@ if (fs.existsSync(clientFile)) {
 		.dsh-tiptap-prose h1 { font-size: 28px; font-weight: 800; margin: 24px 0 12px; color: #111827; border-bottom: 1px solid #f3f4f6; padding-bottom: 8px; line-height: 1.3; }
 		.dsh-tiptap-prose h2 { font-size: 22px; font-weight: 700; margin: 20px 0 10px; color: #1f2937; line-height: 1.35; }
 		.dsh-tiptap-prose h3 { font-size: 18px; font-weight: 600; margin: 16px 0 8px; color: #374151; }
+		.dsh-tiptap-prose h4 { font-size: 16px; font-weight: 600; margin: 14px 0 6px; color: #4b5563; }
+		.dsh-tiptap-prose h5 { font-size: 14.5px; font-weight: 600; margin: 12px 0 6px; color: #6b7280; }
+		.dsh-tiptap-prose h6 { font-size: 13.5px; font-weight: 600; margin: 10px 0 4px; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.5px; }
 		.dsh-tiptap-prose p { margin: 8px 0; }
 		.dsh-tiptap-prose blockquote { border-left: 4px solid #3b82f6; padding: 6px 16px; color: #4b5563; margin: 12px 0; font-style: italic; background: rgba(59,130,246,0.03); border-radius: 0 8px 8px 0; }
 		.dsh-tiptap-prose pre { background: #0f172a; color: #f8fafc; padding: 16px; border-radius: 8px; font-family: 'Fira Code', Consolas, Monaco, monospace; font-size: 13.5px; line-height: 1.6; margin: 14px 0; overflow-x: auto; }
@@ -324,8 +327,12 @@ if (fs.existsSync(clientFile)) {
 				_setSlashMenu(val);
 			};
 			const setSlashQuery = (val) => {
-				slashStateRef.current.query = val;
-				_setSlashQuery(val);
+				if (typeof val === 'function') {
+					slashStateRef.current.query = val(slashStateRef.current.query);
+				} else {
+					slashStateRef.current.query = val;
+				}
+				_setSlashQuery(slashStateRef.current.query);
 			};
 			const setSlashIdx = (val) => {
 				if (typeof val === 'function') {
@@ -340,18 +347,18 @@ if (fs.existsSync(clientFile)) {
 			const fileName = filePath.split('/').pop() || filePath;
 
 			const slashItems = [
-				{ category: 'BASIC BLOCKS', label: 'Heading 1', desc: 'Large title', icon: 'H1' },
-				{ category: 'BASIC BLOCKS', label: 'Heading 2', desc: 'Section title', icon: 'H2' },
-				{ category: 'BASIC BLOCKS', label: 'Heading 3', desc: 'Subsection title', icon: 'H3' },
-				{ category: 'LISTS & TASKS', label: 'Task List', desc: 'Todo checkboxes', icon: '☑' },
-				{ category: 'LISTS & TASKS', label: 'Bullet List', desc: 'Unordered list', icon: '•' },
-				{ category: 'LISTS & TASKS', label: 'Numbered List', desc: 'Ordered list', icon: '1.' },
+				{ category: 'BASIC BLOCKS', label: 'Heading 1', desc: 'Large title (#)', icon: 'H1' },
+				{ category: 'BASIC BLOCKS', label: 'Heading 2', desc: 'Section title (##)', icon: 'H2' },
+				{ category: 'BASIC BLOCKS', label: 'Heading 3', desc: 'Subsection title (###)', icon: 'H3' },
+				{ category: 'LISTS & TASKS', label: 'Task List', desc: 'Todo checkboxes ([ ])', icon: '☑' },
+				{ category: 'LISTS & TASKS', label: 'Bullet List', desc: 'Unordered list (*, -)', icon: '•' },
+				{ category: 'LISTS & TASKS', label: 'Numbered List', desc: 'Ordered list (1.)', icon: '1.' },
 				{ category: 'ADVANCED & MEDIA', label: 'Table', desc: 'Custom Rows x Columns', icon: '📊' },
-				{ category: 'ADVANCED & MEDIA', label: 'Code Block', desc: 'Syntax highlighting', icon: '</>' },
-				{ category: 'ADVANCED & MEDIA', label: 'Blockquote', desc: 'Capture quote', icon: '❝' },
+				{ category: 'ADVANCED & MEDIA', label: 'Code Block', desc: 'Syntax highlighting (\`\`\`)', icon: '</>' },
+				{ category: 'ADVANCED & MEDIA', label: 'Blockquote', desc: 'Capture quote (>)', icon: '❝' },
 				{ category: 'ADVANCED & MEDIA', label: 'YouTube Video', desc: 'Embed YouTube player', icon: '🎥' },
 				{ category: 'ADVANCED & MEDIA', label: 'Image', desc: 'Insert image URL', icon: '🖼️' },
-				{ category: 'ADVANCED & MEDIA', label: 'Divider Line', desc: 'Horizontal rule', icon: '─' }
+				{ category: 'ADVANCED & MEDIA', label: 'Divider Line', desc: 'Horizontal rule (---)', icon: '─' }
 			];
 
 			const filteredSlashItems = react.useMemo(() => {
@@ -483,14 +490,14 @@ if (fs.existsSync(clientFile)) {
 				if (window.TipTapBundle) {
 					const {
 						Editor, StarterKit, TaskList, TaskItem, Table, TableRow, TableCell, TableHeader,
-						Image, Youtube, Underline, Highlight, TextAlign, CodeBlockLowlight, lowlight, Markdown
+						Image, Youtube, Underline, Highlight, Typography, TextAlign, CodeBlockLowlight, lowlight, Markdown
 					} = window.TipTapBundle;
 
 					const editor = new Editor({
 						element: containerRef.current,
 						extensions: [
 							StarterKit.configure({
-								heading: { levels: [1, 2, 3] },
+								heading: { levels: [1, 2, 3, 4, 5, 6] },
 								codeBlock: false
 							}),
 							TaskList,
@@ -503,6 +510,7 @@ if (fs.existsSync(clientFile)) {
 							Youtube.configure({ inline: false, nocookie: true }),
 							Underline,
 							Highlight,
+							Typography,
 							TextAlign.configure({ types: ['heading', 'paragraph'] }),
 							CodeBlockLowlight.configure({ lowlight }),
 							Markdown.configure({
@@ -688,25 +696,25 @@ if (fs.existsSync(clientFile)) {
 
 				// TipTap Toolbar (Driven directly by TipTap chain commands)
 				isMarkdown && isRichMode ? react.createElement('div', { key: 'toolbar', className: 'dsh-tiptap-toolbar' }, [
-					react.createElement('button', { key: 'h1', type: 'button', className: 'dsh-tb-tool', title: 'Heading 1 (or type /h1)', onMouseDown: (e) => e.preventDefault(), onClick: () => runCommand(c => c.toggleHeading({ level: 1 })) }, 'H1'),
-					react.createElement('button', { key: 'h2', type: 'button', className: 'dsh-tb-tool', title: 'Heading 2 (or type /h2)', onMouseDown: (e) => e.preventDefault(), onClick: () => runCommand(c => c.toggleHeading({ level: 2 })) }, 'H2'),
-					react.createElement('button', { key: 'h3', type: 'button', className: 'dsh-tb-tool', title: 'Heading 3 (or type /h3)', onMouseDown: (e) => e.preventDefault(), onClick: () => runCommand(c => c.toggleHeading({ level: 3 })) }, 'H3'),
+					react.createElement('button', { key: 'h1', type: 'button', className: 'dsh-tb-tool', title: 'Heading 1 (or type /h1 or #)', onMouseDown: (e) => e.preventDefault(), onClick: () => runCommand(c => c.toggleHeading({ level: 1 })) }, 'H1'),
+					react.createElement('button', { key: 'h2', type: 'button', className: 'dsh-tb-tool', title: 'Heading 2 (or type /h2 or ##)', onMouseDown: (e) => e.preventDefault(), onClick: () => runCommand(c => c.toggleHeading({ level: 2 })) }, 'H2'),
+					react.createElement('button', { key: 'h3', type: 'button', className: 'dsh-tb-tool', title: 'Heading 3 (or type /h3 or ###)', onMouseDown: (e) => e.preventDefault(), onClick: () => runCommand(c => c.toggleHeading({ level: 3 })) }, 'H3'),
 					react.createElement('span', { key: 'sep1', className: 'dsh-tb-sep' }),
-					react.createElement('button', { key: 'b', type: 'button', className: 'dsh-tb-tool dsh-bold', title: 'Bold (Ctrl+B)', onMouseDown: (e) => e.preventDefault(), onClick: () => runCommand(c => c.toggleBold()) }, 'B'),
-					react.createElement('button', { key: 'i', type: 'button', className: 'dsh-tb-tool dsh-italic', title: 'Italic (Ctrl+I)', onMouseDown: (e) => e.preventDefault(), onClick: () => runCommand(c => c.toggleItalic()) }, 'I'),
+					react.createElement('button', { key: 'b', type: 'button', className: 'dsh-tb-tool dsh-bold', title: 'Bold (Ctrl+B or **text**)', onMouseDown: (e) => e.preventDefault(), onClick: () => runCommand(c => c.toggleBold()) }, 'B'),
+					react.createElement('button', { key: 'i', type: 'button', className: 'dsh-tb-tool dsh-italic', title: 'Italic (Ctrl+I or *text*)', onMouseDown: (e) => e.preventDefault(), onClick: () => runCommand(c => c.toggleItalic()) }, 'I'),
 					react.createElement('button', { key: 'u', type: 'button', className: 'dsh-tb-tool dsh-underline', title: 'Underline (Ctrl+U)', onMouseDown: (e) => e.preventDefault(), onClick: () => runCommand(c => c.toggleUnderline()) }, 'U'),
-					react.createElement('button', { key: 's', type: 'button', className: 'dsh-tb-tool dsh-strike', title: 'Strikethrough', onMouseDown: (e) => e.preventDefault(), onClick: () => runCommand(c => c.toggleStrike()) }, 'S'),
-					react.createElement('button', { key: 'hl', type: 'button', className: 'dsh-tb-tool', title: 'Highlight Text', onMouseDown: (e) => e.preventDefault(), onClick: () => runCommand(c => c.toggleHighlight()) }, '🎨 Mark'),
+					react.createElement('button', { key: 's', type: 'button', className: 'dsh-tb-tool dsh-strike', title: 'Strikethrough (~~text~~)', onMouseDown: (e) => e.preventDefault(), onClick: () => runCommand(c => c.toggleStrike()) }, 'S'),
+					react.createElement('button', { key: 'hl', type: 'button', className: 'dsh-tb-tool', title: 'Highlight Text (==text==)', onMouseDown: (e) => e.preventDefault(), onClick: () => runCommand(c => c.toggleHighlight()) }, '🎨 Mark'),
 					react.createElement('span', { key: 'sep2', className: 'dsh-tb-sep' }),
-					react.createElement('button', { key: 'ul', type: 'button', className: 'dsh-tb-tool', title: 'Bullet List', onMouseDown: (e) => e.preventDefault(), onClick: () => runCommand(c => c.toggleBulletList()) }, '• List'),
-					react.createElement('button', { key: 'ol', type: 'button', className: 'dsh-tb-tool', title: 'Numbered List', onMouseDown: (e) => e.preventDefault(), onClick: () => runCommand(c => c.toggleOrderedList()) }, '1. List'),
-					react.createElement('button', { key: 'task', type: 'button', className: 'dsh-tb-tool', title: 'Task List (Checkboxes)', onMouseDown: (e) => e.preventDefault(), onClick: () => runCommand(c => c.toggleTaskList()) }, '☑ Task'),
+					react.createElement('button', { key: 'ul', type: 'button', className: 'dsh-tb-tool', title: 'Bullet List (*, -, +)', onMouseDown: (e) => e.preventDefault(), onClick: () => runCommand(c => c.toggleBulletList()) }, '• List'),
+					react.createElement('button', { key: 'ol', type: 'button', className: 'dsh-tb-tool', title: 'Numbered List (1.)', onMouseDown: (e) => e.preventDefault(), onClick: () => runCommand(c => c.toggleOrderedList()) }, '1. List'),
+					react.createElement('button', { key: 'task', type: 'button', className: 'dsh-tb-tool', title: 'Task List ([ ] or [x])', onMouseDown: (e) => e.preventDefault(), onClick: () => runCommand(c => c.toggleTaskList()) }, '☑ Task'),
 					react.createElement('button', { key: 'table', type: 'button', className: 'dsh-tb-tool', title: 'Insert Custom Table', onMouseDown: (e) => e.preventDefault(), onClick: () => setEmbedModal({ type: 'table', rows: 3, cols: 3, withHeaderRow: true }) }, '📊 Table'),
-					react.createElement('button', { key: 'quote', type: 'button', className: 'dsh-tb-tool', title: 'Blockquote', onMouseDown: (e) => e.preventDefault(), onClick: () => runCommand(c => c.toggleBlockquote()) }, '❝ Quote'),
-					react.createElement('button', { key: 'code', type: 'button', className: 'dsh-tb-tool', title: 'Code Block (Syntax Highlighted)', onMouseDown: (e) => e.preventDefault(), onClick: () => runCommand(c => c.toggleCodeBlock()) }, '</> Code'),
+					react.createElement('button', { key: 'quote', type: 'button', className: 'dsh-tb-tool', title: 'Blockquote (>)', onMouseDown: (e) => e.preventDefault(), onClick: () => runCommand(c => c.toggleBlockquote()) }, '❝ Quote'),
+					react.createElement('button', { key: 'code', type: 'button', className: 'dsh-tb-tool', title: 'Code Block (\`\`\`lang)', onMouseDown: (e) => e.preventDefault(), onClick: () => runCommand(c => c.toggleCodeBlock()) }, '</> Code'),
 					react.createElement('button', { key: 'yt', type: 'button', className: 'dsh-tb-tool', title: 'Embed YouTube Video', onMouseDown: (e) => e.preventDefault(), onClick: () => setEmbedModal({ type: 'youtube', url: '' }) }, '🎥 YouTube'),
 					react.createElement('button', { key: 'img', type: 'button', className: 'dsh-tb-tool', title: 'Insert Image URL', onMouseDown: (e) => e.preventDefault(), onClick: () => setEmbedModal({ type: 'image', url: '' }) }, '🖼️ Image'),
-					react.createElement('button', { key: 'hr', type: 'button', className: 'dsh-tb-tool', title: 'Divider Line', onMouseDown: (e) => e.preventDefault(), onClick: () => runCommand(c => c.setHorizontalRule()) }, '─ Line')
+					react.createElement('button', { key: 'hr', type: 'button', className: 'dsh-tb-tool', title: 'Divider Line (---)', onMouseDown: (e) => e.preventDefault(), onClick: () => runCommand(c => c.setHorizontalRule()) }, '─ Line')
 				]) : null,
 
 				// Contextual Interactive Table Action Bar (Appears when cursor is inside any table)
@@ -930,5 +938,5 @@ if (fs.existsSync(clientFile)) {
   }
 
   fs.writeFileSync(clientFile, content, 'utf8')
-  console.log('[✓] Successfully patched dsh-local-filetree with Document-Driven Live Slash Filtering!')
+  console.log('[✓] Successfully patched dsh-local-filetree with TipTap Typography and Markdown shortcuts!')
 }
