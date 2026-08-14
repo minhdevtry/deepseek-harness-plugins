@@ -64,7 +64,7 @@ if (fs.existsSync(serverFile)) {
 }
 
 // ==========================================
-// 2. REBUILD CLIENT (Safe getSnapshot & Root fetch fallback)
+// 2. REBUILD CLIENT (Robust File Tree rendering)
 // ==========================================
 if (fs.existsSync(clientFile)) {
   const fullClientJs = `window.__ModuleLoader__.load({
@@ -476,7 +476,7 @@ if (fs.existsSync(clientFile)) {
 
 		// ── panel body (tree view + editor) ──────────────────────────────────────
 		function FileTree({ root, onRestoreDetails }) {
-			const [activeRoot, setActiveRoot] = react.useState(root);
+			const [activeRoot, setActiveRoot] = react.useState(root || null);
 			const [cache, setCache] = react.useState({});
 			const [expanded, setExpanded] = react.useState({});
 			const [showHidden, setShowHidden] = react.useState(false);
@@ -485,7 +485,9 @@ if (fs.existsSync(clientFile)) {
 			const [fileContent, setFileContent] = react.useState('');
 
 			react.useEffect(() => {
-				if (!activeRoot) {
+				if (root) {
+					setActiveRoot(root);
+				} else {
 					fetch("/filetree/root")
 						.then((res) => res.json())
 						.then((data) => {
@@ -494,8 +496,6 @@ if (fs.existsSync(clientFile)) {
 							}
 						})
 						.catch(() => {});
-				} else {
-					setActiveRoot(root);
 				}
 			}, [root]);
 
@@ -520,11 +520,11 @@ if (fs.existsSync(clientFile)) {
 			};
 
 			const fetchDir = (dirPath) => {
-				setCache((c) => ({ ...c, [dirPath]: c[dirPath] === undefined ? "loading" : c[dirPath] }));
+				setCache((c) => ({ ...c, [dirPath]: "loading" }));
 				fetch("/filetree/list?path=" + encodeURIComponent(dirPath))
 					.then((res) => res.json())
 					.then((data) => {
-						if (data.ok) {
+						if (data.ok && Array.isArray(data.entries)) {
 							setCache((c) => ({ ...c, [dirPath]: data.entries }));
 						} else {
 							setCache((c) => ({ ...c, [dirPath]: "error" }));
@@ -535,7 +535,7 @@ if (fs.existsSync(clientFile)) {
 
 			react.useEffect(() => {
 				if (activeRoot) {
-					setExpanded((e) => (e[activeRoot] === undefined ? { ...e, [activeRoot]: true } : e));
+					setExpanded((e) => ({ ...e, [activeRoot]: true }));
 					fetchDir(activeRoot);
 				}
 			}, [activeRoot, nonce]);
@@ -693,5 +693,5 @@ if (fs.existsSync(clientFile)) {
 });
 `
   fs.writeFileSync(clientFile, fullClientJs, 'utf8')
-  console.log('[✓] Successfully built clean dsh-local-filetree client.js with safe getRoot + /filetree/root fallback!')
+  console.log('[✓] Successfully built clean dsh-local-filetree client.js with stateful root fetching!')
 }
