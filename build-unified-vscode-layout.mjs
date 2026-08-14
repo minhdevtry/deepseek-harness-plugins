@@ -348,7 +348,7 @@ const tiptapEditorComponentCode = `
 				const editor = new Editor({
 					element: containerRef.current,
 					extensions: [
-						StarterKit.configure({ heading: { levels: [1, 2, 3, 4, 5, 6] }, codeBlock: false }),
+						StarterKit.configure({ heading: { levels: [1, 2, 3, 4, 5, 6] }, codeBlock: false, link: false, underline: false }),
 						TaskList, TaskItem.configure({ nested: true }),
 						Table.configure({ resizable: true }), TableRow, TableCell, TableHeader,
 						Image, Youtube.configure({ inline: false, nocookie: true }),
@@ -919,6 +919,10 @@ clientSource = clientSource.replace('placeholder: "例如：\\n- 你叫小鲸，
 clientSource = clientSource.replace('saving ? "保存中…" : "保存"', 'saving ? "Saving..." : "Save"');
 clientSource = clientSource.replace('{ ok: true, text: "已保存 ✓ 新消息立即生效" }', '{ ok: true, text: "Saved ✓ Effective immediately" }');
 clientSource = clientSource.replace('text: (d && d.error) || "保存失败"', 'text: (d && d.error) || "Save failed"');
+clientSource = clientSource.replace('(d && d.error) || "读取失败"', '(d && d.error) || "Failed to read file"');
+clientSource = clientSource.replace('title: "未保存"', 'title: "Unsaved changes"');
+clientSource = clientSource.replace('? h("div", { className: "vk_personaDesc" }, "加载中…")', '? h("div", { className: "vk_personaDesc" }, "Loading...")');
+clientSource = clientSource.replace('name: "工具详情"', 'name: "Tool Trajectory"');
 
 fs.writeFileSync(path.join(clientDir, 'lib/client.js'), clientSource, 'utf8');
 console.log('[✓] Successfully generated and bundled dsh-client-vscode-layout with English UI & enhanced controls!');

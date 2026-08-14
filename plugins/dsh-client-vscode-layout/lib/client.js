@@ -63937,7 +63937,7 @@ const FILE_ICON_DIR_OPEN = "fti-FolderOpen";
 				const editor = new Editor({
 					element: containerRef.current,
 					extensions: [
-						StarterKit.configure({ heading: { levels: [1, 2, 3, 4, 5, 6] }, codeBlock: false }),
+						StarterKit.configure({ heading: { levels: [1, 2, 3, 4, 5, 6] }, codeBlock: false, link: false, underline: false }),
 						TaskList, TaskItem.configure({ nested: true }),
 						Table.configure({ resizable: true }), TableRow, TableCell, TableHeader,
 						Image, Youtube.configure({ inline: false, nocookie: true }),
@@ -64204,7 +64204,7 @@ function Viewer({ file, rev, onStartEdit, onSaveDirect, onUpdateDirect, isDirect
 				setState({ loading: true });
 				fetch("/vscode-files/read?path=" + encodeURIComponent(file.path))
 					.then((r) => r.json())
-					.then((d) => { if (!dead) setState(d && d.ok ? d : { error: (d && d.error) || "读取失败" }); })
+					.then((d) => { if (!dead) setState(d && d.ok ? d : { error: (d && d.error) || "Failed to read file" }); })
 					.catch((e) => { if (!dead) setState({ error: String(e) }); });
 				return () => { dead = true; };
 			}, [file.path, rev]);
@@ -64436,7 +64436,7 @@ function Viewer({ file, rev, onStartEdit, onSaveDirect, onUpdateDirect, isDirect
 					},
 						h(FileTypeIcon, { symbolId: fileIconId(t.name, "file", false) }),
 						h("span", { className: "vk_tabName" }, t.name),
-						isDirty ? h("span", { className: "vk_dirtyDot vk_tabDot", title: "未保存" }) : null,
+						isDirty ? h("span", { className: "vk_dirtyDot vk_tabDot", title: "Unsaved changes" }) : null,
 						h("button", {
 							className: "vk_tabClose",
 							title: "Close Tab",
@@ -64530,7 +64530,7 @@ function Viewer({ file, rev, onStartEdit, onSaveDirect, onUpdateDirect, isDirect
 			return h("div", { className: "vk_personaSection" },
 				h("div", { className: "vk_personaDesc" }, "Global Instructions (similar to CLAUDE.md): Injected into system prompt of all sessions. Takes effect immediately. Supports Markdown."),
 				content === null
-					? h("div", { className: "vk_personaDesc" }, "加载中…")
+					? h("div", { className: "vk_personaDesc" }, "Loading...")
 					: h("textarea", { className: "vk_personaArea", value: content, onChange: (e) => setContent(e.target.value), placeholder: "Example:\n- Be concise and precise\n- Follow coding guidelines\n- ..." }),
 				h("div", { className: "vk_personaFoot" },
 					msg !== null ? h("div", { className: "vk_personaMsg" + (msg.ok ? " vk_personaMsgOk" : " vk_personaMsgErr") }, msg.text) : null,
@@ -64802,7 +64802,7 @@ function Viewer({ file, rev, onStartEdit, onSaveDirect, onUpdateDirect, isDirect
 				// 分栏模式：轨迹在中心区开标签
 				setTabsState((prev) => {
 					const exists = prev.tabs.some((t) => t.path === TRAJECTORY_TAB_PATH);
-					const tabs = exists ? prev.tabs : [...prev.tabs, { path: TRAJECTORY_TAB_PATH, name: "工具详情" }];
+					const tabs = exists ? prev.tabs : [...prev.tabs, { path: TRAJECTORY_TAB_PATH, name: "Tool Trajectory" }];
 					return { ...prev, tabs, active: TRAJECTORY_TAB_PATH };
 				});
 			}, [detailsSeq, native, actions]);
