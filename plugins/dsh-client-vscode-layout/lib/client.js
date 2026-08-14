@@ -540,8 +540,8 @@ window.__ModuleLoader__.load({
 				if (creating === null) return;
 				const name = createName.trim();
 				if (name.length === 0) return;
-				const parent = typeof root === "string" ? root : "";
-				const endpoint = creating === "dir" ? "/vscode-files/mkdir" : "/vscode-files/mkfile";
+				const parent = creating.parentPath || (typeof root === "string" ? root : "");
+				const endpoint = creating.type === "dir" ? "/vscode-files/mkdir" : "/vscode-files/mkfile";
 				try {
 					const r = await fetch(endpoint, {
 						method: "POST",
@@ -554,7 +554,8 @@ window.__ModuleLoader__.load({
 						setCreateName("");
 						setCreateErr(null);
 						if (typeof root === "string") load(root);
-						if (creating === "file" && onOpenFile) onOpenFile({ path: d.path, name });
+						if (parent && parent !== root) load(parent);
+						if (creating.type === "file" && onOpenFile) onOpenFile({ path: d.path, name });
 					} else {
 						setCreateErr((d && d.error) || "Create failed");
 					}
@@ -688,7 +689,7 @@ window.__ModuleLoader__.load({
 				} }, "📂"),
 				h("button", { className: "vk_treeBtn" + (showHidden ? " vk_treeBtnActive" : ""), title: showHidden ? "Hide Hidden Files" : "Show Hidden Files (.git, node_modules, etc.)", onClick: () => setShowHidden((v) => !v) }, "👁"),
 				h("button", { className: "vk_treeBtn", title: "Enter Path Manually", onClick: () => { setPicking(true); setDraft(""); } }, "✏️"),
-				h("button", { className: "vk_treeBtn" + (creating !== null ? " vk_treeBtnActive" : ""), title: "New File / Folder", onClick: () => { setCreating(creating === null ? "file" : null); setCreateName(""); setCreateErr(null); } }, "＋"),
+				h("button", { className: "vk_treeBtn" + (creating !== null ? " vk_treeBtnActive" : ""), title: "New File / Folder", onClick: () => { setCreating(creating === null ? { type: "file", parentPath: typeof root === "string" ? root : "" } : null); setCreateName(""); setCreateErr(null); } }, "＋"),
 				h("button", { className: "vk_treeBtn" + (searchOn ? " vk_treeBtnActive" : ""), title: "Search Files", onClick: () => { setSearchOn(!searchOn); setSearchQ(""); } }, "🔍"),
 				custom ? h("button", { className: "vk_treeBtn", title: "Reset to Workspace Folder", onClick: onCloseFolder }, "×") : null
 			);
@@ -713,12 +714,12 @@ window.__ModuleLoader__.load({
 
 			const createForm = creating !== null ? h("div", { className: "vk_pickForm" },
 				h("div", { className: "vk_pickRow" },
-					h("button", { className: "vk_pickBtn" + (creating === "file" ? " vk_modeBtn" : ""), onClick: () => setCreating("file") }, "New File"),
-					h("button", { className: "vk_pickBtn" + (creating === "dir" ? " vk_modeBtn" : ""), onClick: () => setCreating("dir") }, "New Folder")
+					h("button", { className: "vk_pickBtn" + (creating.type === "file" ? " vk_modeBtn" : ""), onClick: () => setCreating({ ...creating, type: "file" }) }, "New File"),
+					h("button", { className: "vk_pickBtn" + (creating.type === "dir" ? " vk_modeBtn" : ""), onClick: () => setCreating({ ...creating, type: "dir" }) }, "New Folder")
 				),
 				h("input", {
 					className: "vk_pickInput",
-					placeholder: creating === "dir" ? "Folder name" : "File name",
+					placeholder: (creating.type === "dir" ? "Folder name" : "File name") + (creating.parentPath && creating.parentPath !== root ? " in " + (creating.parentPath.split(/[\\/]/).pop() || "") : ""),
 					value: createName,
 					autoFocus: true,
 					onChange: (e) => setCreateName(e.target.value),
@@ -798,8 +799,8 @@ window.__ModuleLoader__.load({
 				},
 					ctxMenu.item ? [
 						!ctxMenu.item.isDir ? menuItem("📄 Open File", () => onOpenFile({ path: ctxMenu.item.path, name: ctxMenu.item.name })) : null,
-						ctxMenu.item.isDir ? menuItem("📄 New File...", () => { setCreating("file"); setCreateName(""); setCreateErr(null); }) : null,
-						ctxMenu.item.isDir ? menuItem("📁 New Folder...", () => { setCreating("dir"); setCreateName(""); setCreateErr(null); }) : null,
+						ctxMenu.item.isDir ? menuItem("📄 New File...", () => { setCreating({ type: "file", parentPath: ctxMenu.item.path }); setCreateName(""); setCreateErr(null); }) : null,
+						ctxMenu.item.isDir ? menuItem("📁 New Folder...", () => { setCreating({ type: "dir", parentPath: ctxMenu.item.path }); setCreateName(""); setCreateErr(null); }) : null,
 						menuItem("✏️ Rename (F2)", () => { setRenaming({ path: ctxMenu.item.path, name: ctxMenu.item.name, oldName: ctxMenu.item.name }); setRenameErr(null); }),
 						menuItem("🗑️ Move to Trash (Delete)", () => doDelete(ctxMenu.item.path, ctxMenu.item.name), true),
 						menuItem("📋 Copy Path", () => { navigator.clipboard?.writeText(ctxMenu.item.path); }),
@@ -819,8 +820,8 @@ window.__ModuleLoader__.load({
 							}
 						}) : null
 					] : [
-						menuItem("📄 New File...", () => { setCreating("file"); setCreateName(""); setCreateErr(null); }),
-						menuItem("📁 New Folder...", () => { setCreating("dir"); setCreateName(""); setCreateErr(null); }),
+						menuItem("📄 New File...", () => { setCreating({ type: "file", parentPath: typeof root === "string" ? root : "" }); setCreateName(""); setCreateErr(null); }),
+						menuItem("📁 New Folder...", () => { setCreating({ type: "dir", parentPath: typeof root === "string" ? root : "" }); setCreateName(""); setCreateErr(null); }),
 						menuItem("🔄 Refresh Explorer", () => { if (root) load(root); })
 					]
 				) : null
@@ -63892,6 +63893,53 @@ const FILE_ICON_DIR_OPEN = "fti-FolderOpen";
 			.vk_search_match_item:hover { background: var(--dsw-alias-interactive-bg-hover, rgba(0,0,0,0.04)); color: #2563eb; }
 			.vk_search_match_line { color: #9ca3af; flex-shrink: 0; min-width: 22px; text-align: right; }
 			.vk_search_match_text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+
+			/* Quick Open Palette (Ctrl+P) */
+			.vk_quick_open_backdrop {
+				position: fixed; inset: 0; z-index: 99999;
+				background: rgba(0, 0, 0, 0.5); backdrop-filter: blur(4px);
+				display: flex; justify-content: center; align-items: flex-start;
+				padding-top: 64px; animation: vk-pop-in 0.15s ease-out;
+			}
+			.vk_quick_open_palette {
+				width: 580px; max-width: 90vw; max-height: 480px;
+				background: var(--dsw-alias-bg-elevated, #ffffff);
+				border: 1px solid var(--dsw-alias-border-l2, #e5e7eb);
+				box-shadow: 0 16px 40px rgba(0, 0, 0, 0.28), 0 0 0 1px rgba(0, 0, 0, 0.05);
+				border-radius: 10px; display: flex; flex-direction: column; overflow: hidden;
+			}
+			.vk_quick_open_input_wrap {
+				display: flex; align-items: center; padding: 10px 14px;
+				border-bottom: 1px solid var(--dsw-alias-border-l1, #e5e7eb);
+				gap: 10px; background: var(--dsw-alias-bg-base, #ffffff);
+			}
+			.vk_quick_open_icon { font-size: 14px; opacity: 0.7; }
+			.vk_quick_open_input {
+				flex: 1; background: transparent; border: none; outline: none;
+				font-size: 13.5px; color: var(--dsw-alias-label-primary, #111827); font-family: inherit;
+			}
+			.vk_quick_open_hint {
+				font-size: 11px; color: #6b7280; background: var(--dsw-alias-bg-subtle, #f3f4f6);
+				padding: 2px 6px; border-radius: 4px; border: 1px solid var(--dsw-alias-border-l1, #e5e7eb);
+			}
+			.vk_quick_open_list { flex: 1; overflow-y: auto; max-height: 380px; padding: 6px; }
+			.vk_quick_open_item {
+				display: flex; align-items: center; gap: 8px; padding: 7px 10px;
+				border-radius: 6px; cursor: pointer; transition: background 0.1s ease;
+				font-size: 13px; color: var(--dsw-alias-label-primary, #374151);
+			}
+			.vk_quick_open_item:hover, .vk_quick_open_item_active {
+				background: #2563eb; color: #ffffff;
+			}
+			.vk_quick_open_item:hover .vk_quick_open_rel, .vk_quick_open_item_active .vk_quick_open_rel {
+				color: #e0e7ff;
+			}
+			.vk_quick_open_name { font-weight: 500; }
+			.vk_quick_open_rel {
+				margin-left: auto; font-size: 11px; color: #9ca3af;
+				white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 260px;
+			}
+			.vk_quick_open_empty { padding: 24px; text-align: center; font-size: 13px; color: #6b7280; }
 		`;
 
 		if (typeof document !== "undefined" && !document.getElementById("vk-tiptap-styles")) {
@@ -63899,6 +63947,103 @@ const FILE_ICON_DIR_OPEN = "fti-FolderOpen";
 			s.id = "vk-tiptap-styles";
 			s.textContent = tiptapStyles;
 			document.head.appendChild(s);
+		}
+
+		// ── Quick Open File Modal (Ctrl+P) ──
+		function QuickOpenModal({ isOpen, onClose, root, onOpenFile }) {
+			const [query, setQuery] = react.useState("");
+			const [results, setResults] = react.useState([]);
+			const [selectedIndex, setSelectedIndex] = react.useState(0);
+			const [loading, setLoading] = react.useState(false);
+			const inputRef = react.useRef(null);
+
+			react.useEffect(() => {
+				if (isOpen) {
+					setQuery("");
+					setSelectedIndex(0);
+					setLoading(true);
+					const targetRoot = typeof root === "string" && root.length > 0 ? root : ".";
+					fetch("/vscode-files/search?path=" + encodeURIComponent(targetRoot) + "&type=filename&q=")
+						.then((r) => r.json())
+						.then((d) => {
+							setResults(d && d.ok && Array.isArray(d.results) ? d.results : []);
+							setLoading(false);
+						})
+						.catch(() => { setResults([]); setLoading(false); });
+					setTimeout(() => {
+						if (inputRef.current) {
+							inputRef.current.focus();
+							inputRef.current.select();
+						}
+					}, 60);
+				}
+			}, [isOpen, root]);
+
+			const filtered = react.useMemo(() => {
+				if (!query.trim()) return results.slice(0, 50);
+				const q = query.toLowerCase().trim();
+				return results.filter(r => (r.name && r.name.toLowerCase().includes(q)) || (r.rel && r.rel.toLowerCase().includes(q))).slice(0, 50);
+			}, [query, results]);
+
+			react.useEffect(() => {
+				setSelectedIndex(0);
+			}, [query]);
+
+			if (!isOpen) return null;
+
+			const selectItem = (item) => {
+				if (!item) return;
+				onClose();
+				if (onOpenFile) onOpenFile({ path: item.path, name: item.name });
+			};
+
+			return h("div", {
+				className: "vk_quick_open_backdrop",
+				onClick: (e) => { if (e.target === e.currentTarget) onClose(); }
+			},
+				h("div", { className: "vk_quick_open_palette", "data-vk-quickopen": true },
+					h("div", { className: "vk_quick_open_input_wrap" },
+						h("span", { className: "vk_quick_open_icon" }, "🔍"),
+						h("input", {
+							ref: inputRef,
+							className: "vk_quick_open_input",
+							placeholder: "Search files by name (e.g. app.js, README.md)...",
+							value: query,
+							onChange: (e) => setQuery(e.target.value),
+							onKeyDown: (e) => {
+								if (e.key === "ArrowDown") {
+									e.preventDefault();
+									setSelectedIndex((prev) => (prev + 1) % Math.max(1, filtered.length));
+								} else if (e.key === "ArrowUp") {
+									e.preventDefault();
+									setSelectedIndex((prev) => (prev - 1 + filtered.length) % Math.max(1, filtered.length));
+								} else if (e.key === "Enter") {
+									e.preventDefault();
+									if (filtered[selectedIndex]) selectItem(filtered[selectedIndex]);
+								} else if (e.key === "Escape") {
+									e.preventDefault();
+									onClose();
+								}
+							}
+						}),
+						h("span", { className: "vk_quick_open_hint" }, "Esc to close")
+					),
+					h("div", { className: "vk_quick_open_list" },
+						loading ? h("div", { className: "vk_quick_open_empty" }, "Loading workspace files...") :
+						filtered.length === 0 ? h("div", { className: "vk_quick_open_empty" }, "No matching files found") :
+						filtered.map((item, idx) => h("div", {
+							key: item.path || item.rel,
+							className: "vk_quick_open_item" + (idx === selectedIndex ? " vk_quick_open_item_active" : ""),
+							onClick: () => selectItem(item),
+							onMouseEnter: () => setSelectedIndex(idx)
+						},
+							h(FileTypeIcon, { symbolId: fileIconId(item.name, "file", false) }),
+							h("span", { className: "vk_quick_open_name" }, item.name),
+							h("span", { className: "vk_quick_open_rel" }, item.rel || item.path)
+						))
+					)
+				)
+			);
 		}
 
 		// ── Global Full-Text Workspace Search Panel (Ctrl+Shift+F) ──
@@ -64408,10 +64553,12 @@ const FILE_ICON_DIR_OPEN = "fti-FolderOpen";
 						className: 'vk_bubble_menu',
 						style: { top: bubbleMenu.top + 'px', left: bubbleMenu.left + 'px' }
 					}, [
-						react.createElement('button', { key: 'b', type: 'button', className: 'vk_bubble_btn', onMouseDown: (e) => e.preventDefault(), onClick: () => runCommand(c => c.toggleBold()) }, 'B'),
-						react.createElement('button', { key: 'i', type: 'button', className: 'vk_bubble_btn', onMouseDown: (e) => e.preventDefault(), onClick: () => runCommand(c => c.toggleItalic()) }, 'I'),
-						react.createElement('button', { key: 'u', type: 'button', className: 'vk_bubble_btn', onMouseDown: (e) => e.preventDefault(), onClick: () => runCommand(c => c.toggleUnderline()) }, 'U'),
-						react.createElement('button', { key: 's', type: 'button', className: 'vk_bubble_btn', onMouseDown: (e) => e.preventDefault(), onClick: () => runCommand(c => c.toggleStrike()) }, 'S'),
+						react.createElement('button', { key: 'b', type: 'button', className: 'vk_bubble_btn', title: 'Bold (Ctrl+B)', onMouseDown: (e) => e.preventDefault(), onClick: () => runCommand(c => c.toggleBold()) }, 'B'),
+						react.createElement('button', { key: 'i', type: 'button', className: 'vk_bubble_btn', title: 'Italic (Ctrl+I)', onMouseDown: (e) => e.preventDefault(), onClick: () => runCommand(c => c.toggleItalic()) }, 'I'),
+						react.createElement('button', { key: 'u', type: 'button', className: 'vk_bubble_btn', title: 'Underline (Ctrl+U)', onMouseDown: (e) => e.preventDefault(), onClick: () => runCommand(c => c.toggleUnderline()) }, 'U'),
+						react.createElement('button', { key: 's', type: 'button', className: 'vk_bubble_btn', title: 'Strikethrough', onMouseDown: (e) => e.preventDefault(), onClick: () => runCommand(c => c.toggleStrike()) }, 'S'),
+						react.createElement('button', { key: 'code', type: 'button', className: 'vk_bubble_btn', title: 'Inline Code', onMouseDown: (e) => e.preventDefault(), onClick: () => runCommand(c => c.toggleCode()) }, '</>'),
+						react.createElement('button', { key: 'hl', type: 'button', className: 'vk_bubble_btn', title: 'Highlight', onMouseDown: (e) => e.preventDefault(), onClick: () => runCommand(c => c.toggleHighlight()) }, '🎨'),
 						react.createElement('button', {
 							key: 'ask-ai',
 							type: 'button',
@@ -64917,7 +65064,7 @@ function Viewer({ file, rev, onStartEdit, onSaveDirect, onUpdateDirect, isDirect
 				ctxMenu !== null ? h("div", {
 					className: "vk_menu",
 					"data-vk-menu": true,
-					style: { left: Math.min(ctxMenu.x, window.innerWidth - 180) + "px", top: Math.min(ctxMenu.y, window.innerHeight - 200) + "px" }
+					style: { left: Math.min(ctxMenu.x, window.innerWidth - 180) + "px", top: Math.min(ctxMenu.y, window.innerHeight - 240) + "px" }
 				},
 					ctxMenu.path !== null ? menuItem("Close", () => closeTab(ctxMenu.path)) : null,
 					ctxMenu.path !== null ? menuItem("Close Others", () => closePaths(tabs.map((t) => t.path).filter((p) => p !== ctxMenu.path))) : null,
@@ -64929,7 +65076,8 @@ function Viewer({ file, rev, onStartEdit, onSaveDirect, onUpdateDirect, isDirect
 						const idx = tabs.findIndex((t) => t.path === ctxMenu.path);
 						if (idx !== -1 && idx < tabs.length - 1) closePaths(tabs.slice(idx + 1).map((t) => t.path));
 					}) : null,
-					menuItem("Close All", () => closePaths(tabs.map((t) => t.path)), true)
+					menuItem("Close All", () => closePaths(tabs.map((t) => t.path)), true),
+					ctxMenu.path !== null ? menuItem("📋 Copy Path", () => { navigator.clipboard?.writeText(ctxMenu.path); }) : null
 				) : null
 			);
 		}
@@ -65106,11 +65254,15 @@ function Viewer({ file, rev, onStartEdit, onSaveDirect, onUpdateDirect, isDirect
 			const narrow = viewport < SIDEBAR_AUTO_COLLAPSE;
 			react.useEffect(() => { actions.setNarrow(narrow); }, [actions, narrow]);
 			const sidebarCollapsed = narrow ? !panels.narrowExpanded : panels.sidebar === 0;
+			const [quickOpen, setQuickOpen] = react.useState(false);
 
-			// Global Keyboard Shortcuts: Ctrl+L (Chat / Selection Prompt) and Ctrl+Shift+F (Global Search)
+			// Global Keyboard Shortcuts: Ctrl+P (Quick Open), Ctrl+L (Chat / Prompt), Ctrl+Shift+F (Global Search)
 			react.useEffect(() => {
 				const onKeyDown = (e) => {
-					if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'f' || e.key === 'F')) {
+					if ((e.ctrlKey || e.metaKey) && (e.key === 'p' || e.key === 'P') && !e.shiftKey) {
+						e.preventDefault();
+						setQuickOpen((prev) => !prev);
+					} else if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'f' || e.key === 'F')) {
 						e.preventDefault();
 						setSidebarTab("search");
 						if (sidebarCollapsed) actions.toggleSidebar();
@@ -65276,6 +65428,7 @@ function Viewer({ file, rev, onStartEdit, onSaveDirect, onUpdateDirect, isDirect
 			const gridCols = native
 				? `${cols.sidebar}px 0px minmax(0, 1fr)`
 				: `${cols.sidebar}px minmax(0, 1fr) ${cols.right}px`;
+			const showOpenChatBtn = cols.right === 0 && panels.mode !== "native";
 			return h("div", {
 				ref: frameRef,
 				className: "vk_frame",
@@ -65284,6 +65437,12 @@ function Viewer({ file, rev, onStartEdit, onSaveDirect, onUpdateDirect, isDirect
 				"data-sidebar-collapsed": sidebarCollapsed || void 0,
 				"data-dragging": dragging || void 0,
 				children: [
+					h(QuickOpenModal, { isOpen: quickOpen, onClose: () => setQuickOpen(false), root: fileRoot, onOpenFile: openFile }),
+					showOpenChatBtn ? h("button", {
+						className: "vk_open_chat_float",
+						title: "Open AI Chat Panel (Ctrl+L)",
+						onClick: () => actions.setRight(440)
+					}, "💬 Open Chat (Ctrl+L)") : null,
 					left,
 					center,
 					right,

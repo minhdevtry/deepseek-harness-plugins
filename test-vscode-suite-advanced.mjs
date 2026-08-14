@@ -98,28 +98,38 @@ async function run() {
 			await page.waitForTimeout(1000);
 		}
 
-		// 4. Verify TipTap Notion Editor with note.md
-		console.log('[+] Step 4: Testing TipTap Notion WYSIWYG...');
-		const explorerTabBtn = page.locator('.vk_tabBtn').filter({ hasText: 'Explorer' }).first();
-		await explorerTabBtn.click();
-		await page.waitForTimeout(400);
+		// 4. Verify Quick Open Palette (Ctrl+P)
+		console.log('[+] Step 4: Testing Quick Open Palette (Ctrl+P)...');
+		await page.keyboard.press('Control+p');
+		await page.waitForTimeout(500);
 
-		const noteRow = page.locator('.vk_row').filter({ hasText: 'note.md' }).first();
-		if (await noteRow.isVisible()) {
-			await noteRow.click();
-			await page.waitForTimeout(1000);
+		const quickOpen = page.locator('.vk_quick_open_palette[data-vk-quickopen="true"]');
+		await quickOpen.waitFor({ state: 'visible', timeout: 3000 });
+		console.log('[✓] Quick Open palette opened via Ctrl+P!');
 
-			const ttProse = page.locator('.tiptap, .vk_tiptap_wrapper').first();
-			await ttProse.waitFor({ state: 'visible', timeout: 5000 });
+		const quickInput = page.locator('.vk_quick_open_input');
+		await quickInput.fill('note.md');
+		await page.waitForTimeout(500);
 
-			const footerStat = page.locator('.vk_stat_pill');
-			if (await footerStat.isVisible()) {
-				console.log('[+] TipTap Document stats:', await footerStat.innerText());
-			}
+		await page.screenshot({ path: 'test-step-4-quick-open.png' });
+		console.log('[✓] Step 4 passed! Screenshot saved: test-step-4-quick-open.png');
 
-			await page.screenshot({ path: 'test-step-4-tiptap-suite.png' });
-			console.log('[✓] Step 4 passed! Screenshot saved: test-step-4-tiptap-suite.png');
+		// Press Enter to open note.md from Quick Open
+		await page.keyboard.press('Enter');
+		await page.waitForTimeout(1000);
+
+		// 5. Verify TipTap Notion Editor with note.md
+		console.log('[+] Step 5: Testing TipTap Notion WYSIWYG...');
+		const ttProse = page.locator('.tiptap, .vk_tiptap_wrapper').first();
+		await ttProse.waitFor({ state: 'visible', timeout: 5000 });
+
+		const footerStat = page.locator('.vk_stat_pill');
+		if (await footerStat.isVisible()) {
+			console.log('[+] TipTap Document stats:', await footerStat.innerText());
 		}
+
+		await page.screenshot({ path: 'test-step-5-tiptap-suite.png' });
+		console.log('[✓] Step 5 passed! Screenshot saved: test-step-5-tiptap-suite.png');
 
 		console.log('[🎉] ALL ADVANCED VS CODE SUITE TESTS PASSED PERFECTLY!');
 	} catch (err) {

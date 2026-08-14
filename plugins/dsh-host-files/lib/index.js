@@ -6,26 +6,26 @@ import { createRequire } from "node:module";
 import { homedir } from "node:os";
 import { pathToFileURL } from "node:url";
 
-/** 插件名（loader 条目用）。 */
+/** Plugin name (for loader entry). */
 const name = "dsh-host-files";
-/** 依赖服务。 */
+/** Injected services. */
 const inject = ["webServer"];
-/** 单文件读取上限（超出则截断并标记）。 */
+/** Single file read size cap (truncated and flagged if exceeded). */
 const MAX_READ_BYTES = 2 * 1024 * 1024;
-/** 单文件写入上限。 */
+/** Single file write size cap. */
 const MAX_WRITE_BYTES = 10 * 1024 * 1024;
-/** 服务端高亮处理上限。 */
+/** Server-side syntax highlighting cap. */
 const MAX_HIGHLIGHT_BYTES = 1024 * 1024;
-/** 搜索递归深度/条目/结果上限。 */
+/** Search recursion depth / entry / results limits. */
 const SEARCH_DEPTH_LIMIT = 8;
 const SEARCH_ENTRY_LIMIT = 20000;
 const SEARCH_RESULT_LIMIT = 200;
-/** 默认折叠的目录名。 */
+/** Default collapsed directory names. */
 const COLLAPSED_DIRS = new Set([".git", "node_modules", "__pycache__", ".venv", "venv", "dist", ".next", ".dsh"]);
-/** 全局人设文件（~/.dsh/global-persona.md，注入所有会话的 systemPrompt）。 */
+/** Global Persona file (~/.dsh/global-persona.md, injected into systemPrompt of all sessions). */
 const PERSONA_FILE = join(homedir(), ".dsh", "global-persona.md");
 const MAX_PERSONA_BYTES = 128 * 1024;
-/** 全局人设的 prompt 段名与排序（紧随官方 persona order 0 之后）。 */
+/** Global persona prompt section name and ordering. */
 const PERSONA_SECTION = "user:global-persona";
 const PERSONA_ORDER = 1;
 
@@ -42,7 +42,7 @@ function isHiddenName(name) {
 	return name.startsWith(".") || COLLAPSED_DIRS.has(name);
 }
 
-/** 判断内容是否像二进制（NUL 字节比例过高）。 */
+/** Check if content looks binary (high ratio of NUL bytes). */
 function looksBinary(text) {
 	const n = text.length;
 	if (n === 0) return false;
@@ -51,7 +51,7 @@ function looksBinary(text) {
 	return nul / Math.min(n, 8192) > 0.01;
 }
 
-/** 读取 JSON 请求体（带大小上限）。 */
+/** Read JSON request body with size cap. */
 function readJsonBody(req, cap) {
 	return new Promise((resolve, reject) => {
 		const chunks = [];
@@ -76,7 +76,7 @@ function readJsonBody(req, cap) {
 	});
 }
 
-/** 跑 git status --porcelain，返回 相对路径 → 状态码 映射。 */
+/** Run git status --porcelain, returns Relative Path -> Status Code map. */
 function gitStatusOf(root) {
 	return new Promise((resolve) => {
 		execFile("git", ["-C", root, "status", "--porcelain=v1", "--untracked-files=normal"], {
@@ -105,7 +105,7 @@ function gitStatusOf(root) {
 	});
 }
 
-/** 递归搜索文件名（跳过隐藏目录，带深度/条目/结果上限）。 */
+/** Recursively search file names (skips hidden directories, with depth/entry caps). */
 async function searchDir(root, q) {
 	const needle = q.toLowerCase();
 	const out = [];
@@ -133,7 +133,7 @@ async function searchDir(root, q) {
 	return out;
 }
 
-/** 递归全文内容搜索（带行号、代码预览、区分大小写/正则）。 */
+/** Recursively search file content with line numbers, code preview, match case and regex options. */
 async function searchContent(root, q, caseSensitive = false, isRegex = false) {
 	const out = [];
 	const budget = { used: 0 };
@@ -199,7 +199,7 @@ async function searchContent(root, q, caseSensitive = false, isRegex = false) {
 	return out;
 }
 
-/** 送回收站删除（可恢复；目录递归）。 */
+/** Move to recycle bin / trash (restorable; recursive for directories). */
 function recycleBinDelete(target, isDir) {
 	return new Promise((resolvePromise, rejectPromise) => {
 		if (process.platform === "win32") {
@@ -223,18 +223,18 @@ function recycleBinDelete(target, isDir) {
 	});
 }
 
-/** 名称合法性：单段、非空、不含路径分隔符。 */
+/** Segment validity: single segment, non-empty, no path separators. */
 function validSegment(s) {
 	return typeof s === "string" && s.length > 0 && s.length <= 120 && !/[\\/]/.test(s) && s !== "." && s !== "..";
 }
 
-// ── 服务端 shiki 高亮（通用解析：先按插件自���依赖链，退回全局 dsh 安装）──
+// ── Server-side shiki highlighting (First check plugin dependencies, fallback to global dsh) ──
 let shikiPromise = null;
 function resolveShikiEntry() {
 	try {
 		return createRequire(import.meta.url).resolve("shiki");
 	} catch {}
-	// 退回：全局 npm 安装（Windows 默认 %APPDATA%\npm\node_modules）
+	// Fallback: Global npm install (Windows default %APPDATA%\npm\node_modules)
 	const globalRoot = process.env.APPDATA ? join(process.env.APPDATA, "npm", "node_modules") : null;
 	if (globalRoot) {
 		const dshBin = join(globalRoot, "@deepseek-ai", "dsh", "lib", "bin.js");
@@ -244,7 +244,7 @@ function resolveShikiEntry() {
 			} catch {}
 		}
 	}
-	throw new Error("无法定位 shiki：请确认全局安装了 @deepseek-ai/dsh");
+	throw new Error("Unable to locate shiki: please ensure @deepseek-ai/dsh is installed globally");
 }
 function loadShiki() {
 	if (shikiPromise === null) {
@@ -268,22 +268,22 @@ function shikiLangOf(path) {
 }
 
 /**
- * 浏览器端文件树/查看器的宿主接口。
- * GET  /vscode-files/list?path=<绝对路径> → { ok, path, dirs, files }
- * GET  /vscode-files/read?path=<绝对路径> → { ok, kind, content, size }
- * GET  /vscode-files/git?path=<仓库根>  → { ok, statuses } 或 { ok:false, notRepo:true }
- * GET  /vscode-files/search?path=<根>&q=<关键词> → { ok, results: [{name, path, rel}] }
- * GET  /vscode-files/highlight?path=<绝对路径>&theme=<dark|light> → { ok, html }（服务端 shiki，默认 github-dark）
- * POST /vscode-files/write?path=<绝对路径> body { path, content } → { ok, size }
- * POST /vscode-files/mkdir  body { path: 父目录, name } → { ok, path }
- * POST /vscode-files/mkfile body { path: 父目录, name } → { ok, path }
+ * Host interface for browser file tree / viewer.
+ * GET  /vscode-files/list?path=<absPath> → { ok, path, dirs, files }
+ * GET  /vscode-files/read?path=<absPath> → { ok, kind, content, size }
+ * GET  /vscode-files/git?path=<repoRoot>  → { ok, statuses } or { ok:false, notRepo:true }
+ * GET  /vscode-files/search?path=<root>&q=<keyword> → { ok, results: [{name, path, rel}] }
+ * GET  /vscode-files/highlight?path=<absPath>&theme=<dark|light> → { ok, html } (shiki syntax highlight)
+ * POST /vscode-files/write?path=<absPath> body { path, content } → { ok, size }
+ * POST /vscode-files/mkdir  body { path: parentDir, name } → { ok, path }
+ * POST /vscode-files/mkfile body { path: parentDir, name } → { ok, path }
  * POST /vscode-files/rename body { path, newName } → { ok, path }
- * POST /vscode-files/delete body { path } → { ok }（送回收站，可恢复）
- * GET  /vscode-files/persona → { ok, content }（全局人设，~/.dsh/global-persona.md）
- * POST /vscode-files/persona body { content } → { ok }（保存全局人设）
+ * POST /vscode-files/delete body { path } → { ok } (move to trash)
+ * GET  /vscode-files/persona → { ok, content } (global persona ~/.dsh/global-persona.md)
+ * POST /vscode-files/persona body { content } → { ok } (save global persona)
  */
 function apply(ctx) {
-	// 全局人设：注入所有会话的 systemPrompt（text 为函数，每次组装时读文件，改后即时生效）
+	// Global persona: injected into systemPrompt of all sessions
 	ctx.inject(["systemPrompt"], (promptCtx) => {
 		promptCtx.systemPrompt.section({
 			name: PERSONA_SECTION,
@@ -366,15 +366,15 @@ function apply(ctx) {
 					return sendJson(res, 200, await gitStatusOf(target));
 				}
 				if (url.pathname === "/vscode-files/search") {
-					const q = url.searchParams.get("q");
+					const q = url.searchParams.get("q") ?? "";
 					const type = url.searchParams.get("type") || "filename";
 					const caseSensitive = url.searchParams.get("caseSensitive") === "true";
 					const isRegex = url.searchParams.get("isRegex") === "true";
-					if (typeof q !== "string" || q.trim().length === 0) return sendJson(res, 400, { ok: false, error: "missing q" });
 					if (type === "content") {
+						if (typeof q !== "string" || q.trim().length === 0) return sendJson(res, 400, { ok: false, error: "missing q" });
 						return sendJson(res, 200, { ok: true, results: await searchContent(target, q.trim(), caseSensitive, isRegex) });
 					}
-					return sendJson(res, 200, { ok: true, results: await searchDir(target, q.trim()) });
+					return sendJson(res, 200, { ok: true, results: await searchDir(target, typeof q === "string" ? q.trim() : "") });
 				}
 				if (url.pathname === "/vscode-files/highlight") {
 					const info = await stat(target);
@@ -419,7 +419,7 @@ function apply(ctx) {
 						try {
 							await mkdir(full);
 						} catch (error) {
-							return sendJson(res, 409, { ok: false, error: "已存在或无法创建：" + (error?.code ?? "unknown") });
+							return sendJson(res, 409, { ok: false, error: "Already exists or cannot create directory: " + (error?.code ?? "unknown") });
 						}
 						return sendJson(res, 200, { ok: true, path: full });
 					}
@@ -430,7 +430,7 @@ function apply(ctx) {
 						try {
 							await writeFile(full, "", { flag: "wx" });
 						} catch (error) {
-							return sendJson(res, 409, { ok: false, error: "已存在或无法创建：" + (error?.code ?? "unknown") });
+							return sendJson(res, 409, { ok: false, error: "Already exists or cannot create file: " + (error?.code ?? "unknown") });
 						}
 						return sendJson(res, 200, { ok: true, path: full });
 					}
