@@ -157,6 +157,9 @@ async function run() {
 
 		// 6. Text Selection + Ctrl+L AI Chat Prompt
 		console.log('[+] Step 7: Testing Text Selection + Ctrl+L to send snippet to AI Chat...');
+		await page.locator('.tiptap, .vk_tiptap_canvas').first().click();
+		await page.waitForTimeout(300);
+
 		await page.evaluate(() => {
 			const p = document.querySelector('.tiptap p');
 			if (p) {
@@ -167,17 +170,18 @@ async function run() {
 				sel.addRange(range);
 			}
 		});
-		await page.waitForTimeout(400);
+		await page.waitForTimeout(300);
 
 		await page.keyboard.press('Control+l');
-		await page.waitForTimeout(800);
+		await page.waitForTimeout(1000);
 
-		const chatInput = page.locator('.vk_colRight textarea, .vk_colRight [contenteditable="true"], textarea, [contenteditable="true"]').first();
-		await chatInput.waitFor({ state: 'visible', timeout: 3000 });
-		const textValue = (await chatInput.inputValue().catch(() => '')) || (await chatInput.innerText().catch(() => ''));
+		const textValue = await page.evaluate(() => {
+			const chatInput = document.querySelector('.vk_colRight textarea, textarea') || document.querySelector('.vk_colRight [contenteditable="true"], [contenteditable="true"]');
+			return chatInput ? (chatInput.value || chatInput.innerText || '') : '';
+		});
 		console.log('[+] Chat prompt received:', textValue.slice(0, 80) + '...');
 		if (!textValue.includes('Please analyze and explain')) {
-			throw new Error('Selection prompt was not injected into chat input');
+			throw new Error('Selection prompt was not injected into chat input: ' + textValue);
 		}
 		console.log('[✓] Step 7 passed: Selection + Ctrl+L AI prompt verified!');
 
@@ -306,15 +310,16 @@ async function run() {
 
 		// 12. Test @ Mention in AI Chat
 		console.log('[+] Step 14: Testing @ Mention File Autocomplete in Chat...');
-		if (await chatInput.isVisible()) {
-			await chatInput.click();
-			await chatInput.fill('@not');
+		const chatInputEl = page.locator('.vk_colRight textarea, textarea').first();
+		if (await chatInputEl.isVisible()) {
+			await chatInputEl.click();
+			await chatInputEl.fill('@not');
 			await page.waitForTimeout(600);
 			const atFileDropdown = page.locator('.vk_at_file_dropdown[data-vk-at-file="true"]');
 			if (await atFileDropdown.isVisible()) {
 				console.log('[+] @ Mention File Dropdown appeared with suggestions!');
 			}
-			await chatInput.fill('');
+			await chatInputEl.fill('');
 		}
 		console.log('[✓] Step 14 passed: @ Mention in Chat verified!');
 
@@ -334,15 +339,15 @@ async function run() {
 
 		// 14. Test Chat Slash Commands (/)
 		console.log('[+] Step 16: Testing Chat Slash Commands (/)...');
-		if (await chatInput.isVisible()) {
-			await chatInput.click();
-			await chatInput.fill('/pl');
+		if (await chatInputEl.isVisible()) {
+			await chatInputEl.click();
+			await chatInputEl.fill('/pl');
 			await page.waitForTimeout(600);
 			const slashDropdown = page.locator('.vk_chat_slash_dropdown[data-vk-slash-commands="true"]');
 			if (await slashDropdown.isVisible()) {
 				console.log('[+] Chat Slash Command Dropdown appeared with suggestions!');
 			}
-			await chatInput.fill('');
+			await chatInputEl.fill('');
 		}
 		console.log('[✓] Step 16 passed: Chat Slash Commands verified!');
 

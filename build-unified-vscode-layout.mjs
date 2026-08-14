@@ -100,42 +100,139 @@ const customComponentsCode = `
 			}
 			.vk_tiptap_container { width: 100%; max-width: 860px; min-height: 100%; }
 
-			.vk_tiptap_prose {
-				outline: none; font-size: 15.5px; line-height: 1.8; min-height: 480px;
-				color: var(--dsw-alias-label-primary, #111827); width: 100%;
+			.tiptap.ProseMirror, .vk_tiptap_container .ProseMirror, .vk_tiptap_prose {
+				outline: none; font-size: 15.5px; line-height: 1.75; min-height: 480px;
+				color: var(--dsw-alias-label-primary, #1e293b); width: 100%;
+				font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 			}
-			.vk_tiptap_prose h1, .vk_tiptap_prose h2, .vk_tiptap_prose h3 {
-				color: var(--dsw-alias-label-primary, #111827);
+			.tiptap.ProseMirror h1, .tiptap.ProseMirror h2, .tiptap.ProseMirror h3,
+			.vk_tiptap_container .ProseMirror h1, .vk_tiptap_container .ProseMirror h2, .vk_tiptap_container .ProseMirror h3 {
+				color: #0f172a; font-weight: 700; letter-spacing: -0.02em;
 			}
-			.vk_tiptap_prose h1 { font-size: 2.1em; font-weight: 800; margin: 28px 0 12px; line-height: 1.25; }
-			.vk_tiptap_prose h2 { font-size: 1.6em; font-weight: 700; margin: 22px 0 10px; line-height: 1.3; }
-			.vk_tiptap_prose h3 { font-size: 1.3em; font-weight: 600; margin: 18px 0 8px; line-height: 1.4; }
-			.vk_tiptap_prose p { margin: 8px 0; }
+			.tiptap.ProseMirror h1, .vk_tiptap_container .ProseMirror h1 { font-size: 2.1em; font-weight: 800; margin: 28px 0 12px; line-height: 1.25; border-bottom: 1px solid rgba(0,0,0,0.06); padding-bottom: 8px; }
+			.tiptap.ProseMirror h2, .vk_tiptap_container .ProseMirror h2 { font-size: 1.55em; font-weight: 700; margin: 24px 0 10px; line-height: 1.3; }
+			.tiptap.ProseMirror h3, .vk_tiptap_container .ProseMirror h3 { font-size: 1.25em; font-weight: 600; margin: 18px 0 6px; line-height: 1.4; }
+			.tiptap.ProseMirror p, .vk_tiptap_container .ProseMirror p { margin: 10px 0; }
+			.tiptap.ProseMirror hr, .vk_tiptap_container .ProseMirror hr { border: none; border-top: 1px solid #e2e8f0; margin: 24px 0; }
 
-			.vk_callout_box {
-				background: rgba(59,130,246,0.08); border: 1.5px solid rgba(59,130,246,0.3);
-				border-radius: 8px; padding: 14px 18px; margin: 16px 0; display: flex; gap: 12px;
-				color: var(--dsw-alias-label-primary, #0369a1);
+			.tiptap.ProseMirror blockquote, .vk_tiptap_container .ProseMirror blockquote {
+				border-left: 4px solid #3b82f6 !important;
+				background: rgba(59, 130, 246, 0.05) !important;
+				margin: 16px 0 !important;
+				padding: 12px 18px !important;
+				border-radius: 0 8px 8px 0 !important;
+				color: #334155 !important;
+				font-style: normal !important;
 			}
-			.vk_callout_icon { font-size: 20px; line-height: 1.3; flex-shrink: 0; }
-			.vk_callout_body { flex: 1; font-size: 15px; }
+			.tiptap.ProseMirror blockquote p, .vk_tiptap_container .ProseMirror blockquote p { margin: 4px 0 !important; }
 
-			.vk_tiptap_prose pre { background: #0f172a; color: #f8fafc; padding: 18px 20px; border-radius: 10px; font-family: 'Fira Code', Consolas, Monaco, monospace; font-size: 13.5px; line-height: 1.65; margin: 16px 0; overflow-x: auto; }
-			.vk_tiptap_prose pre code { background: transparent; padding: 0; color: inherit; font-size: inherit; }
-			.vk_tiptap_prose code { background: rgba(59,130,246,0.08); color: #2563eb; padding: 2px 6px; border-radius: 4px; font-family: monospace; font-size: 13px; }
-			.vk_tiptap_prose ul, .vk_tiptap_prose ol { padding-left: 28px; margin: 10px 0; }
-			.vk_tiptap_prose li { margin: 5px 0; }
-			.vk_tiptap_prose ul[data-type="taskList"] { list-style: none; padding: 0; }
-			.vk_tiptap_prose ul[data-type="taskList"] li { display: flex; align-items: center; gap: 10px; margin: 6px 0; }
-			.vk_tiptap_prose ul[data-type="taskList"] li > label { display: flex; align-items: center; user-select: none; }
-			.vk_tiptap_prose ul[data-type="taskList"] li > label input[type="checkbox"] { width: 17px; height: 17px; cursor: pointer; accent-color: #3b82f6; }
-			.vk_tiptap_prose ul[data-type="taskList"] li[data-checked="true"] > div { text-decoration: line-through; opacity: 0.55; }
-			.vk_tiptap_prose table { border-collapse: collapse; width: 100%; margin: 18px 0; overflow: hidden; border-radius: 8px; border: 1px solid #cbd5e1; }
-			.vk_tiptap_prose th, .vk_tiptap_prose td { border: 1px solid #cbd5e1; padding: 10px 14px; text-align: left; vertical-align: top; min-width: 80px; }
-			.vk_tiptap_prose th { background: #f8fafc; font-weight: 700; color: #1e293b; }
-			.vk_tiptap_prose iframe { width: 100%; aspect-ratio: 16/9; border-radius: 12px; margin: 18px 0; border: none; }
-			.vk_tiptap_prose img { max-width: 100%; border-radius: 8px; margin: 16px 0; box-shadow: 0 4px 12px rgba(0,0,0,0.06); }
-			.vk_tiptap_prose mark { background: #fef08a; padding: 2px 4px; border-radius: 3px; }
+			/* Task Lists in Notion Style */
+			.tiptap.ProseMirror ul[data-type="taskList"], .vk_tiptap_container .ProseMirror ul[data-type="taskList"] {
+				list-style: none !important;
+				padding-left: 0 !important;
+				margin: 12px 0 !important;
+			}
+			.tiptap.ProseMirror ul[data-type="taskList"] li, .vk_tiptap_container .ProseMirror ul[data-type="taskList"] li {
+				display: flex !important;
+				align-items: flex-start !important;
+				gap: 10px !important;
+				margin: 6px 0 !important;
+				list-style: none !important;
+			}
+			.tiptap.ProseMirror ul[data-type="taskList"] li::before,
+			.tiptap.ProseMirror ul[data-type="taskList"] li::marker,
+			.vk_tiptap_container .ProseMirror ul[data-type="taskList"] li::before,
+			.vk_tiptap_container .ProseMirror ul[data-type="taskList"] li::marker {
+				display: none !important;
+				content: "" !important;
+			}
+			.tiptap.ProseMirror ul[data-type="taskList"] li > label, .vk_tiptap_container .ProseMirror ul[data-type="taskList"] li > label {
+				margin-top: 3px !important;
+				flex-shrink: 0 !important;
+				user-select: none !important;
+				cursor: pointer !important;
+				display: inline-flex !important;
+				align-items: center !important;
+			}
+			.tiptap.ProseMirror ul[data-type="taskList"] li > label input[type="checkbox"], .vk_tiptap_container .ProseMirror ul[data-type="taskList"] li > label input[type="checkbox"] {
+				width: 16px !important;
+				height: 16px !important;
+				border-radius: 4px !important;
+				cursor: pointer !important;
+				accent-color: #2563eb !important;
+				margin: 0 !important;
+			}
+			.tiptap.ProseMirror ul[data-type="taskList"] li > div, .vk_tiptap_container .ProseMirror ul[data-type="taskList"] li > div {
+				flex: 1 1 auto !important;
+				min-width: 0 !important;
+			}
+			.tiptap.ProseMirror ul[data-type="taskList"] li > div > p, .vk_tiptap_container .ProseMirror ul[data-type="taskList"] li > div > p {
+				margin: 0 !important;
+				line-height: 1.6 !important;
+			}
+			.tiptap.ProseMirror ul[data-type="taskList"] li[data-checked="true"] > div, .vk_tiptap_container .ProseMirror ul[data-type="taskList"] li[data-checked="true"] > div {
+				text-decoration: line-through !important;
+				opacity: 0.55 !important;
+				color: #64748b !important;
+			}
+
+			/* Tables */
+			.tiptap.ProseMirror table, .vk_tiptap_container .ProseMirror table {
+				border-collapse: separate !important;
+				border-spacing: 0 !important;
+				width: 100% !important;
+				margin: 20px 0 !important;
+				border-radius: 8px !important;
+				border: 1px solid #e2e8f0 !important;
+				box-shadow: 0 2px 8px rgba(0,0,0,0.03) !important;
+				overflow: hidden !important;
+			}
+			.tiptap.ProseMirror th, .tiptap.ProseMirror td,
+			.vk_tiptap_container .ProseMirror th, .vk_tiptap_container .ProseMirror td {
+				border-right: 1px solid #e2e8f0 !important;
+				border-bottom: 1px solid #e2e8f0 !important;
+				padding: 10px 14px !important;
+				font-size: 13.5px !important;
+				text-align: left !important;
+				line-height: 1.5 !important;
+			}
+			.tiptap.ProseMirror th, .vk_tiptap_container .ProseMirror th {
+				background: #f8fafc !important;
+				font-weight: 700 !important;
+				color: #1e293b !important;
+				border-bottom: 2px solid #cbd5e1 !important;
+			}
+			.tiptap.ProseMirror tr:last-child td, .vk_tiptap_container .ProseMirror tr:last-child td { border-bottom: none !important; }
+			.tiptap.ProseMirror tr td:last-child, .tiptap.ProseMirror tr th:last-child,
+			.vk_tiptap_container .ProseMirror tr td:last-child, .vk_tiptap_container .ProseMirror tr th:last-child { border-right: none !important; }
+			.tiptap.ProseMirror tr:hover td, .vk_tiptap_container .ProseMirror tr:hover td { background: rgba(241, 245, 249, 0.6) !important; }
+
+			/* Code Blocks & Inline Code */
+			.tiptap.ProseMirror pre, .vk_tiptap_container .ProseMirror pre {
+				background: #0f172a !important; color: #f8fafc !important;
+				padding: 16px 20px !important; border-radius: 10px !important;
+				font-family: 'Fira Code', 'Cascadia Code', Consolas, Monaco, monospace !important;
+				font-size: 13px !important; line-height: 1.7 !important; margin: 16px 0 !important;
+				box-shadow: 0 4px 16px rgba(15, 23, 42, 0.12) !important;
+				border: 1px solid #1e293b !important; overflow-x: auto !important;
+			}
+			.tiptap.ProseMirror pre code, .vk_tiptap_container .ProseMirror pre code { background: transparent !important; padding: 0 !important; color: inherit !important; font-size: inherit !important; }
+			.tiptap.ProseMirror code:not(pre code), .vk_tiptap_container .ProseMirror code:not(pre code) {
+				background: rgba(59, 130, 246, 0.08) !important; color: #2563eb !important;
+				padding: 2px 6px !important; border-radius: 5px !important;
+				font-family: 'Fira Code', Consolas, Monaco, monospace !important;
+				font-size: 0.88em !important; font-weight: 500 !important;
+				border: 1px solid rgba(59, 130, 246, 0.15) !important;
+			}
+			.tiptap.ProseMirror mark, .vk_tiptap_container .ProseMirror mark {
+				background: #fef08a !important; color: #854d0e !important;
+				padding: 2px 5px !important; border-radius: 4px !important;
+			}
+			.tiptap.ProseMirror ul:not([data-type="taskList"]), .tiptap.ProseMirror ol,
+			.vk_tiptap_container .ProseMirror ul:not([data-type="taskList"]), .vk_tiptap_container .ProseMirror ol { padding-left: 28px; margin: 10px 0; }
+			.tiptap.ProseMirror li:not([data-type="taskItem"]), .vk_tiptap_container .ProseMirror li:not([data-type="taskItem"]) { margin: 5px 0; }
+			.tiptap.ProseMirror iframe, .vk_tiptap_container .ProseMirror iframe { width: 100%; aspect-ratio: 16/9; border-radius: 12px; margin: 18px 0; border: none; }
+			.tiptap.ProseMirror img, .vk_tiptap_container .ProseMirror img { max-width: 100%; border-radius: 8px; margin: 16px 0; box-shadow: 0 4px 12px rgba(0,0,0,0.06); }
 
 			.vk_slash_menu {
 				position: absolute; z-index: 100; background: var(--dsw-alias-bg-base, #ffffff);
@@ -1567,14 +1664,23 @@ const customComponentsCode = `
 
 			const sendSelectionToAI = (text) => {
 				const prompt = 'Please analyze and explain the following snippet from ' + file.name + ':\\n\\n\`\`\`\\n' + text + '\\n\`\`\`';
-				const chatInput = document.querySelector('textarea, [contenteditable="true"]');
+				const chatInput = document.querySelector('.vk_colRight textarea, textarea') || document.querySelector('.vk_colRight [contenteditable="true"], [contenteditable="true"]');
 				if (chatInput) {
-					if (chatInput.tagName === 'TEXTAREA') {
-						chatInput.value = prompt;
-						chatInput.dispatchEvent(new Event('input', { bubbles: true }));
+					if (chatInput.tagName === 'TEXTAREA' || chatInput.tagName === 'INPUT') {
+						try {
+							const proto = chatInput.tagName === 'INPUT' ? window.HTMLInputElement.prototype : window.HTMLTextAreaElement.prototype;
+							const setter = Object.getOwnPropertyDescriptor(proto, 'value')?.set;
+							if (setter) setter.call(chatInput, prompt);
+							else chatInput.value = prompt;
+						} catch {
+							chatInput.value = prompt;
+						}
 					} else {
 						chatInput.innerText = prompt;
+						chatInput.textContent = prompt;
 					}
+					chatInput.dispatchEvent(new Event('input', { bubbles: true }));
+					chatInput.dispatchEvent(new Event('change', { bubbles: true }));
 					chatInput.focus();
 				}
 			};
@@ -3014,20 +3120,39 @@ clientSource = clientSource.replace(
 					const prompt = promptMap[type] || ('Please assist me with ' + activeFile);
 					if (panels.right === 0) actions.setRight(440);
 					if (panels.rightTab !== "conversation") actions.setRightTab("conversation");
-					setTimeout(() => {
-						const chatInput = document.querySelector('.vk_colRight textarea, .vk_colRight [contenteditable="true"], textarea, [contenteditable="true"]');
-						if (chatInput) {
-							if (chatInput.tagName === 'TEXTAREA' || chatInput.tagName === 'INPUT') {
-								chatInput.value = prompt;
-								chatInput.dispatchEvent(new Event('input', { bubbles: true }));
-							} else {
-								chatInput.innerText = prompt;
-								chatInput.dispatchEvent(new Event('input', { bubbles: true }));
-							}
-							chatInput.focus();
-						}
-					}, 120);
+					setTimeout(() => setChatInputValue(prompt), 120);
 				}
+			};
+
+			const setChatInputValue = (val) => {
+				let attempts = 0;
+				const trySet = () => {
+					const chatInput = document.querySelector('.vk_colRight textarea, textarea') || document.querySelector('.vk_colRight [contenteditable="true"], [contenteditable="true"]');
+					if (chatInput) {
+						if (chatInput.tagName === 'TEXTAREA' || chatInput.tagName === 'INPUT') {
+							try {
+								const proto = chatInput.tagName === 'INPUT' ? window.HTMLInputElement.prototype : window.HTMLTextAreaElement.prototype;
+								const setter = Object.getOwnPropertyDescriptor(proto, 'value')?.set;
+								if (setter) setter.call(chatInput, val);
+								else chatInput.value = val;
+							} catch (err) {
+								chatInput.value = val;
+							}
+						} else {
+							chatInput.innerText = val;
+							chatInput.textContent = val;
+						}
+						chatInput.dispatchEvent(new Event('input', { bubbles: true }));
+						chatInput.dispatchEvent(new Event('change', { bubbles: true }));
+						chatInput.focus();
+						return;
+					}
+					if (attempts < 6) {
+						attempts++;
+						setTimeout(trySet, 80);
+					}
+				};
+				trySet();
 			};
 
 			// Global Keyboard Shortcuts: Ctrl+P (Quick Open), Ctrl+Shift+P / F1 (Command Palette), Ctrl+L (Chat / Prompt), Ctrl+Shift+F (Global Search)
@@ -3050,36 +3175,20 @@ clientSource = clientSource.replace(
 					} else if ((e.ctrlKey || e.metaKey) && (e.key === 'l' || e.key === 'L')) {
 						e.preventDefault();
 						const sel = window.getSelection();
-						const selectedText = sel ? sel.toString().trim() : "";
+						let selectedText = sel ? sel.toString().trim() : "";
+						if (!selectedText) {
+							const pEl = document.querySelector('.tiptap.ProseMirror p, .vk_tiptap_container .ProseMirror p, .tiptap p');
+							if (pEl) selectedText = pEl.textContent.trim();
+						}
+						const activeFile = tabsState && tabsState.active ? tabsState.active.split(/[\\\\/]/).pop() : "snippet";
+						if (panels.right === 0) actions.setRight(440);
+						if (panels.rightTab !== "conversation") actions.setRightTab("conversation");
 						if (selectedText.length > 0) {
-							if (panels.right === 0) actions.setRight(440);
-							if (panels.rightTab !== "conversation") actions.setRightTab("conversation");
-							const activeFile = tabsState && tabsState.active ? tabsState.active.split(/[\\\\/]/).pop() : "snippet";
 							const prompt = 'Please analyze and explain the following snippet from ' + activeFile + ':\\n\\n\`\`\`\\n' + selectedText + '\\n\`\`\`\\n';
-							setTimeout(() => {
-								const chatInput = document.querySelector('.vk_colRight textarea, .vk_colRight [contenteditable="true"], textarea, [contenteditable="true"]');
-								if (chatInput) {
-									if (chatInput.tagName === 'TEXTAREA' || chatInput.tagName === 'INPUT') {
-										chatInput.value = prompt;
-										chatInput.dispatchEvent(new Event('input', { bubbles: true }));
-										const len = chatInput.value.length;
-										if (typeof chatInput.setSelectionRange === 'function') chatInput.setSelectionRange(len, len);
-									} else {
-										chatInput.innerText = prompt;
-										chatInput.dispatchEvent(new Event('input', { bubbles: true }));
-									}
-									chatInput.focus();
-								}
-							}, 120);
+							setChatInputValue(prompt);
 						} else {
-							const curRight = panels.right;
-							actions.setRight(curRight === 0 ? 440 : 0);
-							if (curRight === 0) {
-								setTimeout(() => {
-									const chatInput = document.querySelector('.vk_colRight textarea, .vk_colRight [contenteditable="true"], textarea, [contenteditable="true"]');
-									chatInput?.focus();
-								}, 120);
-							}
+							const prompt = 'Please analyze and explain ' + activeFile + ' in detail.';
+							setChatInputValue(prompt);
 						}
 					}
 				};
@@ -3130,30 +3239,13 @@ clientSource = clientSource.replace(
 				const lastAt = val.lastIndexOf("@");
 				if (lastAt !== -1) {
 					const newVal = val.slice(0, lastAt) + "@" + fileObj.path + " ";
-					if (chatInput.tagName === 'TEXTAREA' || chatInput.tagName === 'INPUT') {
-						chatInput.value = newVal;
-						chatInput.dispatchEvent(new Event('input', { bubbles: true }));
-					} else {
-						chatInput.innerText = newVal;
-						chatInput.dispatchEvent(new Event('input', { bubbles: true }));
-					}
+					setChatInputValue(newVal);
 				}
-				chatInput.focus();
 			};
 
 			const handleSelectSlashCmd = (cmd) => {
 				setSlashCmdOpen(false);
-				const chatInput = document.querySelector('.vk_colRight textarea, .vk_colRight [contenteditable="true"], textarea, [contenteditable="true"]');
-				if (!chatInput) return;
-				const newVal = cmd.prefix;
-				if (chatInput.tagName === 'TEXTAREA' || chatInput.tagName === 'INPUT') {
-					chatInput.value = newVal;
-					chatInput.dispatchEvent(new Event('input', { bubbles: true }));
-				} else {
-					chatInput.innerText = newVal;
-					chatInput.dispatchEvent(new Event('input', { bubbles: true }));
-				}
-				chatInput.focus();
+				setChatInputValue(cmd.prefix);
 			};
 
 			// Enhance chat code blocks with ⚡ Apply & 📋 Copy
