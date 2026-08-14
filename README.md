@@ -1,6 +1,6 @@
 # DeepSeek Harness Plugins & Patches Repository (`deepseek-harness-plugins`)
 
-A organized multi-plugin repository for **DeepSeek Harness (`dsh`)** containing plugin guides, setup scripts, and localization patches.
+A organized multi-plugin repository for **DeepSeek Harness (`dsh`)** containing plugin guides, setup scripts, and feature & localization patches.
 
 ## 📂 Repository Structure
 
@@ -10,18 +10,19 @@ deepseek-harness-plugins/
 ├── apply-config.js                  # Master setup script for all plugins & patches
 ├── cordis.patch.yml                 # Base profile patch configuration
 └── plugins/                         # Collection of individual plugins
-    ├── dsh-local-filetree/          # Local File Tree Explorer plugin guide & patches
+    ├── dsh-local-filetree/          # File Tree Explorer & BlockNote Markdown Editor
     │   ├── README.md                # Installation & patch instructions
-    │   └── patch.js                 # English UI localization patch script
+    │   └── patch.js                 # Editor & localization patch script
     ├── dsh-at-file/                 # @file mention autocomplete plugin guide
     │   └── README.md                # Installation & feature instructions
     └── dsh-task-board/              # Kanban Task Board UI plugin guide
-        └── README.md                # Installation & feature instructions
+        ├── README.md                # Installation & feature instructions
+        └── patch.js                 # Layout & English localization patch
 ```
 
 ## 🔌 Managed Plugins
 
-* 🌳 **[`plugins/dsh-local-filetree`](plugins/dsh-local-filetree)**: File Tree Explorer plugin (Upstream: `github:Mongfayi/dsh-local-filetree`), localized to **100% English**.
+* 🌳 **[`plugins/dsh-local-filetree`](plugins/dsh-local-filetree)**: File Tree Explorer + **Interactive Code Editor & BlockNote-Style Markdown Editor** (Upstream: `github:Mongfayi/dsh-local-filetree`).
 * 📎 **[`plugins/dsh-at-file`](plugins/dsh-at-file)**: `@file` Mention Autocomplete plugin (Upstream: `github:omdsh-dev/dsh-at-file`) for mentioning & attaching workspace files directly in chat.
 * 📋 **[`plugins/dsh-task-board`](plugins/dsh-task-board)**: Multi-column Kanban Task Board plugin (Package: `@linxin666/dsh-client-ui-task-board`) for tracking task progress visually in the Web UI.
 * 🛠️ **Enabled Built-in Tools**:
@@ -31,7 +32,7 @@ deepseek-harness-plugins/
 
 ## 🚀 Quickstart & Setup Guide
 
-To apply all plugin installations and localization patches:
+To apply all plugin installations and patches on any machine:
 
 ```bash
 # 1. Run master setup script
@@ -44,6 +45,7 @@ dsh web
 To run a specific plugin patch:
 ```bash
 node plugins/dsh-local-filetree/patch.js
+node plugins/dsh-task-board/patch.js
 ```
 
 ---
