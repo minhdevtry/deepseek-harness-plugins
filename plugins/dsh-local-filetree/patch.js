@@ -1,13 +1,18 @@
 import fs from 'fs'
 import path from 'path'
 import os from 'os'
+import { fileURLToPath } from 'url'
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
 
 const baseDir = path.join(os.homedir(), '.dsh/profiles/web/node_modules/dsh-local-filetree/lib')
 const serverFile = path.join(baseDir, 'index.js')
 const clientFile = path.join(baseDir, 'client.js')
+const tiptapBundleFile = path.join(__dirname, 'tiptap.bundle.js')
 
 // ==========================================
-// 1. PATCH SERVER (Add Read & Save file API)
+// 1. PATCH SERVER (Add Read, Save & TipTap bundle API)
 // ==========================================
 if (fs.existsSync(serverFile)) {
   let content = fs.readFileSync(serverFile, 'utf8')
@@ -63,8 +68,14 @@ if (fs.existsSync(serverFile)) {
   }
 }
 
+// Copy tiptap.bundle.js into dsh-local-filetree lib directory
+const destBundle = path.join(baseDir, 'tiptap.bundle.js')
+if (fs.existsSync(tiptapBundleFile)) {
+  fs.copyFileSync(tiptapBundleFile, destBundle)
+}
+
 // ==========================================
-// 2. PATCH CLIENT (VSCode-like Editor & TipTap Markdown)
+// 2. PATCH CLIENT (Official TipTap 3 Editor & VS Code Layout)
 // ==========================================
 if (fs.existsSync(clientFile)) {
   let content = fs.readFileSync(clientFile, 'utf8')
@@ -90,99 +101,157 @@ if (fs.existsSync(clientFile)) {
     content = content.replaceAll(from, to)
   }
 
-  // B. TipTap-style Markdown Parser & Rich Editor Component
-  const tiptapEditorCode = `
-		// ── TipTap Markdown Parser & Converter ──────────────────────────────────
-		function markdownToHtml(md) {
-			if (!md) return '<p><br></p>';
-			let html = md
-				.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-				.replace(/^### (.*$)/gim, '<h3>$1</h3>')
-				.replace(/^## (.*$)/gim, '<h2>$1</h2>')
-				.replace(/^# (.*$)/gim, '<h1>$1</h1>')
-				.replace(/^\\> (.*$)/gim, '<blockquote>$1</blockquote>')
-				.replace(/\\*\\*(.*?)\\*\\*/gim, '<b>$1</b>')
-				.replace(/\\*(.*?)\\*/gim, '<i>$1</i>')
-				.replace(/~~(.*?)~~/gim, '<strike>$1</strike>')
-				.replace(/\`\`\`([a-z0-9_-]*)\\n([\\s\\S]*?)\`\`\`/gim, '<pre data-lang="$1"><code>$2</code></pre>')
-				.replace(/\`([^\\n\`]+)\`/gim, '<code>$1</code>')
-				.replace(/^- \\[x\\] (.*$)/gim, '<div class="dsh-task-item"><input type="checkbox" checked disabled /> <span>$1</span></div>')
-				.replace(/^- \\[ \\] (.*$)/gim, '<div class="dsh-task-item"><input type="checkbox" disabled /> <span>$1</span></div>')
-				.replace(/^- (.*$)/gim, '<li>$1</li>');
+  // B. TipTap Bundle Loader & Component
+  let tiptapBundleCode = ''
+  if (fs.existsSync(tiptapBundleFile)) {
+    tiptapBundleCode = fs.readFileSync(tiptapBundleFile, 'utf8')
+  }
 
-			html = html.replace(/(<li>[\\s\\S]*?<\\/li>)/gim, '<ul>$1</ul>');
-			const lines = html.split('\\n');
-			return lines.map(line => {
-				const trimmed = line.trim();
-				if (!trimmed) return '<p><br></p>';
-				if (trimmed.startsWith('<h') || trimmed.startsWith('<ul') || trimmed.startsWith('<blockquote') || trimmed.startsWith('<pre') || trimmed.startsWith('<div')) return line;
-				return '<p>' + line + '</p>';
-			}).join('');
+  const vscodeEditorStyles = `
+		.dsh-editor-panel-view {
+			position: fixed; top: 0; bottom: 0; left: 260px; right: 0; z-index: 50;
+			background: var(--dsw-alias-bg-base, #ffffff);
+			display: flex; flex-direction: column; overflow: hidden;
+			box-shadow: -3px 0 16px rgba(0,0,0,0.08);
 		}
-
-		function htmlToMarkdown(element) {
-			if (!element) return '';
-			let md = '';
-			element.childNodes.forEach(node => {
-				if (node.nodeType === Node.TEXT_NODE) {
-					md += node.textContent;
-				} else if (node.nodeType === Node.ELEMENT_NODE) {
-					const tag = node.tagName.toLowerCase();
-					if (tag === 'h1') md += '# ' + node.textContent.trim() + '\\n\\n';
-					else if (tag === 'h2') md += '## ' + node.textContent.trim() + '\\n\\n';
-					else if (tag === 'h3') md += '### ' + node.textContent.trim() + '\\n\\n';
-					else if (tag === 'p') {
-						const text = node.textContent.trim();
-						md += (text ? text : '') + '\\n\\n';
-					}
-					else if (tag === 'blockquote') md += '> ' + node.textContent.trim() + '\\n\\n';
-					else if (tag === 'pre') {
-						const lang = node.getAttribute('data-lang') || '';
-						md += '\`\`\`' + lang + '\\n' + node.textContent + '\\n\`\`\`\\n\\n';
-					}
-					else if (tag === 'ul') {
-						node.childNodes.forEach(li => {
-							if (li.nodeType === Node.ELEMENT_NODE && li.tagName.toLowerCase() === 'li') {
-								md += '- ' + li.textContent.trim() + '\\n';
-							}
-						});
-						md += '\\n';
-					}
-					else if (node.classList && node.classList.contains('dsh-task-item')) {
-						const chk = node.querySelector('input[type="checkbox"]');
-						const checked = chk && chk.checked;
-						md += (checked ? '- [x] ' : '- [ ] ') + node.textContent.trim() + '\\n';
-					}
-					else {
-						md += node.textContent;
-					}
-				}
-			});
-			return md.trim();
+		@media (max-width: 1024px) {
+			.dsh-editor-panel-view { left: 60px; right: 0; }
 		}
+		.dsh-editor-topbar {
+			height: 40px; background: var(--dsw-alias-bg-subtle, #f9fafb);
+			border-bottom: 1px solid var(--dsw-alias-border-l2, #e5e7eb);
+			display: flex; align-items: center; justify-content: space-between;
+			padding: 0 14px; flex-shrink: 0;
+		}
+		.dsh-editor-tab-active {
+			background: var(--dsw-alias-bg-base, #ffffff);
+			height: 40px; padding: 0 16px; display: flex; align-items: center; gap: 8px;
+			border-right: 1px solid var(--dsw-alias-border-l2, #e5e7eb);
+			border-top: 2.5px solid #3b82f6; font-size: 13px; font-weight: 600;
+			color: var(--dsw-alias-label-primary, #111827);
+		}
+		.dsh-tab-close {
+			border: none; background: transparent; font-size: 12px; cursor: pointer;
+			color: var(--dsw-alias-label-tertiary, #9ca3af); border-radius: 4px; padding: 2px 5px;
+		}
+		.dsh-tab-close:hover { background: rgba(0,0,0,0.08); color: #ef4444; }
+		.dsh-editor-top-actions { display: flex; align-items: center; gap: 10px; }
+		.dsh-mode-switch { display: flex; background: var(--dsw-alias-border-l1, #e5e7eb); border-radius: 6px; padding: 2px; }
+		.dsh-switch-btn {
+			border: none; background: transparent; padding: 4px 10px; font-size: 11.5px;
+			font-weight: 600; border-radius: 4px; cursor: pointer; color: var(--dsw-alias-label-secondary, #4b5563);
+		}
+		.dsh-switch-btn-active { background: #fff; color: #2563eb; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+		.dsh-save-btn {
+			background: #10b981; color: #fff; border: none; padding: 5px 12px; border-radius: 6px;
+			font-size: 12px; font-weight: 600; cursor: pointer; transition: background 0.15s;
+		}
+		.dsh-save-btn:hover { background: #059669; }
+		.dsh-close-btn {
+			background: transparent; border: none; font-size: 16px; cursor: pointer;
+			color: var(--dsw-alias-label-secondary, #6b7280); padding: 4px 8px; border-radius: 4px;
+		}
+		.dsh-close-btn:hover { background: rgba(0,0,0,0.06); }
+		.dsh-tiptap-toolbar {
+			background: var(--dsw-alias-bg-base, #ffffff);
+			border-bottom: 1px solid var(--dsw-alias-border-l1, #e5e7eb);
+			padding: 6px 14px; display: flex; align-items: center; gap: 4px; flex-wrap: wrap; flex-shrink: 0;
+		}
+		.dsh-tb-tool {
+			border: 1px solid transparent; background: transparent; padding: 3px 8px;
+			border-radius: 4px; font-size: 12px; font-weight: 600; cursor: pointer;
+			color: var(--dsw-alias-label-secondary, #374151); min-width: 26px; text-align: center;
+		}
+		.dsh-tb-tool:hover { background: var(--dsw-alias-interactive-bg-hover, #f3f4f6); border-color: var(--dsw-alias-border-l2, #d1d5db); }
+		.dsh-tb-sep { width: 1px; height: 16px; background: var(--dsw-alias-border-l2, #e5e7eb); margin: 0 4px; }
+		.dsh-bold { font-weight: 800; }
+		.dsh-italic { font-style: italic; }
+		.dsh-strike { text-decoration: line-through; }
+		.dsh-editor-canvas { flex: 1; overflow-y: auto; display: flex; flex-direction: column; }
+		.dsh-tiptap-container { flex: 1; display: flex; flex-direction: column; padding: 28px 48px; max-width: 920px; margin: 0 auto; width: 100%; box-sizing: border-box; }
+		.dsh-tiptap-prose {
+			outline: none; font-size: 15px; line-height: 1.75; min-height: 500px;
+			color: var(--dsw-alias-label-primary, #111827); width: 100%;
+			font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+		}
+		.dsh-tiptap-prose h1 { font-size: 28px; font-weight: 800; margin: 20px 0 10px; color: #111827; border-bottom: 1px solid #f3f4f6; padding-bottom: 6px; line-height: 1.3; }
+		.dsh-tiptap-prose h2 { font-size: 22px; font-weight: 700; margin: 16px 0 8px; color: #1f2937; line-height: 1.35; }
+		.dsh-tiptap-prose h3 { font-size: 17px; font-weight: 600; margin: 14px 0 6px; color: #374151; }
+		.dsh-tiptap-prose p { margin: 6px 0; }
+		.dsh-tiptap-prose blockquote { border-left: 4px solid #3b82f6; padding-left: 14px; color: #4b5563; margin: 10px 0; font-style: italic; background: rgba(59,130,246,0.03); border-radius: 0 6px 6px 0; }
+		.dsh-tiptap-prose pre { background: #1e293b; color: #f8fafc; padding: 14px; border-radius: 8px; font-family: monospace; font-size: 13px; margin: 12px 0; }
+		.dsh-tiptap-prose ul, .dsh-tiptap-prose ol { padding-left: 24px; margin: 6px 0; }
+		.dsh-tiptap-prose li { margin: 4px 0; }
+		.dsh-tiptap-prose ul[data-type="taskList"] { list-style: none; padding: 0; }
+		.dsh-tiptap-prose ul[data-type="taskList"] li { display: flex; align-items: center; gap: 8px; margin: 4px 0; }
+		.dsh-tiptap-prose ul[data-type="taskList"] li > label { display: flex; align-items: center; }
+		.dsh-tiptap-prose ul[data-type="taskList"] li > label input[type="checkbox"] { width: 16px; height: 16px; cursor: pointer; accent-color: #3b82f6; }
+		.dsh-tiptap-prose ul[data-type="taskList"] li[data-checked="true"] > div { text-decoration: line-through; opacity: 0.55; }
+		.dsh-code-canvas { flex: 1; display: flex; }
+		.dsh-code-textarea {
+			width: 100%; height: 100%; min-height: 100%; border: none; outline: none; padding: 18px 24px;
+			font-family: 'Fira Code', 'Cascadia Code', Consolas, Monaco, monospace;
+			font-size: 14px; line-height: 1.65; background: var(--dsw-alias-bg-base, #ffffff);
+			color: var(--dsw-alias-label-primary, #111827); resize: none;
+		}
+		.ft-name-file { cursor: pointer; }
+		.ft-name-file:hover { color: #3b82f6 !important; text-decoration: underline; }
+		.ft-row:hover { background: rgba(59, 130, 246, 0.08); border-radius: 4px; }
+  `
 
-		// ── TipTap Markdown & Code Editor Component ──────────────────────────────
-		function TipTapMarkdownEditor({ filePath, initialContent, onClose, onSave }) {
-			const [content, setContent] = react.useState(initialContent);
+  const officialTipTapComponent = `
+		function OfficialTipTapEditor({ filePath, initialContent, onClose, onSave }) {
 			const [isRichMode, setIsRichMode] = react.useState(filePath.endsWith('.md'));
+			const [rawContent, setRawContent] = react.useState(initialContent);
 			const [isSaving, setIsSaving] = react.useState(false);
 			const [savedToast, setSavedToast] = react.useState(false);
-			const richRef = react.useRef(null);
+			const editorRef = react.useRef(null);
+			const containerRef = react.useRef(null);
 
 			const isMarkdown = filePath.endsWith('.md');
 			const fileName = filePath.split('/').pop() || filePath;
 
 			react.useEffect(() => {
-				if (richRef.current && isRichMode) {
-					richRef.current.innerHTML = markdownToHtml(content);
+				if (!containerRef.current || !isMarkdown || !isRichMode) return;
+
+				if (window.TipTapBundle) {
+					const { Editor, StarterKit, TaskList, TaskItem, Markdown } = window.TipTapBundle;
+					const editor = new Editor({
+						element: containerRef.current,
+						extensions: [
+							StarterKit.configure({
+								heading: { levels: [1, 2, 3] }
+							}),
+							TaskList,
+							TaskItem.configure({ nested: true }),
+							Markdown.configure({
+								html: true,
+								transformPastedText: true,
+								transformCopiedText: true
+							})
+						],
+						content: rawContent,
+						editorProps: {
+							attributes: {
+								class: 'dsh-tiptap-prose prose'
+							}
+						}
+					});
+
+					editorRef.current = editor;
+
+					return () => {
+						editor.destroy();
+						editorRef.current = null;
+					};
 				}
-			}, [isRichMode]);
+			}, [isRichMode, filePath]);
 
 			const handleSave = async () => {
-				let textToSave = content;
-				if (isMarkdown && isRichMode && richRef.current) {
-					textToSave = htmlToMarkdown(richRef.current);
-					setContent(textToSave);
+				let textToSave = rawContent;
+				if (isMarkdown && isRichMode && editorRef.current && editorRef.current.storage && editorRef.current.storage.markdown) {
+					textToSave = editorRef.current.storage.markdown.getMarkdown();
+					setRawContent(textToSave);
 				}
 				setIsSaving(true);
 				try {
@@ -206,14 +275,10 @@ if (fs.existsSync(clientFile)) {
 				}
 			};
 
-			const execFormat = (command, value = null) => {
-				document.execCommand(command, false, value);
-				if (richRef.current) richRef.current.focus();
-			};
-
-			const formatBlock = (tag) => {
-				document.execCommand('formatBlock', false, tag);
-				if (richRef.current) richRef.current.focus();
+			const runCommand = (action) => {
+				if (editorRef.current) {
+					action(editorRef.current.chain().focus()).run();
+				}
 			};
 
 			react.useEffect(() => {
@@ -229,7 +294,7 @@ if (fs.existsSync(clientFile)) {
 				};
 				window.addEventListener('keydown', onKeyDown);
 				return () => window.removeEventListener('keydown', onKeyDown);
-			}, [content, filePath, isRichMode]);
+			}, [rawContent, filePath, isRichMode]);
 
 			return react.createElement('div', { className: 'dsh-editor-panel-view' }, [
 				// Editor Top Tab Bar
@@ -237,7 +302,7 @@ if (fs.existsSync(clientFile)) {
 					react.createElement('div', { key: 'tab', className: 'dsh-editor-tab-active' }, [
 						react.createElement('span', { key: 'icon', className: 'dsh-tab-icon' }, isMarkdown ? '📄' : '💻'),
 						react.createElement('span', { key: 'name', className: 'dsh-tab-name' }, fileName),
-						react.createElement('button', { key: 'close', className: 'dsh-tab-close', onClick: onClose }, '✕')
+						react.createElement('button', { key: 'close', className: 'dsh-tab-close', title: 'Close Editor', onClick: onClose }, '✕')
 					]),
 					react.createElement('div', { key: 'actions', className: 'dsh-editor-top-actions' }, [
 						isMarkdown ? react.createElement('div', { key: 'mode-switch', className: 'dsh-mode-switch' }, [
@@ -250,15 +315,15 @@ if (fs.existsSync(clientFile)) {
 										setIsRichMode(true);
 									}
 								}
-							}, '✨ TipTap Rich WYSIWYG'),
+							}, '✨ Official TipTap WYSIWYG'),
 							react.createElement('button', {
 								key: 'raw-btn',
 								type: 'button',
 								className: 'dsh-switch-btn ' + (!isRichMode ? 'dsh-switch-btn-active' : ''),
 								onClick: () => {
-									if (isRichMode && richRef.current) {
-										const md = htmlToMarkdown(richRef.current);
-										setContent(md);
+									if (isRichMode && editorRef.current && editorRef.current.storage && editorRef.current.storage.markdown) {
+										const md = editorRef.current.storage.markdown.getMarkdown();
+										setRawContent(md);
 									}
 									setIsRichMode(false);
 								}
@@ -275,52 +340,50 @@ if (fs.existsSync(clientFile)) {
 							key: 'close-btn',
 							type: 'button',
 							className: 'dsh-close-btn',
-							title: 'Close Editor',
+							title: 'Close Editor (Back to Chat)',
 							onClick: onClose
 						}, '✕')
 					])
 				]),
 
-				// TipTap Toolbar (When in Rich WYSIWYG Mode)
+				// TipTap Toolbar
 				isMarkdown && isRichMode ? react.createElement('div', { key: 'toolbar', className: 'dsh-tiptap-toolbar' }, [
-					react.createElement('button', { key: 'h1', type: 'button', className: 'dsh-tb-tool', title: 'Heading 1', onClick: () => formatBlock('<h1>') }, 'H1'),
-					react.createElement('button', { key: 'h2', type: 'button', className: 'dsh-tb-tool', title: 'Heading 2', onClick: () => formatBlock('<h2>') }, 'H2'),
-					react.createElement('button', { key: 'h3', type: 'button', className: 'dsh-tb-tool', title: 'Heading 3', onClick: () => formatBlock('<h3>') }, 'H3'),
+					react.createElement('button', { key: 'h1', type: 'button', className: 'dsh-tb-tool', title: 'Heading 1 (or type # + Space)', onClick: () => runCommand(c => c.toggleHeading({ level: 1 })) }, 'H1'),
+					react.createElement('button', { key: 'h2', type: 'button', className: 'dsh-tb-tool', title: 'Heading 2 (or type ## + Space)', onClick: () => runCommand(c => c.toggleHeading({ level: 2 })) }, 'H2'),
+					react.createElement('button', { key: 'h3', type: 'button', className: 'dsh-tb-tool', title: 'Heading 3 (or type ### + Space)', onClick: () => runCommand(c => c.toggleHeading({ level: 3 })) }, 'H3'),
 					react.createElement('span', { key: 'sep1', className: 'dsh-tb-sep' }),
-					react.createElement('button', { key: 'b', type: 'button', className: 'dsh-tb-tool dsh-bold', title: 'Bold (Ctrl+B)', onClick: () => execFormat('bold') }, 'B'),
-					react.createElement('button', { key: 'i', type: 'button', className: 'dsh-tb-tool dsh-italic', title: 'Italic (Ctrl+I)', onClick: () => execFormat('italic') }, 'I'),
-					react.createElement('button', { key: 's', type: 'button', className: 'dsh-tb-tool dsh-strike', title: 'Strikethrough', onClick: () => execFormat('strikeThrough') }, 'S'),
+					react.createElement('button', { key: 'b', type: 'button', className: 'dsh-tb-tool dsh-bold', title: 'Bold (Ctrl+B or **text**)', onClick: () => runCommand(c => c.toggleBold()) }, 'B'),
+					react.createElement('button', { key: 'i', type: 'button', className: 'dsh-tb-tool dsh-italic', title: 'Italic (Ctrl+I or *text*)', onClick: () => runCommand(c => c.toggleItalic()) }, 'I'),
+					react.createElement('button', { key: 's', type: 'button', className: 'dsh-tb-tool dsh-strike', title: 'Strikethrough (~~text~~)', onClick: () => runCommand(c => c.toggleStrike()) }, 'S'),
 					react.createElement('span', { key: 'sep2', className: 'dsh-tb-sep' }),
-					react.createElement('button', { key: 'ul', type: 'button', className: 'dsh-tb-tool', title: 'Bullet List', onClick: () => execFormat('insertUnorderedList') }, '• List'),
-					react.createElement('button', { key: 'ol', type: 'button', className: 'dsh-tb-tool', title: 'Numbered List', onClick: () => execFormat('insertOrderedList') }, '1. List'),
-					react.createElement('button', { key: 'quote', type: 'button', className: 'dsh-tb-tool', title: 'Blockquote', onClick: () => formatBlock('<blockquote>') }, '❝ Quote'),
-					react.createElement('button', { key: 'code', type: 'button', className: 'dsh-tb-tool', title: 'Code Block', onClick: () => formatBlock('<pre>') }, '</> Code'),
-					react.createElement('button', { key: 'hr', type: 'button', className: 'dsh-tb-tool', title: 'Horizontal Line', onClick: () => execFormat('insertHorizontalRule') }, '─ Line')
+					react.createElement('button', { key: 'ul', type: 'button', className: 'dsh-tb-tool', title: 'Bullet List (or type - + Space)', onClick: () => runCommand(c => c.toggleBulletList()) }, '• List'),
+					react.createElement('button', { key: 'ol', type: 'button', className: 'dsh-tb-tool', title: 'Numbered List (or type 1. + Space)', onClick: () => runCommand(c => c.toggleOrderedList()) }, '1. List'),
+					react.createElement('button', { key: 'task', type: 'button', className: 'dsh-tb-tool', title: 'Task List (or type [ ] + Space)', onClick: () => runCommand(c => c.toggleTaskList()) }, '☑ Task'),
+					react.createElement('button', { key: 'quote', type: 'button', className: 'dsh-tb-tool', title: 'Blockquote (or type > + Space)', onClick: () => runCommand(c => c.toggleBlockquote()) }, '❝ Quote'),
+					react.createElement('button', { key: 'code', type: 'button', className: 'dsh-tb-tool', title: 'Code Block (or type \`\`\` + Enter)', onClick: () => runCommand(c => c.toggleCodeBlock()) }, '</> Code'),
+					react.createElement('button', { key: 'hr', type: 'button', className: 'dsh-tb-tool', title: 'Horizontal Line (or type --- + Enter)', onClick: () => runCommand(c => c.setHorizontalRule()) }, '─ Line')
 				]) : null,
 
-				// Editor Workspace Area
+				// TipTap Canvas / Code Canvas
 				react.createElement('div', { key: 'workspace', className: 'dsh-editor-canvas' },
 					isMarkdown && isRichMode
 						? react.createElement('div', {
-							ref: richRef,
-							className: 'dsh-tiptap-content prose',
-							contentEditable: true,
-							spellCheck: false,
-							suppressContentEditableWarning: true
+							ref: containerRef,
+							className: 'dsh-tiptap-container'
 						})
 						: react.createElement('div', { className: 'dsh-code-canvas' },
 							react.createElement('textarea', {
 								className: 'dsh-code-textarea',
-								value: content,
+								value: rawContent,
 								spellCheck: false,
-								onChange: (e) => setContent(e.target.value),
+								onChange: (e) => setRawContent(e.target.value),
 								onKeyDown: (e) => {
 									if (e.key === 'Tab') {
 										e.preventDefault();
 										const start = e.target.selectionStart;
 										const end = e.target.selectionEnd;
-										const updated = content.substring(0, start) + '  ' + content.substring(end);
-										setContent(updated);
+										const updated = rawContent.substring(0, start) + '  ' + rawContent.substring(end);
+										setRawContent(updated);
 										setTimeout(() => {
 											e.target.selectionStart = e.target.selectionEnd = start + 2;
 										}, 0);
@@ -331,111 +394,20 @@ if (fs.existsSync(clientFile)) {
 				)
 			]);
 		}
-
-		// ── VS Code + Codex Style Layout CSS ────────────────────────────────────
-		const vscodeEditorStyles = \`
-		.dsh-editor-panel-view {
-			position: fixed; top: 0; bottom: 0; left: 240px; right: 340px; z-index: 40;
-			background: var(--dsw-alias-bg-base, #ffffff);
-			display: flex; flex-direction: column; overflow: hidden;
-			box-shadow: -2px 0 12px rgba(0,0,0,0.06);
-		}
-		@media (max-width: 1024px) {
-			.dsh-editor-panel-view { left: 60px; right: 0; }
-		}
-		.dsh-editor-topbar {
-			height: 38px; background: var(--dsw-alias-bg-subtle, #f3f4f6);
-			border-bottom: 1px solid var(--dsw-alias-border-l2, #e5e7eb);
-			display: flex; align-items: center; justify-content: space-between;
-			padding: 0 12px; flex-shrink: 0;
-		}
-		.dsh-editor-tab-active {
-			background: var(--dsw-alias-bg-base, #ffffff);
-			height: 38px; padding: 0 14px; display: flex; align-items: center; gap: 8px;
-			border-right: 1px solid var(--dsw-alias-border-l2, #e5e7eb);
-			border-top: 2px solid #3b82f6; font-size: 13px; font-weight: 600;
-			color: var(--dsw-alias-label-primary, #111827);
-		}
-		.dsh-tab-close {
-			border: none; background: transparent; font-size: 11px; cursor: pointer;
-			color: var(--dsw-alias-label-tertiary, #9ca3af); border-radius: 4px; padding: 2px 4px;
-		}
-		.dsh-tab-close:hover { background: rgba(0,0,0,0.08); color: #ef4444; }
-		.dsh-editor-top-actions { display: flex; align-items: center; gap: 10px; }
-		.dsh-mode-switch { display: flex; background: var(--dsw-alias-border-l1, #e5e7eb); border-radius: 6px; padding: 2px; }
-		.dsh-switch-btn {
-			border: none; background: transparent; padding: 3px 8px; font-size: 11.5px;
-			font-weight: 600; border-radius: 4px; cursor: pointer; color: var(--dsw-alias-label-secondary, #4b5563);
-		}
-		.dsh-switch-btn-active { background: #fff; color: #2563eb; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-		.dsh-save-btn {
-			background: #10b981; color: #fff; border: none; padding: 4px 10px; border-radius: 6px;
-			font-size: 12px; font-weight: 600; cursor: pointer; transition: background 0.15s;
-		}
-		.dsh-save-btn:hover { background: #059669; }
-		.dsh-close-btn {
-			background: transparent; border: none; font-size: 14px; cursor: pointer;
-			color: var(--dsw-alias-label-secondary, #6b7280); padding: 4px 6px; border-radius: 4px;
-		}
-		.dsh-close-btn:hover { background: rgba(0,0,0,0.06); }
-		.dsh-tiptap-toolbar {
-			background: var(--dsw-alias-bg-base, #ffffff);
-			border-bottom: 1px solid var(--dsw-alias-border-l1, #e5e7eb);
-			padding: 6px 12px; display: flex; align-items: center; gap: 4px; flex-wrap: wrap; flex-shrink: 0;
-		}
-		.dsh-tb-tool {
-			border: 1px solid transparent; background: transparent; padding: 3px 7px;
-			border-radius: 4px; font-size: 12px; font-weight: 600; cursor: pointer;
-			color: var(--dsw-alias-label-secondary, #374151); min-width: 24px; text-align: center;
-		}
-		.dsh-tb-tool:hover { background: var(--dsw-alias-interactive-bg-hover, #f3f4f6); border-color: var(--dsw-alias-border-l2, #d1d5db); }
-		.dsh-tb-sep { width: 1px; height: 16px; background: var(--dsw-alias-border-l2, #e5e7eb); margin: 0 4px; }
-		.dsh-bold { font-weight: 800; }
-		.dsh-italic { font-style: italic; }
-		.dsh-strike { text-decoration: line-through; }
-		.dsh-editor-canvas { flex: 1; overflow-y: auto; display: flex; flex-direction: column; }
-		.dsh-tiptap-content {
-			flex: 1; padding: 24px 36px; outline: none; font-size: 15px; line-height: 1.7;
-			color: var(--dsw-alias-label-primary, #111827); max-width: 900px; margin: 0 auto; width: 100%;
-			font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-		}
-		.dsh-tiptap-content h1 { font-size: 26px; font-weight: 800; margin: 16px 0 10px; color: #111827; border-bottom: 1px solid #f3f4f6; padding-bottom: 6px; }
-		.dsh-tiptap-content h2 { font-size: 20px; font-weight: 700; margin: 14px 0 8px; color: #1f2937; }
-		.dsh-tiptap-content h3 { font-size: 16px; font-weight: 600; margin: 12px 0 6px; color: #374151; }
-		.dsh-tiptap-content p { margin: 6px 0; }
-		.dsh-tiptap-content blockquote { border-left: 4px solid #3b82f6; padding-left: 12px; color: #4b5563; margin: 8px 0; font-style: italic; }
-		.dsh-tiptap-content pre { background: #1e293b; color: #f8fafc; padding: 12px; border-radius: 8px; font-family: monospace; font-size: 13px; margin: 10px 0; }
-		.dsh-tiptap-content ul, .dsh-tiptap-content ol { padding-left: 24px; margin: 6px 0; }
-		.dsh-tiptap-content li { margin: 3px 0; }
-		.dsh-task-item { display: flex; align-items: center; gap: 8px; margin: 4px 0; }
-		.dsh-code-canvas { flex: 1; display: flex; }
-		.dsh-code-textarea {
-			width: 100%; height: 100%; min-height: 100%; border: none; outline: none; padding: 16px 20px;
-			font-family: 'Fira Code', 'Cascadia Code', Consolas, Monaco, monospace;
-			font-size: 13.5px; line-height: 1.6; background: var(--dsw-alias-bg-base, #ffffff);
-			color: var(--dsw-alias-label-primary, #111827); resize: none;
-		}
-		.ft-name-file { cursor: pointer; }
-		.ft-name-file:hover { color: #3b82f6 !important; text-decoration: underline; }
-		.ft-row:hover { background: rgba(59, 130, 246, 0.08); border-radius: 4px; }
-		\`;
-
-		if (typeof document !== "undefined" && !document.getElementById("dsh-vscode-editor-css")) {
-			const s = document.createElement("style");
-			s.id = "dsh-vscode-editor-css";
-			s.textContent = vscodeEditorStyles;
-			document.head.appendChild(s);
-		}
   `
 
-  if (!content.includes('dsh-vscode-editor-css')) {
+  if (!content.includes('OfficialTipTapEditor')) {
+    const codeToInject = tiptapBundleCode + '\n\n' + officialTipTapComponent + '\n\n' +
+      'if (typeof document !== "undefined" && !document.getElementById("dsh-vscode-editor-css")) {\n\tconst s = document.createElement("style");\n\ts.id = "dsh-vscode-editor-css";\n\ts.textContent = ' + JSON.stringify(vscodeEditorStyles) + ';\n\tdocument.head.appendChild(s);\n}\n\n' +
+      '// ── the right-column file tree panel ─────────────────────────────────────'
+
     content = content.replace(
       '// ── the right-column file tree panel ─────────────────────────────────────',
-      `${tiptapEditorCode}\n\n\t\t// ── the right-column file tree panel ─────────────────────────────────────`
+      () => codeToInject
     )
   }
 
-  // C. Update FileTreePanel to mount editor in center column (VS Code style!)
+  // C. Update FileTreePanel to support Left-Sidebar Explorer & Center Editor
   if (!content.includes('const [editingFile, setEditingFile]')) {
     content = content.replace(
       'const [showHidden, setShowHidden] = react.useState(false);',
@@ -464,7 +436,7 @@ if (fs.existsSync(clientFile)) {
       `react.createElement("span", {
 							key: "name",
 							className: "ft-name ft-name-" + entry.type,
-							title: isDir ? entry.path : (entry.path + " (Click to open editor)"),
+							title: isDir ? entry.path : (entry.path + " (Click to open in TipTap Editor)"),
 							onClick: () => { if (!isDir) openFile(entry.path); }
 						}, entry.name),`
     )
@@ -472,7 +444,7 @@ if (fs.existsSync(clientFile)) {
     content = content.replace(
       'return react.createElement("div", { className: "ft-panel" }, [',
       `return react.createElement(react.Fragment, null, [
-				editingFile ? react.createElement(TipTapMarkdownEditor, {
+				editingFile ? react.createElement(OfficialTipTapEditor, {
 					key: "editor-canvas",
 					filePath: editingFile,
 					initialContent: fileContent,
@@ -496,5 +468,5 @@ if (fs.existsSync(clientFile)) {
   }
 
   fs.writeFileSync(clientFile, content, 'utf8')
-  console.log('[✓] Successfully applied TipTap Markdown & VS Code Editor layout patch!')
+  console.log('[✓] Successfully patched dsh-local-filetree with OFFICIAL TipTap 3 Editor Engine!')
 }
