@@ -578,7 +578,7 @@ function apply(ctx) {
 				return sendJson(res, 200, { ok: true, sandboxRoot: SANDBOX_ROOT, folders });
 			}
 
-			// 全局人设
+			// Global Persona (~/.dsh/global-persona.md)
 			if (url.pathname === "/vscode-files/persona") {
 				if (req.method === "POST") {
 					try {
