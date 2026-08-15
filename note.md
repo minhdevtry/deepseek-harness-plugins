@@ -1,10 +1,29 @@
-#live-edit #live-edit #live-edit #live-edit #liv #live-edit #live-edit #live-edit #live-edite-edit
+\#live-edit #live-edit #live-edit #live-edit #liv #live-edit #live-edit #live-edit #live-edite-edit
 
-- [ ] xin chào
+* [ ] xin chào
+* [x] lỗi à?
+* [ ] ok
 
-- [x] lỗi à?
+<br />
 
-- [ ] ok
+* fffef
+
+  * rfrfgr
+
+    * &#x20;rrgrg
+
+      * ggrgr
+
+        * fefef
+
+          * refefe
+
+<br />
+
+<br />
+
+$$
+$$
 
 # live-edit
 
@@ -12,7 +31,17 @@
 
 > hay phết đấy nhỉ
 
-| Bảng này hay đấy |  |  |
-| --- | --- | --- |
-|  |  |  |
-|  |  |  |
+| Bảng này hay đấy | <br /> | <br /> |
+| ---------------- | ------ | ------ |
+| <br />           | <br /> | <br /> |
+| <br />           | <br /> | <br /> |
+
+<br />
+
+***
+
+```JavaScript
+xin chào
+
+```
+
