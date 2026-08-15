@@ -8,3 +8,4 @@ node_modules/
 # Generated bundles — built by `npm run build`, never edited by hand
 plugins/dsh-client-vscode-layout/lib/
 *.tsbuildinfo
+epytor/
