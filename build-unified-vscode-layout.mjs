@@ -1301,6 +1301,7 @@ const customComponentsCode = `
 
 		// ── Document Outline TOC Component ──
 		function OutlineTocDropdown({ editor, isOpen, onClose }) {
+			const h = react.createElement;
 			const [headings, setHeadings] = react.useState([]);
 
 			react.useEffect(() => {
@@ -1486,6 +1487,7 @@ const customComponentsCode = `
 
 		// ── Keyboard Shortcuts Cheat Sheet Modal (Ctrl+/ or F1) ──
 		function ShortcutsCheatSheetModal({ isOpen, onClose }) {
+			const h = react.createElement;
 			const [search, setSearch] = react.useState("");
 			const inputRef = react.useRef(null);
 
@@ -1493,8 +1495,11 @@ const customComponentsCode = `
 				if (isOpen) {
 					setSearch("");
 					setTimeout(() => inputRef.current?.focus(), 50);
+					const handleEsc = (e) => { if (e.key === 'Escape') onClose(); };
+					window.addEventListener('keydown', handleEsc);
+					return () => window.removeEventListener('keydown', handleEsc);
 				}
-			}, [isOpen]);
+			}, [isOpen, onClose]);
 
 			if (!isOpen) return null;
 
@@ -1586,6 +1591,13 @@ const customComponentsCode = `
 
 		// ── Document Reading Metrics & Stats Modal ──
 		function DocumentStatsModal({ isOpen, stats, fileName, content, onClose }) {
+			const h = react.createElement;
+			react.useEffect(() => {
+				if (!isOpen) return;
+				const handleEsc = (e) => { if (e.key === 'Escape') onClose(); };
+				window.addEventListener('keydown', handleEsc);
+				return () => window.removeEventListener('keydown', handleEsc);
+			}, [isOpen, onClose]);
 			if (!isOpen) return null;
 			const text = content || "";
 			const words = stats?.words || (text.trim() ? text.trim().split(/\\s+/).length : 0);
@@ -2237,40 +2249,53 @@ const customComponentsCode = `
 			const ydocRef = react.useRef(null);
 
 			react.useEffect(() => {
-				if (!containerRef.current) return;
-				const container = containerRef.current;
-				const attachCopyButtons = () => {
-					const pres = container.querySelectorAll('pre:not([data-copy-ready])');
-					pres.forEach(pre => {
-						pre.setAttribute('data-copy-ready', 'true');
-						pre.style.position = 'relative';
-						const btn = document.createElement('button');
-						btn.className = 'vk_code_copy_btn';
-						btn.innerText = '📋 Copy';
-						btn.title = 'Copy code snippet';
-						btn.onclick = (e) => {
-							e.stopPropagation();
-							const code = pre.querySelector('code')?.innerText || pre.innerText.replace('📋 Copy', '').replace('✓ Copied!', '').trim();
-							navigator.clipboard?.writeText(code);
-							btn.innerText = '✓ Copied!';
-							btn.style.background = '#22c55e';
-							btn.style.color = '#fff';
-							btn.style.borderColor = '#22c55e';
-							window.dispatchEvent(new CustomEvent('dsh-toast', { detail: '📋 Code snippet copied to clipboard!' }));
-							setTimeout(() => {
-								btn.innerText = '📋 Copy';
-								btn.style.background = '';
-								btn.style.color = '';
-								btn.style.borderColor = '';
-							}, 2000);
-						};
-						pre.appendChild(btn);
-					});
+				let copyBtn = document.querySelector('.vk_floating_copy_btn');
+				if (!copyBtn) {
+					copyBtn = document.createElement('button');
+					copyBtn.className = 'vk_floating_copy_btn vk_code_copy_btn';
+					copyBtn.innerText = '📋 Copy';
+					copyBtn.style.cssText = 'position:fixed;display:none;z-index:99999;pointer-events:auto;font-size:11px;font-weight:600;padding:3px 8px;border-radius:4px;border:1px solid rgba(255,255,255,0.18);background:#1e1e1e;color:#cbd5e1;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,0.3);';
+					document.body.appendChild(copyBtn);
+				}
+
+				let activePre = null;
+				const onMouseMove = (e) => {
+					const pre = e.target.closest('pre');
+					if (pre) {
+						activePre = pre;
+						const rect = pre.getBoundingClientRect();
+						copyBtn.style.display = 'flex';
+						copyBtn.style.top = (rect.top + 6) + 'px';
+						copyBtn.style.left = (rect.right - 65) + 'px';
+					} else if (!e.target.closest('.vk_floating_copy_btn')) {
+						copyBtn.style.display = 'none';
+					}
 				};
-				const observer = new MutationObserver(attachCopyButtons);
-				observer.observe(container, { childList: true, subtree: true });
-				attachCopyButtons();
-				return () => observer.disconnect();
+
+				const onBtnClick = () => {
+					if (!activePre) return;
+					const code = activePre.querySelector('code')?.innerText || activePre.innerText || '';
+					navigator.clipboard?.writeText(code);
+					copyBtn.innerText = '✓ Copied!';
+					copyBtn.style.background = '#22c55e';
+					copyBtn.style.color = '#fff';
+					window.dispatchEvent(new CustomEvent('dsh-toast', { detail: '📋 Code snippet copied to clipboard!' }));
+					setTimeout(() => {
+						copyBtn.innerText = '📋 Copy';
+						copyBtn.style.background = '#1e1e1e';
+						copyBtn.style.color = '#cbd5e1';
+					}, 2000);
+				};
+
+				document.addEventListener('mousemove', onMouseMove, true);
+				document.addEventListener('mouseover', onMouseMove, true);
+				copyBtn.addEventListener('click', onBtnClick);
+				return () => {
+					document.removeEventListener('mousemove', onMouseMove, true);
+					document.removeEventListener('mouseover', onMouseMove, true);
+					copyBtn.removeEventListener('click', onBtnClick);
+					copyBtn.remove();
+				};
 			}, []);
 
 			const setSlashMenu = (val) => { slashStateRef.current.menu = val; _setSlashMenu(val); };
@@ -2618,9 +2643,9 @@ const customComponentsCode = `
 					react.createElement('button', { key: 'yt', type: 'button', className: 'vk_tb_tool', title: 'Embed YouTube Video', onMouseDown: (e) => e.preventDefault(), onClick: () => setEmbedModal({ type: 'youtube', url: '' }) }, '🎥 YouTube'),
 					react.createElement('button', { key: 'img', type: 'button', className: 'vk_tb_tool', title: 'Insert Image URL', onMouseDown: (e) => e.preventDefault(), onClick: () => setEmbedModal({ type: 'image', url: '' }) }, '🖼️ Image'),
 					react.createElement('span', { key: 'sep3', className: 'vk_tb_sep' }),
-					react.createElement('button', { key: 'toc', type: 'button', className: 'vk_editBtn', title: 'Document Outline / Table of Contents', onClick: () => setTocOpen(true) }, '📑 Outline'),
+					react.createElement('button', { key: 'toc', type: 'button', className: 'vk_editBtn', title: 'Document Outline / Table of Contents', onMouseDown: (e) => e.preventDefault(), onClick: () => setTocOpen(true) }, '📑 Outline'),
 					react.createElement('div', { key: 'export-wrap', style: { position: 'relative', display: 'inline-flex' } }, [
-						react.createElement('button', { key: 'export-btn', type: 'button', className: 'vk_editBtn', title: 'Export Document', onClick: () => setExportOpen(!exportOpen) }, '📤 Export ▾'),
+						react.createElement('button', { key: 'export-btn', type: 'button', className: 'vk_editBtn', title: 'Export Document', onMouseDown: (e) => e.preventDefault(), onClick: () => setExportOpen(!exportOpen) }, '📤 Export ▾'),
 						exportOpen ? react.createElement('div', { key: 'export-menu', className: 'vk_ai_dropdown', style: { width: '190px' } }, [
 							react.createElement('button', { key: 'exp-dl', type: 'button', className: 'vk_ai_dropdown_item', onClick: () => handleExport('download') }, '📥 Download .md File'),
 							react.createElement('button', { key: 'exp-md', type: 'button', className: 'vk_ai_dropdown_item', onClick: () => handleExport('markdown') }, '📋 Copy Markdown'),
@@ -2628,7 +2653,7 @@ const customComponentsCode = `
 							react.createElement('button', { key: 'exp-print', type: 'button', className: 'vk_ai_dropdown_item', onClick: () => handleExport('print') }, '📄 Print / PDF Preview')
 						]) : null
 					]),
-					react.createElement('button', { key: 'inline-ai-btn', type: 'button', className: 'vk_ai_assist_btn', title: 'Inline AI Assist (Ctrl+K)', onClick: () => { setInlineSelection(editorRef.current?.getText()?.slice(0, 300) || ""); setInlineAIOpen(true); } }, '🤖 AI (Ctrl+K)'),
+					react.createElement('button', { key: 'inline-ai-btn', type: 'button', className: 'vk_ai_assist_btn', title: 'Inline AI Assist (Ctrl+K)', onMouseDown: (e) => e.preventDefault(), onClick: () => { setInlineSelection(editorRef.current?.getText()?.slice(0, 300) || ""); setInlineAIOpen(true); } }, '🤖 AI (Ctrl+K)'),
 					react.createElement('div', { key: 'spacer', style: { flex: 1 } }),
 					react.createElement('span', { key: 'sync-status', className: 'vk_sync_badge', title: collabConnected ? 'Real-time collaborative sync active' : 'Workspace cloud storage saved' }, [
 						react.createElement('span', { key: 'sync-dot', className: 'vk_sync_dot' }),
@@ -2782,14 +2807,14 @@ const customComponentsCode = `
 				])) : null,
 
 				// Document Outline TOC Dialog
-				h(OutlineTocDropdown, {
+				react.createElement(OutlineTocDropdown, {
 					editor: editorRef.current,
 					isOpen: tocOpen,
 					onClose: () => setTocOpen(false)
 				}),
 
 				// Document Reading Metrics Dialog
-				h(DocumentStatsModal, {
+				react.createElement(DocumentStatsModal, {
 					isOpen: statsModalOpen,
 					stats: stats,
 					fileName: file?.name,
@@ -2798,7 +2823,7 @@ const customComponentsCode = `
 				}),
 
 				// Inline AI Assist Dialog
-				h(InlineAIWidget, {
+				react.createElement(InlineAIWidget, {
 					isOpen: inlineAIOpen,
 					selectionText: inlineSelection,
 					onClose: () => setInlineAIOpen(false),
