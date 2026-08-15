@@ -1,0 +1,119 @@
+.tree {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 4px 0 12px;
+  user-select: none;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  /* Left padding is per-row (indentation); the right side is uniform. */
+  padding-right: 8px;
+  height: 24px;
+  font-size: 13px;
+  line-height: 24px;
+  color: var(--dsw-alias-label-primary);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.row:hover {
+  background: var(--dsw-alias-interactive-bg-hover);
+}
+
+.row:focus-visible {
+  outline: 1px solid var(--dsw-alias-state-business-primary);
+  outline-offset: -1px;
+}
+
+.row[data-active] {
+  background: var(--dsw-alias-interactive-bg-selected);
+}
+
+/* Dotfiles and collapsed directories read as present but secondary. */
+.row[data-hidden] {
+  opacity: 0.55;
+}
+
+.chevron {
+  flex: none;
+  width: 10px;
+  font-size: 9px;
+  color: var(--dsw-alias-label-tertiary);
+  text-align: center;
+}
+
+.icon {
+  flex: none;
+  width: 16px;
+  height: 16px;
+}
+
+.name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.badge {
+  flex: none;
+  font-size: 11px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--dsw-alias-label-secondary);
+}
+
+/* Porcelain letters carry meaning through colour as well as glyph; the glyph
+   itself is what conveys it to anyone who cannot separate these hues. */
+.badge[data-code='M'] { color: var(--dsw-alias-state-warning-primary); }
+.badge[data-code='A'] { color: var(--dsw-alias-state-success-primary); }
+.badge[data-code='D'] { color: var(--dsw-alias-state-error-primary); }
+.badge[data-code='R'] { color: var(--dsw-alias-state-business-primary); }
+.badge[data-code='??'] { color: var(--dsw-alias-state-success-primary); }
+
+.editRow {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding-right: 8px;
+  min-height: 24px;
+}
+
+.editInput {
+  flex: 1;
+  min-width: 0;
+  height: 20px;
+  font-size: 13px;
+  font-family: inherit;
+  padding: 0 4px;
+  color: var(--dsw-alias-label-primary);
+  background: var(--dsw-alias-bg-base);
+  border: 1px solid var(--dsw-alias-state-business-primary);
+  border-radius: 3px;
+  outline: none;
+}
+
+.editInput[data-invalid] {
+  border-color: var(--dsw-alias-state-error-primary);
+}
+
+.editError {
+  flex: none;
+  font-size: 11px;
+  color: var(--dsw-alias-state-error-primary);
+}
+
+.notice {
+  padding: 12px 14px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--dsw-alias-label-secondary);
+}
+
+.notice[data-error] {
+  color: var(--dsw-alias-state-error-primary);
+}

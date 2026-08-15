@@ -5,11 +5,14 @@
 	"main": "plugins/dsh-client-vscode-layout/lib/client.js",
 	"type": "module",
 	"scripts": {
+		"typecheck": "tsc --build plugins/dsh-client-vscode-layout",
 		"build:tiptap": "node build-tiptap.mjs",
-		"build:layout": "node build-unified-vscode-layout.mjs",
-		"build": "node build-tiptap.mjs && node build-unified-vscode-layout.mjs",
-		"deploy": "node deploy-vscode-notion-layout.mjs",
+		"build:layout": "pnpm --filter @anoslide/dsh-client-vscode-layout bundle",
+		"build:legacy": "node build-unified-vscode-layout.mjs",
+		"build": "npm run typecheck && npm run build:layout",
+		"deploy": "node deploy.mjs",
 		"setup": "(pnpm install --ignore-scripts || npm install --legacy-peer-deps) && npm run build && npm run deploy",
+		"test:unit": "node --test --experimental-strip-types \"plugins/*/tests/*.test.ts\"",
 		"test": "node tests/e2e.test.mjs"
 	},
 	"keywords": [
@@ -23,6 +26,15 @@
 	"author": "Lucas Minh",
 	"license": "MIT",
 	"devDependencies": {
+		"@deepseek-ai/cordis": "^4.0.1",
+		"@deepseek-ai/dsh-client-runtime": "0.1.0-rc.6",
+		"@deepseek-ai/dsh-client-ui-slots": "0.1.0-rc.6",
+		"@deepseek-ai/dsh-client-ui-theme": "0.1.0-rc.6",
+		"@types/react": "~18.3.1",
+		"lightningcss": "^1.30.2",
+		"react": "^18.2.0",
+		"tsdown": "^0.22.14",
+		"typescript": "^5.9.3",
 		"@rollup/plugin-commonjs": "^29.0.3",
 		"@rollup/plugin-node-resolve": "^16.0.3",
 		"@rollup/plugin-replace": "^6.0.3",

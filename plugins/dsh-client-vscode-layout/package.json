@@ -1,14 +1,18 @@
 {
   "name": "@anoslide/dsh-client-vscode-layout",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
+  "description": "VS Code workbench frame: explorer | multi-tab editor | AI chat, registered into the shell's root slot",
   "main": "lib/index.js",
+  "types": "lib/types/index.d.ts",
   "exports": {
     ".": {
+      "types": "./lib/types/index.d.ts",
       "default": "./lib/index.js"
     },
     "./client": {
+      "types": "./lib/types/client/index.d.ts",
       "default": "./lib/client.js"
     },
     "./package.json": "./package.json"
@@ -20,7 +24,56 @@
         "@deepseek-ai/dsh-client-ui-theme"
       ],
       "platform": "web"
+    },
+    "bundle": {
+      "patch": "./cordis.patch.yml"
     }
   },
-  "description": "VS Code 布局魔改：左文件/会话双 Tab、中多标签只读查看器、右对话/详情 Tab"
+  "scripts": {
+    "bundle": "tsdown",
+    "watch": "tsdown --watch"
+  },
+  "files": [
+    "lib/index.js",
+    "lib/client.js",
+    "lib/types/**/*.d.ts",
+    "cordis.patch.yml"
+  ],
+  "dependencies": {
+    "@codemirror/commands": "^6.10.4",
+    "@codemirror/lang-css": "^6.3.1",
+    "@codemirror/lang-html": "^6.4.12",
+    "@codemirror/lang-javascript": "^6.2.5",
+    "@codemirror/lang-json": "^6.0.2",
+    "@codemirror/lang-markdown": "^6.5.2",
+    "@codemirror/lang-python": "^6.2.1",
+    "@codemirror/language": "^6.12.4",
+    "@codemirror/merge": "^6.12.2",
+    "@codemirror/search": "^6.7.1",
+    "@codemirror/state": "^6.7.1",
+    "@codemirror/view": "^6.43.8",
+    "@lezer/highlight": "^1.2.3",
+    "@milkdown/core": "^7.22.1",
+    "@milkdown/crepe": "^7.22.1",
+    "@milkdown/ctx": "^7.22.1",
+    "@milkdown/kit": "^7.22.1",
+    "@milkdown/plugin-listener": "^7.22.1",
+    "@tiptap/core": "^3.30.1",
+    "@tiptap/extension-bubble-menu": "^3.30.1",
+    "@tiptap/extension-code-block-lowlight": "^3.30.1",
+    "@tiptap/extension-highlight": "^3.30.1",
+    "@tiptap/extension-image": "^3.30.1",
+    "@tiptap/extension-link": "^3.30.1",
+    "@tiptap/extension-table": "^3.30.1",
+    "@tiptap/extension-task-item": "^3.30.1",
+    "@tiptap/extension-task-list": "^3.30.1",
+    "@tiptap/extension-text-align": "^3.30.1",
+    "@tiptap/extension-typography": "^3.30.1",
+    "@tiptap/extension-underline": "^3.30.1",
+    "@tiptap/extension-youtube": "^3.30.1",
+    "@tiptap/pm": "^3.30.1",
+    "@tiptap/starter-kit": "^3.30.1",
+    "lowlight": "^3.3.0",
+    "tiptap-markdown": "^0.9.0"
+  }
 }

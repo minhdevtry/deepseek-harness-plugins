@@ -1,0 +1,111 @@
+.drawer {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 240px;
+  background: var(--dsw-alias-bg-elevated, #ffffff);
+  border-left: 1px solid var(--dsw-alias-border-l1, #e2e8f0);
+  box-shadow: -4px 0 16px rgba(0, 0, 0, 0.05);
+  display: flex;
+  flex-direction: column;
+  z-index: 100;
+  animation: slideIn 0.15s ease;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+.header {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--dsw-alias-border-l1, #e2e8f0);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--dsw-alias-label-primary, #0f172a);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.closeBtn {
+  background: transparent;
+  border: none;
+  color: var(--dsw-alias-label-tertiary, #94a3b8);
+  font-size: 14px;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.closeBtn:hover {
+  background: var(--dsw-alias-bg-hover, rgba(0, 0, 0, 0.05));
+  color: var(--dsw-alias-label-primary, #0f172a);
+}
+
+.list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.empty {
+  padding: 20px 12px;
+  text-align: center;
+  color: var(--dsw-alias-label-tertiary, #94a3b8);
+  font-size: 12px;
+}
+
+.item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: none;
+  background: transparent;
+  padding: 5px 8px;
+  border-radius: 5px;
+  font-size: 12px;
+  color: var(--dsw-alias-label-secondary, #475569);
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: all 0.1s ease;
+}
+
+.item:hover {
+  background: var(--dsw-alias-interactive-bg-hover, rgba(59, 130, 246, 0.08));
+  color: var(--dsw-alias-state-business-primary, #2563eb);
+}
+
+.h1 {
+  font-weight: 700;
+  color: var(--dsw-alias-label-primary, #1e293b);
+  padding-left: 8px;
+}
+
+.h2 {
+  font-weight: 500;
+  padding-left: 18px;
+}
+
+.h3 {
+  font-weight: 400;
+  font-size: 11.5px;
+  padding-left: 28px;
+  color: var(--dsw-alias-label-tertiary, #64748b);
+}

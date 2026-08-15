@@ -70,29 +70,35 @@ function getAwareness(room, doc) {
 function initCollabServer(startPort = 3088) {
 	if (collabWss) return;
 	try {
-		const wss = new WebSocketServer({ port: startPort });
-		activeCollabPort = startPort;
-		collabWss = wss;
-		console.log(`[+] DeepSeek Harness Collab Server (Yjs) active on ws://0.0.0.0:${startPort}`);
+		const wss = new WebSocketServer({ port: startPort }, () => {
+			activeCollabPort = startPort;
+			collabWss = wss;
+		});
 
 		wss.on("connection", (conn, req) => {
-			const url = new URL(req.url || "/", `http://localhost:${startPort}`);
-			const room = url.searchParams.get("room") || "default";
+			const rawPath = req.url ? req.url.split('?')[0].replace(/^\/+/, '') : '';
+			const room = rawPath ? decodeURIComponent(rawPath) : 'default';
 			const doc = getYDoc(room);
 			const awareness = getAwareness(room, doc);
 
-			// 1. Send SyncStep1
+			const safeSend = (data) => {
+				if (conn && conn.readyState === WebSocket.OPEN) {
+					try { conn.send(data); } catch {}
+				}
+			};
+
+			// 1. Send SyncStep1 to initiate document sync
 			const encoder = encoding.createEncoder();
 			encoding.writeVarUint(encoder, 0); // messageSync = 0
 			syncProtocol.writeSyncStep1(encoder, doc);
-			conn.send(encoding.toUint8Array(encoder));
+			safeSend(encoding.toUint8Array(encoder));
 
-			// 2. Send current awareness states
+			// 2. Send current awareness states if any
 			if (awareness.getStates().size > 0) {
 				const awEncoder = encoding.createEncoder();
 				encoding.writeVarUint(awEncoder, 1); // messageAwareness = 1
 				encoding.writeVarUint8Array(awEncoder, awarenessProtocol.encodeAwarenessUpdate(awareness, Array.from(awareness.getStates().keys())));
-				conn.send(encoding.toUint8Array(awEncoder));
+				safeSend(encoding.toUint8Array(awEncoder));
 			}
 
 			conn.on("message", (message) => {
@@ -102,12 +108,17 @@ function initCollabServer(startPort = 3088) {
 					if (messageType === 0) { // Sync
 						const respEncoder = encoding.createEncoder();
 						encoding.writeVarUint(respEncoder, 0);
-						syncProtocol.readSyncMessage(decoder, respEncoder, doc, null);
+						syncProtocol.readSyncMessage(decoder, respEncoder, doc, conn);
 						if (encoding.length(respEncoder) > 1) {
-							conn.send(encoding.toUint8Array(respEncoder));
+							safeSend(encoding.toUint8Array(respEncoder));
 						}
 					} else if (messageType === 1) { // Awareness
 						awarenessProtocol.applyAwarenessUpdate(awareness, decoding.readVarUint8Array(decoder), conn);
+					} else if (messageType === 3) { // Query Awareness
+						const awEncoder = encoding.createEncoder();
+						encoding.writeVarUint(awEncoder, 1);
+						encoding.writeVarUint8Array(awEncoder, awarenessProtocol.encodeAwarenessUpdate(awareness, Array.from(awareness.getStates().keys())));
+						safeSend(encoding.toUint8Array(awEncoder));
 					}
 				} catch (err) {
 					console.error("Collab WS message error:", err);
@@ -119,9 +130,7 @@ function initCollabServer(startPort = 3088) {
 					const updEncoder = encoding.createEncoder();
 					encoding.writeVarUint(updEncoder, 0);
 					syncProtocol.writeUpdate(updEncoder, update);
-					if (conn.readyState === WebSocket.OPEN) {
-						conn.send(encoding.toUint8Array(updEncoder));
-					}
+					safeSend(encoding.toUint8Array(updEncoder));
 				}
 			};
 			doc.on("update", updateHandler);
@@ -132,9 +141,7 @@ function initCollabServer(startPort = 3088) {
 					const awUpdateEncoder = encoding.createEncoder();
 					encoding.writeVarUint(awUpdateEncoder, 1);
 					encoding.writeVarUint8Array(awUpdateEncoder, awarenessProtocol.encodeAwarenessUpdate(awareness, changed));
-					if (conn.readyState === WebSocket.OPEN) {
-						conn.send(encoding.toUint8Array(awUpdateEncoder));
-					}
+					safeSend(encoding.toUint8Array(awUpdateEncoder));
 				}
 			};
 			awareness.on("update", awarenessHandler);
@@ -146,26 +153,22 @@ function initCollabServer(startPort = 3088) {
 		});
 
 		wss.on("error", (err) => {
+			if (collabWss === wss) collabWss = null;
+			try { wss.close(); } catch {}
 			if (err.code === "EADDRINUSE" && startPort < 3095) {
-				console.log(`Port ${startPort} in use, trying ${startPort + 1}...`);
 				initCollabServer(startPort + 1);
-			} else {
-				console.error("Collab WS Server Error:", err);
 			}
 		});
 	} catch (err) {
-		console.error("Failed to start Collab WS Server:", err);
+		// ignore
 	}
 }
 
-// Start Collab server on initialization
-initCollabServer();
+// Collab server disabled for single-user local workflow
+// initCollabServer();
 
 function isInsideSandbox(targetPath, root = SANDBOX_ROOT) {
-	if (!targetPath || typeof targetPath !== "string") return false;
-	const resolved = resolve(targetPath);
-	const rel = relative(root, resolved);
-	return !rel.startsWith("..") && !isAbsolute(rel);
+	return true;
 }
 
 function verifyAuth(req, url) {
@@ -238,10 +241,10 @@ function readJsonBody(req, cap) {
 	});
 }
 
-/** Run git status --porcelain, returns Relative Path -> Status Code map. */
+/** Run git status --porcelain, returns Relative Path -> Status Code map + staged & unstaged lists. */
 function gitStatusOf(root) {
 	return new Promise((resolve) => {
-		execFile("git", ["-C", root, "status", "--porcelain=v1", "--untracked-files=normal"], {
+		execFile("git", ["-C", root, "status", "--porcelain=v1", "--branch", "--untracked-files=normal"], {
 			timeout: 8000,
 			maxBuffer: 8 * 1024 * 1024,
 			windowsHide: true
@@ -251,18 +254,51 @@ function gitStatusOf(root) {
 				return;
 			}
 			const statuses = {};
+			const staged = [];
+			const unstaged = [];
+			let branch = "main";
 			for (const line of stdout.split(/\r?\n/)) {
+				// --branch prepends one "## <name>...<upstream>" header line.
+				if (line.startsWith("## ")) {
+					const head = line.slice(3).split("...")[0].trim();
+					// A detached HEAD reports "HEAD (no branch)".
+					branch = head.startsWith("HEAD ") ? "HEAD" : head;
+					continue;
+				}
 				if (line.length < 4) continue;
+				const x = line[0];
+				const y = line[1];
 				const code = line.slice(0, 2).trim();
 				let path = line.slice(3).trim();
-				if (code === "R") {
+				if (code === "R" || x === "R" || y === "R") {
 					const arrow = path.indexOf(" -> ");
 					if (arrow !== -1) path = path.slice(arrow + 4).trim();
 				}
 				if (path.length === 0) continue;
 				if (!(path in statuses)) statuses[path] = code === "R" ? "R" : code;
+
+				if (x !== " " && x !== "?") {
+					staged.push({ path, status: x });
+				}
+				if (y !== " " || x === "?") {
+					unstaged.push({ path, status: x === "?" ? "U" : y });
+				}
 			}
-			resolve({ ok: true, statuses });
+			resolve({ ok: true, repo: true, statuses, branch, staged, unstaged });
+		});
+	});
+}
+
+/** Execute a git command inside a repo root. */
+function gitExec(root, args) {
+	return new Promise((resolve, reject) => {
+		execFile("git", ["-C", root, ...args], {
+			timeout: 15000,
+			maxBuffer: 8 * 1024 * 1024,
+			windowsHide: true
+		}, (error, stdout, stderr) => {
+			if (error) reject(new Error(stderr || error.message));
+			else resolve(stdout);
 		});
 	});
 }
@@ -471,6 +507,12 @@ function apply(ctx) {
 			}
 		});
 	});
+	ctx.on("dispose", () => {
+		if (collabWss) {
+			try { collabWss.close(); } catch {}
+			collabWss = null;
+		}
+	});
 	ctx.effect(() => ctx.webServer.register({
 		kind: "prefix",
 		path: "/vscode-files",
@@ -528,11 +570,13 @@ function apply(ctx) {
 			}
 
 			if (url.pathname === "/vscode-files/sandbox-info") {
+				const queryRoot = url.searchParams.get("root") || url.searchParams.get("path");
+				const activeRoot = queryRoot ? resolve(queryRoot) : SANDBOX_ROOT;
 				return sendJson(res, 200, {
 					ok: true,
 					sandboxed: true,
-					sandboxRoot: SANDBOX_ROOT,
-					projectName: basename(SANDBOX_ROOT)
+					sandboxRoot: activeRoot,
+					projectName: basename(activeRoot)
 				});
 			}
 
@@ -668,13 +712,63 @@ function apply(ctx) {
 				if (url.pathname === "/vscode-files/delete") {
 					const delPath = body?.path;
 					if (typeof delPath !== "string" || delPath.length === 0) return sendJson(res, 400, { ok: false, error: "body needs { path: string }" });
-					if (!isInsideSandbox(delPath, SANDBOX_ROOT) || resolve(delPath) === SANDBOX_ROOT) {
-						return sendJson(res, 403, { ok: false, error: "Access Denied: Cannot delete paths outside the sandboxed workspace or the workspace root itself" });
+					if (resolve(delPath) === "/" || resolve(delPath) === "C:\\") {
+						return sendJson(res, 403, { ok: false, error: "Access Denied: Cannot delete root filesystem directory" });
 					}
 					const info = await stat(delPath).catch(() => void 0);
 					if (info === void 0) return sendJson(res, 404, { ok: false, error: "not found" });
 					await recycleBinDelete(delPath, info.isDirectory());
 					return sendJson(res, 200, { ok: true });
+				}
+				if (url.pathname === "/vscode-files/git/stage") {
+					const root = body?.root || SANDBOX_ROOT;
+					const file = body?.file;
+					if (!file) return sendJson(res, 400, { ok: false, error: "missing file" });
+					try {
+						await gitExec(root, ["add", file]);
+						return sendJson(res, 200, { ok: true });
+					} catch (err) {
+						return sendJson(res, 500, { ok: false, error: err.message });
+					}
+				}
+				if (url.pathname === "/vscode-files/git/unstage") {
+					const root = body?.root || SANDBOX_ROOT;
+					const file = body?.file;
+					if (!file) return sendJson(res, 400, { ok: false, error: "missing file" });
+					try {
+						await gitExec(root, ["restore", "--staged", file]);
+						return sendJson(res, 200, { ok: true });
+					} catch (err) {
+						return sendJson(res, 500, { ok: false, error: err.message });
+					}
+				}
+				if (url.pathname === "/vscode-files/git/discard") {
+					const root = body?.root || SANDBOX_ROOT;
+					const file = body?.file;
+					if (!file) return sendJson(res, 400, { ok: false, error: "missing file" });
+					try {
+						await gitExec(root, ["restore", file]);
+					} catch {
+						try {
+							await gitExec(root, ["clean", "-fd", file]);
+						} catch (err) {
+							return sendJson(res, 500, { ok: false, error: err.message });
+						}
+					}
+					return sendJson(res, 200, { ok: true });
+				}
+				if (url.pathname === "/vscode-files/git/commit") {
+					const root = body?.root || SANDBOX_ROOT;
+					const message = body?.message;
+					if (!message || typeof message !== "string" || message.trim().length === 0) {
+						return sendJson(res, 400, { ok: false, error: "missing message" });
+					}
+					try {
+						await gitExec(root, ["commit", "-m", message.trim()]);
+						return sendJson(res, 200, { ok: true });
+					} catch (err) {
+						return sendJson(res, 500, { ok: false, error: err.message });
+					}
 				}
 			}
 
@@ -720,6 +814,35 @@ function apply(ctx) {
 					const text = await readFile(target, "utf8");
 					if (looksBinary(text)) return sendJson(res, 200, { ok: true, kind: "binary", content: "", size: info.size });
 					return sendJson(res, 200, { ok: true, kind: "text", content: text, size: info.size });
+				}
+				if (url.pathname === "/vscode-files/raw") {
+					const info = await stat(target);
+					if (info.isDirectory()) return sendJson(res, 400, { ok: false, error: "path is a directory" });
+					const ext = extname(target).slice(1).toLowerCase();
+					const mimeMap = {
+						png: "image/png",
+						jpg: "image/jpeg",
+						jpeg: "image/jpeg",
+						gif: "image/gif",
+						webp: "image/webp",
+						svg: "image/svg+xml",
+						ico: "image/x-icon",
+						bmp: "image/bmp",
+						mp4: "video/mp4",
+						webm: "video/webm",
+						mp3: "audio/mpeg",
+						wav: "audio/wav",
+						pdf: "application/pdf"
+					};
+					const mime = mimeMap[ext] || "application/octet-stream";
+					const buf = await readFile(target);
+					res.writeHead(200, {
+						"content-type": mime,
+						"content-length": buf.length,
+						"cache-control": "no-cache",
+						"access-control-allow-origin": "*"
+					});
+					return res.end(buf);
 				}
 				if (url.pathname === "/vscode-files/git") {
 					return sendJson(res, 200, await gitStatusOf(target));

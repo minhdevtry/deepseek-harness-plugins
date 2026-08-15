@@ -3,6 +3,21 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "description": "Workspace file service for the VS Code frame: directory listing, read/write, search, git status, trash, and the Yjs collaboration socket",
   "main": "lib/index.js",
-  "description": "VS Code 布局魔改：为浏览器端文件树/查看器提供列目录与读文件 HTTP 接口"
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "dependencies": {
+    "lib0": "^0.2.117",
+    "ws": "^8.21.3",
+    "y-protocols": "^1.0.7",
+    "yjs": "^13.6.32"
+  },
+  "files": [
+    "lib/**/*.js",
+    "cordis.patch.yml"
+  ]
 }

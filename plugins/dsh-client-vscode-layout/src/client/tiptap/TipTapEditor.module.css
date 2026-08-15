@@ -1,0 +1,392 @@
+.wrapper {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  background: var(--dsw-alias-bg-base, #ffffff);
+  color: var(--dsw-alias-label-primary, #1e293b);
+  overflow: hidden;
+  position: relative;
+}
+
+.topBar {
+  background: var(--dsw-alias-bg-elevated, #ffffff);
+  border-bottom: 1px solid var(--dsw-alias-border-l1, #e2e8f0);
+  padding: 6px 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  z-index: 10;
+}
+
+.modeToggle {
+  display: inline-flex;
+  align-items: center;
+  background: var(--dsw-alias-bg-hover, rgba(0, 0, 0, 0.05));
+  border-radius: 6px;
+  padding: 2px;
+  border: 1px solid var(--dsw-alias-border-l1, #cbd5e1);
+}
+
+.modeBtn {
+  border: none;
+  background: transparent;
+  padding: 3px 10px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--dsw-alias-label-secondary, #64748b);
+  border-radius: 4px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.12s ease;
+}
+
+.modeBtn:hover {
+  color: var(--dsw-alias-label-primary, #1e293b);
+}
+
+.modeBtnActive {
+  background: var(--dsw-alias-bg-elevated, #ffffff);
+  color: var(--dsw-alias-state-business-primary, #2563eb);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.actionBtn {
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--dsw-alias-label-secondary, #475569);
+  padding: 3px 8px;
+  border-radius: 5px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 26px;
+  transition: all 0.1s ease;
+}
+
+.actionBtn:hover {
+  background: var(--dsw-alias-bg-hover, rgba(0, 0, 0, 0.05));
+  color: var(--dsw-alias-label-primary, #0f172a);
+}
+
+.actionBtnActive {
+  background: rgba(37, 99, 235, 0.1);
+  color: #2563eb;
+  border-color: rgba(37, 99, 235, 0.2);
+}
+
+.spacer {
+  flex: 1;
+}
+
+.saveDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #f59e0b;
+  margin-right: 4px;
+  display: inline-block;
+}
+
+.saveDotSaved {
+  background: #10b981;
+}
+
+.canvas {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 32px 48px 80px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  cursor: text;
+  position: relative;
+}
+
+.container {
+  width: 100%;
+  max-width: 860px;
+  min-height: 100%;
+}
+
+/* ── TipTap ProseMirror Typography & Document Styling ── */
+.container :global(.ProseMirror) {
+  outline: none;
+  font-size: 15.5px;
+  line-height: 1.75;
+  min-height: 500px;
+  color: var(--dsw-alias-label-primary, #1e293b);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+.container :global(.ProseMirror p.is-editor-empty:first-child::before) {
+  content: "Type '/' for commands...";
+  float: left;
+  color: var(--dsw-alias-label-tertiary, #94a3b8);
+  pointer-events: none;
+  height: 0;
+}
+
+.container :global(.ProseMirror h1),
+.container :global(.ProseMirror h2),
+.container :global(.ProseMirror h3) {
+  color: var(--dsw-alias-label-primary, #0f172a);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.container :global(.ProseMirror h1) {
+  font-size: 2.1em;
+  font-weight: 800;
+  margin: 28px 0 12px;
+  line-height: 1.25;
+  border-bottom: 1px solid var(--dsw-alias-border-l1, rgba(0, 0, 0, 0.08));
+  padding-bottom: 8px;
+}
+
+.container :global(.ProseMirror h2) {
+  font-size: 1.55em;
+  font-weight: 700;
+  margin: 24px 0 10px;
+  line-height: 1.3;
+}
+
+.container :global(.ProseMirror h3) {
+  font-size: 1.25em;
+  font-weight: 600;
+  margin: 18px 0 6px;
+  line-height: 1.4;
+}
+
+.container :global(.ProseMirror p) {
+  margin: 10px 0;
+}
+
+.container :global(.ProseMirror hr) {
+  border: none;
+  border-top: 1px solid var(--dsw-alias-border-l1, #e2e8f0);
+  margin: 24px 0;
+}
+
+.container :global(.ProseMirror blockquote) {
+  border-left: 4px solid #3b82f6 !important;
+  background: rgba(59, 130, 246, 0.06) !important;
+  margin: 16px 0 !important;
+  padding: 12px 18px !important;
+  border-radius: 0 8px 8px 0 !important;
+  color: var(--dsw-alias-label-secondary, #334155) !important;
+  font-style: normal !important;
+}
+
+.container :global(.ProseMirror blockquote p) {
+  margin: 4px 0 !important;
+}
+
+/* ── Notion Callout Blocks ── */
+.container :global(.tiptap-callout) {
+  display: flex;
+  flex-direction: column;
+  margin: 16px 0;
+  padding: 14px 18px;
+  border-radius: 8px;
+  border-left: 4px solid #3b82f6;
+  background: rgba(59, 130, 246, 0.06);
+  position: relative;
+}
+
+.container :global(.tiptap-callout-info) {
+  border-left-color: #3b82f6;
+  background: rgba(59, 130, 246, 0.06);
+}
+
+.container :global(.tiptap-callout-tip),
+.container :global(.tiptap-callout-success) {
+  border-left-color: #10b981;
+  background: rgba(16, 185, 129, 0.06);
+}
+
+.container :global(.tiptap-callout-warning) {
+  border-left-color: #f59e0b;
+  background: rgba(245, 158, 11, 0.07);
+}
+
+.container :global(.tiptap-callout-danger) {
+  border-left-color: #ef4444;
+  background: rgba(239, 68, 68, 0.06);
+}
+
+/* ── Notion Task Lists ── */
+.container :global(.ProseMirror ul[data-type="taskList"]) {
+  list-style: none !important;
+  padding-left: 0 !important;
+  margin: 12px 0 !important;
+}
+
+.container :global(.ProseMirror ul[data-type="taskList"] li) {
+  display: flex !important;
+  align-items: flex-start !important;
+  gap: 10px !important;
+  margin: 6px 0 !important;
+  list-style: none !important;
+}
+
+.container :global(.ProseMirror ul[data-type="taskList"] li::before),
+.container :global(.ProseMirror ul[data-type="taskList"] li::marker) {
+  display: none !important;
+  content: "" !important;
+}
+
+.container :global(.ProseMirror ul[data-type="taskList"] li > label) {
+  margin-top: 3px !important;
+  flex-shrink: 0 !important;
+  user-select: none !important;
+  cursor: pointer !important;
+  display: inline-flex !important;
+  align-items: center !important;
+}
+
+.container :global(.ProseMirror ul[data-type="taskList"] li > label input[type="checkbox"]) {
+  width: 16px !important;
+  height: 16px !important;
+  border-radius: 4px !important;
+  cursor: pointer !important;
+  accent-color: #2563eb !important;
+  margin: 0 !important;
+}
+
+.container :global(.ProseMirror ul[data-type="taskList"] li > div) {
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+}
+
+.container :global(.ProseMirror ul[data-type="taskList"] li > div > p) {
+  margin: 0 !important;
+  line-height: 1.6 !important;
+}
+
+.container :global(.ProseMirror ul[data-type="taskList"] li[data-checked="true"] > div) {
+  text-decoration: line-through !important;
+  opacity: 0.55 !important;
+  color: var(--dsw-alias-label-tertiary, #64748b) !important;
+}
+
+/* ── Notion Tables ── */
+.container :global(.ProseMirror table) {
+  border-collapse: separate !important;
+  border-spacing: 0 !important;
+  width: 100% !important;
+  margin: 20px 0 !important;
+  border-radius: 8px !important;
+  border: 1px solid var(--dsw-alias-border-l1, #e2e8f0) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03) !important;
+  overflow: hidden !important;
+}
+
+.container :global(.ProseMirror th),
+.container :global(.ProseMirror td) {
+  border-right: 1px solid var(--dsw-alias-border-l1, #e2e8f0) !important;
+  border-bottom: 1px solid var(--dsw-alias-border-l1, #e2e8f0) !important;
+  padding: 10px 14px !important;
+  font-size: 13.5px !important;
+  text-align: left !important;
+  line-height: 1.5 !important;
+  position: relative !important;
+}
+
+.container :global(.ProseMirror th) {
+  background: var(--dsw-alias-bg-hover, #f8fafc) !important;
+  font-weight: 700 !important;
+  color: var(--dsw-alias-label-primary, #1e293b) !important;
+  border-bottom: 2px solid var(--dsw-alias-border-l2, #cbd5e1) !important;
+}
+
+.container :global(.ProseMirror tr:last-child td) {
+  border-bottom: none !important;
+}
+
+.container :global(.ProseMirror tr td:last-child),
+.container :global(.ProseMirror tr th:last-child) {
+  border-right: none !important;
+}
+
+.container :global(.ProseMirror tr:hover td) {
+  background: var(--dsw-alias-bg-hover, rgba(241, 245, 249, 0.6)) !important;
+}
+
+/* ── Notion Code Blocks & Copy Button ── */
+.container :global(.ProseMirror pre) {
+  position: relative !important;
+  background: var(--dsw-alias-bg-hover, #f8fafc) !important;
+  color: var(--dsw-alias-label-primary, #1e293b) !important;
+  padding: 16px 20px !important;
+  border-radius: 8px !important;
+  font-family: 'Fira Code', 'Cascadia Code', ui-monospace, SFMono-Regular, Consolas, Monaco, monospace !important;
+  font-size: 13.5px !important;
+  line-height: 1.65 !important;
+  margin: 16px 0 !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04) !important;
+  border: 1px solid var(--dsw-alias-border-l1, #e2e8f0) !important;
+  overflow-x: auto !important;
+}
+
+.container :global(.ProseMirror pre code) {
+  background: transparent !important;
+  padding: 0 !important;
+  color: inherit !important;
+  font-size: inherit !important;
+}
+
+.container :global(.copy-code-btn) {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: var(--dsw-alias-bg-elevated, #ffffff);
+  border: 1px solid var(--dsw-alias-border-l1, #cbd5e1);
+  border-radius: 5px;
+  padding: 3px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--dsw-alias-label-secondary, #475569);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 5;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.container :global(.ProseMirror pre:hover .copy-code-btn) {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.container :global(.copy-code-btn:hover) {
+  background: #3b82f6;
+  color: #ffffff;
+  border-color: #3b82f6;
+}
+
+/* ── Media Embeds ── */
+.container :global(.ProseMirror img) {
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+  margin: 16px 0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.container :global(.ProseMirror iframe) {
+  max-width: 100%;
+  border-radius: 8px;
+  margin: 16px 0;
+  border: none;
+  aspect-ratio: 16 / 9;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}

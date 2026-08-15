@@ -1,0 +1,59 @@
+/**
+ * Editor palette. `theme.ts` references these by name only, so switching
+ * light/dark repaints without rebuilding a single EditorState — which is what
+ * keeps every tab's undo history alive across a theme toggle.
+ *
+ * The dark side keys off `body[data-ds-dark-theme]`, the attribute the frame's
+ * theme presenter writes.
+ */
+.host {
+  flex: 1 1 auto;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+
+  /* Syntax — grouped by what a reader distinguishes at a glance. */
+  --vsc-syn-comment: #6e7781;
+  --vsc-syn-keyword: #cf222e;
+  --vsc-syn-string: #0a3069;
+  --vsc-syn-number: #0550ae;
+  --vsc-syn-function: #8250df;
+  --vsc-syn-type: #953800;
+  --vsc-syn-property: #0550ae;
+  --vsc-syn-variable: #24292f;
+  --vsc-syn-punctuation: #57606a;
+  --vsc-syn-tag: #116329;
+  --vsc-syn-meta: #6e7781;
+
+  /* Chrome. The blurred selection stays visible because the editor is often
+     not the focused element — the chat panel may hold focus instead. */
+  --vsc-selection: rgb(84 174 255 / 35%);
+  --vsc-selection-blur: rgb(140 160 180 / 22%);
+  --vsc-active-line: rgb(0 0 0 / 3.5%);
+  --vsc-match: rgb(255 213 0 / 35%);
+  --vsc-match-active: rgb(255 150 50 / 55%);
+}
+
+:global(body[data-ds-dark-theme]) .host {
+  --vsc-syn-comment: #8b949e;
+  --vsc-syn-keyword: #ff7b72;
+  --vsc-syn-string: #a5d6ff;
+  --vsc-syn-number: #79c0ff;
+  --vsc-syn-function: #d2a8ff;
+  --vsc-syn-type: #ffa657;
+  --vsc-syn-property: #79c0ff;
+  --vsc-syn-variable: #e6edf3;
+  --vsc-syn-punctuation: #8b949e;
+  --vsc-syn-tag: #7ee787;
+  --vsc-syn-meta: #8b949e;
+
+  --vsc-selection: rgb(56 139 253 / 40%);
+  --vsc-selection-blur: rgb(110 118 129 / 30%);
+  --vsc-active-line: rgb(255 255 255 / 4%);
+  --vsc-match: rgb(255 213 0 / 25%);
+  --vsc-match-active: rgb(255 150 50 / 45%);
+}

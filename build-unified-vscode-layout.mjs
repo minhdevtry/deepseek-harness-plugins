@@ -633,24 +633,7 @@ const customComponentsCode = `
 				background: #eff6ff; border-color: #93c5fd; color: #1d4ed8;
 			}
 
-			/* @ Mention File Dropdown in Chat */
-			.vk_at_file_dropdown {
-				position: absolute; bottom: calc(100% + 8px); left: 16px; z-index: 9999;
-				width: 320px; max-height: 240px; overflow-y: auto;
-				background: var(--dsw-alias-bg-elevated, #ffffff);
-				border: 1px solid var(--dsw-alias-border-l2, #d1d5db); border-radius: 8px;
-				box-shadow: 0 10px 25px rgba(0,0,0,0.18); padding: 4px;
-			}
-			.vk_at_file_header {
-				font-size: 10.5px; font-weight: 700; color: #6b7280; padding: 4px 8px; text-transform: uppercase;
-			}
-			.vk_at_file_item {
-				display: flex; align-items: center; gap: 6px; padding: 5px 8px; border-radius: 5px;
-				cursor: pointer; font-size: 12px;
-			}
-			.vk_at_file_item:hover { background: #eff6ff; color: #1d4ed8; }
-			.vk_at_file_name { font-weight: 600; }
-			.vk_at_file_path { font-size: 10px; color: #9ca3af; margin-left: auto; overflow: hidden; text-overflow: ellipsis; max-width: 140px; }
+
 
 			/* Document Outline (TOC) */
 			.vk_toc_backdrop {
@@ -680,48 +663,36 @@ const customComponentsCode = `
 			.vk_toc_badge { font-size: 9.5px; font-weight: 700; padding: 1px 4px; border-radius: 3px; background: rgba(37,99,235,0.15); color: #2563eb; }
 			.vk_toc_empty { font-size: 11.5px; color: #9ca3af; padding: 12px; text-align: center; }
 
-			/* Chat Code Block Action Buttons */
-			.vk_chat_code_bar {
-				display: flex; align-items: center; gap: 6px; margin-bottom: 4px; justify-content: flex-end;
-			}
-			.vk_code_action_btn {
-				display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 4px;
-				font-size: 11px; font-weight: 600; cursor: pointer; border: 1px solid rgba(255,255,255,0.15);
-				background: rgba(30, 41, 59, 0.85); color: #e2e8f0; transition: all 0.12s;
-			}
-			.vk_code_action_btn:hover { background: #2563eb; color: #ffffff; border-color: #2563eb; }
 
-			/* AI Mode Selector */
-			.vk_ai_mode_bar {
-				display: flex; align-items: center; gap: 4px; padding: 4px 10px;
-				background: var(--dsw-alias-bg-subtle, #f8fafc); border-bottom: 1px solid var(--dsw-alias-border-l1, #e2e8f0);
-			}
-			.vk_ai_mode_pill {
-				background: transparent; border: 1px solid transparent; border-radius: 5px;
-				padding: 3px 8px; font-size: 11px; font-weight: 600; cursor: pointer;
-				color: var(--dsw-alias-label-secondary, #64748b); transition: all 0.12s;
-			}
-			.vk_ai_mode_pill:hover { background: rgba(37,99,235,0.08); color: #2563eb; }
-			.vk_ai_mode_pill_active {
-				background: #eff6ff !important; border-color: #93c5fd !important;
-				color: #1d4ed8 !important; font-weight: 700;
-			}
 
-			/* Chat Slash Command Dropdown */
-			.vk_chat_slash_dropdown {
-				position: absolute; bottom: calc(100% + 8px); left: 16px; z-index: 9999;
-				width: 380px; max-height: 280px; overflow-y: auto;
-				background: var(--dsw-alias-bg-elevated, #ffffff);
-				border: 1px solid var(--dsw-alias-border-l2, #d1d5db); border-radius: 10px;
-				box-shadow: 0 12px 30px rgba(0,0,0,0.2); padding: 6px; animation: vk-pop-in 0.12s ease-out;
+			/* Sleek Chat Context Citation / Reference Card */
+			.vk_colRight blockquote {
+				border-left: 3px solid #3b82f6 !important;
+				background: rgba(59, 130, 246, 0.08) !important;
+				border-radius: 6px !important;
+				padding: 6px 12px !important;
+				margin: 6px 0 10px 0 !important;
+				font-size: 12px !important;
+				color: var(--dsw-alias-label-primary, #1e293b) !important;
 			}
-			.vk_chat_slash_item {
-				display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 6px;
-				cursor: pointer; font-size: 12px; transition: background 0.1s;
+			.vk_colRight blockquote p {
+				margin: 0 0 4px 0 !important;
+				display: flex; align-items: center; gap: 6px;
 			}
-			.vk_chat_slash_item:hover { background: #eff6ff; color: #1d4ed8; }
-			.vk_chat_slash_label { font-weight: 700; color: #2563eb; font-family: monospace; font-size: 12.5px; }
-			.vk_chat_slash_desc { font-size: 11px; color: #64748b; margin-left: auto; text-align: right; }
+			.vk_colRight blockquote a {
+				color: #2563eb !important; text-decoration: none !important; font-weight: 600 !important;
+			}
+			.vk_colRight blockquote a:hover { text-decoration: underline !important; }
+			.vk_colRight blockquote pre {
+				margin: 4px 0 0 0 !important;
+				padding: 6px 8px !important;
+				background: rgba(15, 23, 42, 0.8) !important;
+				color: #f1f5f9 !important;
+				border-radius: 4px !important;
+				font-size: 11px !important;
+				max-height: 160px !important;
+				overflow-y: auto !important;
+			}
 
 			/* Reasoning Accordion (<think>) */
 			.vk_colRight details.thinking, .vk_colRight details[data-thinking="true"] {
@@ -1370,33 +1341,6 @@ const customComponentsCode = `
 			);
 		}
 
-		// ── @ Mention File Dropdown Component ──
-		function AtFileMentionDropdown({ isOpen, query, onSelect, onClose }) {
-			const [files, setFiles] = react.useState([]);
-
-			react.useEffect(() => {
-				if (!isOpen) return;
-				fetch("/vscode-files/search?type=filename&q=" + encodeURIComponent(query || ""))
-					.then(r => r.json())
-					.then(d => { if (d && d.ok && d.results) setFiles(d.results.slice(0, 12)); })
-					.catch(() => {});
-			}, [isOpen, query]);
-
-			if (!isOpen || files.length === 0) return null;
-
-			return h("div", { className: "vk_at_file_dropdown", "data-vk-at-file": true },
-				h("div", { className: "vk_at_file_header" }, "Mention Workspace File (@)"),
-				files.map(f => h("div", {
-					key: f.path,
-					className: "vk_at_file_item",
-					onClick: () => onSelect(f)
-				},
-					h("span", { className: "vk_at_file_icon" }, "📄"),
-					h("span", { className: "vk_at_file_name" }, f.name),
-					h("span", { className: "vk_at_file_path" }, f.path)
-				))
-			);
-		}
 
 		// ── AI Assist Quick Actions Dropdown Component ──
 		function AIAssistDropdown({ onAction }) {
@@ -1431,57 +1375,6 @@ const customComponentsCode = `
 					h("button", { className: "vk_ai_dropdown_item", onClick: () => trigger("docs") }, "📝 Generate JSDoc / Docs"),
 					h("button", { className: "vk_ai_dropdown_item", onClick: () => trigger("review") }, "🔍 Code Review & Bug Check")
 				) : null
-			);
-		}
-
-		// ── AI Mode Selector Component (Agent / Plan / Ask) ──
-		function AIModeSelector({ currentMode, onSelectMode }) {
-			const modes = [
-				{ id: "agent", label: "🚀 Agent", title: "Autonomous execution: read, edit files & run commands" },
-				{ id: "plan", label: "📋 Plan", title: "Planning mode: architectural analysis & step-by-step design" },
-				{ id: "ask", label: "💬 Ask", title: "Explain & brainstorm: discuss without modifying files" }
-			];
-
-			return h("div", { className: "vk_ai_mode_bar", "data-vk-ai-mode-bar": true },
-				modes.map(m => h("button", {
-					key: m.id,
-					type: "button",
-					className: "vk_ai_mode_pill" + (currentMode === m.id ? " vk_ai_mode_pill_active" : ""),
-					title: m.title,
-					onClick: () => onSelectMode(m.id)
-				}, m.label))
-			);
-		}
-
-		// ── Chat Slash Command Dropdown Component (/) ──
-		function ChatSlashCommandDropdown({ isOpen, query, onSelect, onClose }) {
-			const commands = [
-				{ id: "/plan", label: "/plan", desc: "Step-by-step implementation plan before coding", prefix: "[PLANNING MODE] Please create a comprehensive, step-by-step implementation plan with architectural overview for: " },
-				{ id: "/review", label: "/review", desc: "Review git diffs, edge cases and security", prefix: "[CODE REVIEW] Please perform a thorough code review on the active file and recent workspace changes for: " },
-				{ id: "/test", label: "/test", desc: "Run and fix automated test suite", prefix: "[TEST SUITE] Please run our automated test suite and fix any failing tests: " },
-				{ id: "/skill", label: "/skill", desc: "Load and activate specialized AI Skill", prefix: "[SKILL ACTIVATION] Activate skill: " },
-				{ id: "/compact", label: "/compact", desc: "Compact and summarize chat context", prefix: "/compact" },
-				{ id: "/clear", label: "/clear", desc: "Start a fresh discussion session", prefix: "/clear" }
-			];
-
-			const filtered = react.useMemo(() => {
-				if (!query) return commands;
-				const q = query.toLowerCase();
-				return commands.filter(c => c.id.toLowerCase().includes(q) || c.desc.toLowerCase().includes(q));
-			}, [query]);
-
-			if (!isOpen || filtered.length === 0) return null;
-
-			return h("div", { className: "vk_chat_slash_dropdown", "data-vk-slash-commands": true },
-				h("div", { className: "vk_slash_header" }, "AI Slash Commands (/)"),
-				filtered.map(c => h("div", {
-					key: c.id,
-					className: "vk_chat_slash_item",
-					onClick: () => onSelect(c)
-				},
-					h("span", { className: "vk_chat_slash_label" }, c.label),
-					h("span", { className: "vk_chat_slash_desc" }, c.desc)
-				))
 			);
 		}
 
@@ -2091,9 +1984,16 @@ const customComponentsCode = `
 			const inputRef = react.useRef(null);
 
 			react.useEffect(() => {
-				if (isOpen && inputRef.current) {
-					inputRef.current.focus();
-					inputRef.current.select();
+				if (isOpen) {
+					const sel = window.getSelection()?.toString()?.trim();
+					if (sel && sel.length < 100 && !sel.includes('\\\\n')) {
+						setFindVal(sel);
+						if (onFindNext) onFindNext(sel, 0, { matchCase, wholeWord, isRegex });
+					}
+					if (inputRef.current) {
+						inputRef.current.focus();
+						inputRef.current.select();
+					}
 				}
 			}, [isOpen]);
 
@@ -2494,7 +2394,8 @@ const customComponentsCode = `
 							codeBlock: false,
 							link: false,
 							underline: false,
-							history: !provider
+							undoRedo: false,
+							history: false
 						}),
 						TaskList, TaskItem.configure({ nested: true }),
 						Table.configure({ resizable: true }), TableRow, TableCell, TableHeader,
@@ -2517,9 +2418,9 @@ const customComponentsCode = `
 					content: content,
 					onUpdate: ({ editor: ed }) => {
 						updateDocState(ed);
-						if (ed.storage && ed.storage.markdown) {
+						if (ed.storage && ed.storage.markdown && ed.isFocused) {
 							const md = ed.storage.markdown.getMarkdown();
-							onUpdateContent(md);
+							if (onUpdateContent) onUpdateContent(md);
 						}
 					},
 					onSelectionUpdate: ({ editor: ed }) => {
@@ -3290,6 +3191,7 @@ const newEditorArea = `function EditorArea({ tabs, activePath, onSelect, onClose
 			const active = hasTabs ? (tabs.find((t) => t.path === activePath) ?? tabs[tabs.length - 1]) : null;
 			const currentPath = active !== null ? active.path : null;
 			const [edits, setEdits] = react.useState({});
+			const [directDirty, setDirectDirty] = react.useState({});
 			const [revisions, setRevisions] = react.useState({});
 			const [initialContent, setInitialContent] = react.useState({});
 			const [busy, setBusy] = react.useState(false);
@@ -3428,6 +3330,12 @@ const newEditorArea = `function EditorArea({ tabs, activePath, onSelect, onClose
 				setEdits((prev) => ({ ...prev, [targetPath]: { text, dirty: true } }));
 			}, [currentPath, edits]);
 
+			const updateMarkdownDirect = react.useCallback((text, explicitPath) => {
+				const targetPath = explicitPath || currentPath;
+				if (!targetPath) return;
+				setDirectDirty((prev) => (prev[targetPath] ? prev : { ...prev, [targetPath]: true }));
+			}, [currentPath]);
+
 			const saveWithText = react.useCallback(async (textToSave, explicitPath) => {
 				const targetPath = explicitPath || currentPath;
 				if (!targetPath || typeof textToSave !== "string" || busy) return;
@@ -3446,6 +3354,7 @@ const newEditorArea = `function EditorArea({ tabs, activePath, onSelect, onClose
 							delete next[targetPath];
 							return next;
 						});
+						setDirectDirty((prev) => ({ ...prev, [targetPath]: false }));
 						setInitialContent((prev) => ({ ...prev, [targetPath]: textToSave }));
 						setRevisions((prev) => ({ ...prev, [targetPath]: (prev[targetPath] ?? 0) + 1 }));
 						setSaveMsg("Saved");
@@ -3567,15 +3476,16 @@ const newEditorArea = `function EditorArea({ tabs, activePath, onSelect, onClose
 				setEdits((prev) => ({ ...prev, [currentPath]: { text, dirty: false } }));
 			}, [currentPath]);
 
-			// Find / Replace helpers
+			// Find / Replace helpers (supports TipTap WYSIWYG, Code Viewer, and Raw Text Mode)
 			const handleFindNext = react.useCallback((findVal, direction = 1, opts = {}) => {
 				if (!findVal || currentPath === null) {
 					setFindMatchCount(0);
 					setFindActiveIndex(0);
 					return;
 				}
-				const currentText = edits[currentPath]?.text;
-				if (typeof currentText !== "string") return;
+				const currentText = edits[currentPath]?.text ?? (document.querySelector('.ProseMirror, .vk_tiptap_container')?.innerText || document.querySelector('.vk_editorBody, pre')?.innerText || initialContent[currentPath] || "");
+				if (!currentText || typeof currentText !== "string") return;
+
 				let regex;
 				try {
 					const flags = opts.matchCase ? "g" : "gi";
@@ -3584,6 +3494,7 @@ const newEditorArea = `function EditorArea({ tabs, activePath, onSelect, onClose
 				} catch {
 					return;
 				}
+
 				const matches = [];
 				let m;
 				while ((m = regex.exec(currentText)) !== null) {
@@ -3591,15 +3502,33 @@ const newEditorArea = `function EditorArea({ tabs, activePath, onSelect, onClose
 					if (!regex.global) break;
 				}
 				setFindMatchCount(matches.length);
+
 				if (matches.length > 0) {
 					setFindActiveIndex((prev) => {
 						const nextIdx = (prev + direction + matches.length) % matches.length;
+						const txtArea = document.querySelector('.vk_textarea');
+						if (txtArea && typeof txtArea.setSelectionRange === 'function') {
+							const match = matches[nextIdx];
+							if (match) {
+								txtArea.focus();
+								txtArea.setSelectionRange(match.index, match.index + match.length);
+								const linesBefore = currentText.slice(0, match.index).split('\\\\n').length;
+								txtArea.scrollTop = Math.max(0, (linesBefore - 4) * 20);
+							}
+						} else {
+							try {
+								window.find(findVal, !!opts.matchCase, direction < 0, true, !!opts.wholeWord);
+							} catch {}
+						}
 						return nextIdx;
 					});
 				} else {
 					setFindActiveIndex(0);
+					try {
+						window.find(findVal, !!opts.matchCase, direction < 0, true, !!opts.wholeWord);
+					} catch {}
 				}
-			}, [currentPath, edits]);
+			}, [currentPath, edits, initialContent]);
 
 			const handleFindPrev = react.useCallback((findVal, opts) => {
 				handleFindNext(findVal, -1, opts);
@@ -3607,31 +3536,39 @@ const newEditorArea = `function EditorArea({ tabs, activePath, onSelect, onClose
 
 			const handleReplace = react.useCallback((findVal, replaceVal, opts = {}) => {
 				if (!findVal || currentPath === null) return;
-				const currentText = edits[currentPath]?.text;
+				const currentText = edits[currentPath]?.text ?? (document.querySelector('.ProseMirror, .vk_tiptap_container')?.innerText || document.querySelector('.vk_editorBody, pre')?.innerText || initialContent[currentPath] || "");
 				if (typeof currentText !== "string") return;
 				try {
 					const flags = opts.matchCase ? "" : "i";
 					const pattern = opts.isRegex ? findVal : (opts.wholeWord ? ("\\\\b" + findVal + "\\\\b") : findVal.replace(/[-\\/\\\\^$*+?.()|[\\]{}]/g, "\\\\$&"));
 					const regex = new RegExp(pattern, flags);
-					const newText = currentText.replace(regex, replaceVal);
-					onEditText(newText);
+					const newText = currentText.replace(regex, replaceVal || "");
+					if (edits[currentPath] !== undefined) {
+						onEditText(newText);
+					} else {
+						saveWithText(newText, currentPath);
+					}
 					handleFindNext(findVal, 0, opts);
 				} catch {}
-			}, [currentPath, edits, onEditText, handleFindNext]);
+			}, [currentPath, edits, initialContent, onEditText, saveWithText, handleFindNext]);
 
 			const handleReplaceAll = react.useCallback((findVal, replaceVal, opts = {}) => {
 				if (!findVal || currentPath === null) return;
-				const currentText = edits[currentPath]?.text;
+				const currentText = edits[currentPath]?.text ?? (document.querySelector('.ProseMirror, .vk_tiptap_container')?.innerText || document.querySelector('.vk_editorBody, pre')?.innerText || initialContent[currentPath] || "");
 				if (typeof currentText !== "string") return;
 				try {
 					const flags = opts.matchCase ? "g" : "gi";
 					const pattern = opts.isRegex ? findVal : (opts.wholeWord ? ("\\\\b" + findVal + "\\\\b") : findVal.replace(/[-\\/\\\\^$*+?.()|[\\]{}]/g, "\\\\$&"));
 					const regex = new RegExp(pattern, flags);
-					const newText = currentText.replace(regex, replaceVal);
-					onEditText(newText);
+					const newText = currentText.replace(regex, replaceVal || "");
+					if (edits[currentPath] !== undefined) {
+						onEditText(newText);
+					} else {
+						saveWithText(newText, currentPath);
+					}
 					handleFindNext(findVal, 0, opts);
 				} catch {}
-			}, [currentPath, edits, onEditText, handleFindNext]);
+			}, [currentPath, edits, initialContent, onEditText, saveWithText, handleFindNext]);
 
 			if (!hasTabs) {
 				return h("div", { className: "vk_editor" },
@@ -3676,7 +3613,7 @@ const newEditorArea = `function EditorArea({ tabs, activePath, onSelect, onClose
 				h("div", { className: "vk_tabStrip" },
 					tabs.map((t) => {
 						const isAct = t.path === currentPath;
-						const isDirty = edits[t.path]?.dirty === true;
+						const isDirty = edits[t.path]?.dirty === true || directDirty[t.path] === true;
 						return h("div", {
 							key: t.path,
 							className: "vk_fileTab" + (isAct ? " vk_fileTabActive" : "") + (dragged === t.path ? " vk_fileTabDragging" : ""),
@@ -3711,77 +3648,66 @@ const newEditorArea = `function EditorArea({ tabs, activePath, onSelect, onClose
 				}),
 				isTraj
 					? h("div", { className: "vk_editorBody vk_trajBody" }, trajectory ?? h("div", { className: "vk_notice" }, "Trajectory view unavailable"))
-					: (isMarkdown && editing)
-						? h(TipTapNotionEditor, {
-							file: active,
-							content: edits[active.path].text,
-							isDirty: edits[active.path].dirty === true,
-							onUpdateContent: onEditText,
-							onSave: (txt) => saveWithText(txt),
-							onCancel: requestCancel,
-							busy,
-							saveMsg,
-							onToggleRawMode: requestCancel
-						})
-						: (editing && !isMarkdown)
-							? h(react.Fragment, null,
-								h("div", { className: "vk_bar" },
-									h("span", { className: "vk_barPath" }, active.path),
-									h("button", { className: "vk_editBtn vk_editBtnPrimary", disabled: busy, title: "Save (Ctrl+S)", onClick: save }, "💾 Save"),
-									h("button", { className: "vk_editBtn", disabled: busy, title: "Undo (Ctrl+Z)", onClick: handleUndo }, "↺ Undo"),
-									h("button", { className: "vk_editBtn", disabled: busy, title: "Redo (Ctrl+Y / Ctrl+Shift+Z)", onClick: handleRedo }, "↻ Redo"),
-									h("button", { className: "vk_editBtn" + (showDiff ? " vk_editBtnPrimary" : ""), disabled: busy, title: "Toggle Diff View", onClick: () => setShowDiff(!showDiff) }, "⚡ Diff"),
-									h(AIAssistDropdown, { onAction: handleAIAssist }),
-									h("button", { className: "vk_editBtn", disabled: busy, title: "Cancel Edit (Esc)", onClick: requestCancel }, "✕ Cancel"),
-									edits[active.path]?.dirty ? h("span", { className: "vk_dirtyDot", title: "Unsaved changes" }) : null,
-									saveMsg ? h("span", { className: "vk_saveMsg" }, saveMsg) : h("span", { className: "vk_saveMsg" }, "Edit Mode")
-								),
-								showDiff
-									? h(DiffViewer, {
-										oldText: initialContent[active.path] || "",
-										newText: edits[active.path]?.text || "",
-										fileName: active.name,
-										onAccept: () => { save(); setShowDiff(false); },
-										onDiscard: () => { requestCancel(); setShowDiff(false); },
-										onClose: () => setShowDiff(false)
-									})
-									: h("div", { className: "vk_editorBody" },
-										h("textarea", {
-											className: "vk_textarea",
-											value: edits[active.path].text,
-											autoFocus: true,
-											onChange: (e) => onEditText(e.target.value),
-											onKeyDown: (e) => {
-												if ((e.ctrlKey || e.metaKey) && (e.key === "k" || e.key === "K")) {
-													e.preventDefault();
-													const sel = e.target.value.substring(e.target.selectionStart, e.target.selectionEnd);
-													setRawInlineSelection(sel || edits[active.path]?.text?.slice(0, 300) || "");
-													setRawInlineAIOpen(true);
-												} else if ((e.ctrlKey || e.metaKey) && (e.key === "z" || e.key === "Z") && !e.shiftKey) {
-													e.preventDefault();
-													handleUndo();
-												} else if (((e.ctrlKey || e.metaKey) && (e.key === "z" || e.key === "Z") && e.shiftKey) || ((e.ctrlKey || e.metaKey) && (e.key === "y" || e.key === "Y"))) {
-													e.preventDefault();
-													handleRedo();
-												}
+					: (editing && !isMarkdown)
+						? h(react.Fragment, null,
+							h("div", { className: "vk_bar" },
+								h("span", { className: "vk_barPath" }, active.path),
+								h("button", { className: "vk_editBtn vk_editBtnPrimary", disabled: busy, title: "Save (Ctrl+S)", onClick: save }, "💾 Save"),
+								h("button", { className: "vk_editBtn", disabled: busy, title: "Undo (Ctrl+Z)", onClick: handleUndo }, "↺ Undo"),
+								h("button", { className: "vk_editBtn", disabled: busy, title: "Redo (Ctrl+Y / Ctrl+Shift+Z)", onClick: handleRedo }, "↻ Redo"),
+								h("button", { className: "vk_editBtn" + (showDiff ? " vk_editBtnPrimary" : ""), disabled: busy, title: "Toggle Diff View", onClick: () => setShowDiff(!showDiff) }, "⚡ Diff"),
+								h(AIAssistDropdown, { onAction: handleAIAssist }),
+								h("button", { className: "vk_editBtn", disabled: busy, title: "Cancel Edit (Esc)", onClick: requestCancel }, "✕ Cancel"),
+								edits[active.path]?.dirty ? h("span", { className: "vk_dirtyDot", title: "Unsaved changes" }) : null,
+								saveMsg ? h("span", { className: "vk_saveMsg" }, saveMsg) : h("span", { className: "vk_saveMsg" }, "Edit Mode")
+							),
+							showDiff
+								? h(DiffViewer, {
+									oldText: initialContent[active.path] || "",
+									newText: edits[active.path]?.text || "",
+									fileName: active.name,
+									onAccept: () => { save(); setShowDiff(false); },
+									onDiscard: () => { requestCancel(); setShowDiff(false); },
+									onClose: () => setShowDiff(false)
+								})
+								: h("div", { className: "vk_editorBody" },
+									h("textarea", {
+										className: "vk_textarea",
+										value: edits[active.path].text,
+										autoFocus: true,
+										onChange: (e) => onEditText(e.target.value),
+										onKeyDown: (e) => {
+											if ((e.ctrlKey || e.metaKey) && (e.key === "k" || e.key === "K")) {
+												e.preventDefault();
+												const sel = e.target.value.substring(e.target.selectionStart, e.target.selectionEnd);
+												setRawInlineSelection(sel || edits[active.path]?.text?.slice(0, 300) || "");
+												setRawInlineAIOpen(true);
+											} else if ((e.ctrlKey || e.metaKey) && (e.key === "z" || e.key === "Z") && !e.shiftKey) {
+												e.preventDefault();
+												handleUndo();
+											} else if (((e.ctrlKey || e.metaKey) && (e.key === "z" || e.key === "Z") && e.shiftKey) || ((e.ctrlKey || e.metaKey) && (e.key === "y" || e.key === "Y"))) {
+												e.preventDefault();
+												handleRedo();
 											}
-										})
-									)
-							)
-							: h(Viewer, {
-								file: active,
-								rev: revisions[active.path] ?? 0,
-								onStartEdit: startEdit,
-								onSaveDirect: (txt, p) => saveWithText(txt, p || active.path),
-								onUpdateDirect: (txt, p) => onEditText(txt, p || active.path),
-								isDirectDirty: edits[active.path]?.dirty === true,
-								saveMsg,
-								busy
-							}),
+										}
+									})
+								)
+						)
+						: h(Viewer, {
+							key: active?.path,
+							file: active,
+							rev: revisions[active?.path] ?? 0,
+							onStartEdit: startEdit,
+							onSaveDirect: (txt, p) => saveWithText(txt, p || active?.path),
+							onUpdateDirect: (txt, p) => updateMarkdownDirect(txt, p || active?.path),
+							isDirectDirty: directDirty[active?.path] === true,
+							saveMsg,
+							busy
+						}),
 				h(StatusBar, {
 					active,
 					isMarkdown,
-					isDirty: edits[active?.path]?.dirty === true,
+					isDirty: edits[active?.path]?.dirty === true || directDirty[active?.path] === true,
 					lineCount: edits[active?.path]?.text ? edits[active?.path]?.text.split("\\n").length : null,
 					autoSave,
 					onToggleAutoSave: toggleAutoSave,
@@ -3854,29 +3780,6 @@ clientSource = clientSource.replace(leftPanelRegex, () => newLeftPanel);
 // 9. RightPanel: English tabs, Fullscreen, and Close/Collapse button
 const rightPanelRegex = /function RightPanel\(\{[\s\S]*?\n\t\t\}/;
 const newRightPanel = `function RightPanel({ tab, onTab, conversation, details, mode, onToggleMode, showDetails, onCloseRight }) {
-			const [aiMode, setAiMode] = react.useState(() => {
-				try { return localStorage.getItem("vk_ai_mode") || "agent"; } catch { return "agent"; }
-			});
-
-			const handleSelectMode = (newMode) => {
-				setAiMode(newMode);
-				try { localStorage.setItem("vk_ai_mode", newMode); } catch {}
-				const chatInput = document.querySelector('.vk_colRight textarea, .vk_colRight [contenteditable="true"], textarea, [contenteditable="true"]');
-				if (chatInput && newMode === "plan") {
-					const cur = chatInput.value || chatInput.innerText || "";
-					if (!cur.startsWith("[PLANNING MODE]")) {
-						const newVal = "[PLANNING MODE] " + cur;
-						if (chatInput.tagName === 'TEXTAREA' || chatInput.tagName === 'INPUT') {
-							chatInput.value = newVal;
-							chatInput.dispatchEvent(new Event('input', { bubbles: true }));
-						} else {
-							chatInput.innerText = newVal;
-							chatInput.dispatchEvent(new Event('input', { bubbles: true }));
-						}
-					}
-				}
-			};
-
 			return h("div", { className: "vk_colRight" },
 				h("div", { className: "vk_tabBar" },
 					h("button", { className: "vk_tabBtn" + (tab === "conversation" ? " vk_tabBtnActive" : ""), onClick: () => onTab("conversation") }, "Chat"),
@@ -3885,7 +3788,6 @@ const newRightPanel = `function RightPanel({ tab, onTab, conversation, details, 
 					h("button", { className: "vk_tabBtn vk_modeBtn", title: mode === "native" ? "Switch to Split View (Editor + Chat)" : "Switch to Fullscreen Chat", onClick: onToggleMode }, mode === "native" ? "◫ Split View" : "⛶ Fullscreen Chat"),
 					onCloseRight ? h("button", { className: "vk_tabBtn", title: "Close / Collapse Chat Panel (Ctrl+L)", onClick: onCloseRight }, "✕") : null
 				),
-				tab === "conversation" ? h(AIModeSelector, { currentMode: aiMode, onSelectMode: handleSelectMode }) : null,
 				h("div", { className: "vk_tabBody" + (tab === "conversation" ? "" : " vk_tabBodyHidden") }, conversation),
 				showDetails ? h("div", { className: "vk_tabBody" + (tab === "details" ? "" : " vk_tabBodyHidden") }, details) : null
 			);
@@ -4113,9 +4015,9 @@ clientSource = clientSource.replace(
 						chatInput.focus();
 						return;
 					}
-					if (attempts < 6) {
+					if (attempts < 15) {
 						attempts++;
-						setTimeout(trySet, 80);
+						setTimeout(trySet, 100);
 					}
 				};
 				trySet();
@@ -4160,26 +4062,63 @@ clientSource = clientSource.replace(
 						}, 120);
 					} else if ((e.ctrlKey || e.metaKey) && (e.key === 'l' || e.key === 'L')) {
 						e.preventDefault();
-						const sel = window.getSelection();
-						let selectedText = sel ? sel.toString().trim() : "";
-						if (!selectedText) {
-							const pEl = document.querySelector('.tiptap.ProseMirror p, .vk_tiptap_container .ProseMirror p, .tiptap p');
-							if (pEl) selectedText = pEl.textContent.trim();
-						}
-						const activeFile = tabsState && tabsState.active ? tabsState.active.split(/[\\\\/]/).pop() : "document.md";
 						if (panels.right === 0) actions.setRight(440);
 						if (panels.rightTab !== "conversation") actions.setRightTab("conversation");
-						if (selectedText.length > 0) {
-							const prompt = 'Please analyze and explain the following snippet from ' + activeFile + ':\\n\\n\`\`\`\\n' + selectedText + '\\n\`\`\`\\n';
-							setChatInputValue(prompt);
-						} else {
-							setTimeout(() => {
-								const chatInput = document.querySelector('.vk_colRight textarea, .vk_colRight [contenteditable="true"], textarea, [contenteditable="true"]');
-								if (chatInput) {
-									chatInput.focus();
-								}
-							}, 80);
+
+						let selectedText = "";
+						let startLine = 1;
+						let endLine = 1;
+						let hasSelection = false;
+
+						const txtArea = document.querySelector('.vk_textarea');
+						if (txtArea && txtArea.selectionStart !== undefined && txtArea.selectionStart !== txtArea.selectionEnd) {
+							const val = txtArea.value || "";
+							selectedText = val.slice(txtArea.selectionStart, txtArea.selectionEnd).trim();
+							if (selectedText) {
+								hasSelection = true;
+								startLine = val.slice(0, txtArea.selectionStart).split('\\\\n').length;
+								endLine = val.slice(0, txtArea.selectionEnd).split('\\\\n').length;
+							}
 						}
+
+						if (!hasSelection) {
+							const sel = window.getSelection();
+							const st = sel ? sel.toString().trim() : "";
+							if (st) {
+								selectedText = st;
+								hasSelection = true;
+								const fullText = document.querySelector('.ProseMirror, .vk_tiptap_container')?.innerText || '';
+								const idx = fullText.indexOf(st);
+								if (idx !== -1) {
+									startLine = fullText.slice(0, idx).split('\\\\n').length;
+									endLine = startLine + st.split('\\\\n').length - 1;
+								} else {
+									startLine = 1;
+									endLine = Math.max(1, st.split('\\\\n').length);
+								}
+							}
+						}
+
+						const activePath = tabsState && tabsState.active ? tabsState.active : "";
+						const activeFile = activePath ? activePath.split(/[\\\\/]/).pop() : "document.md";
+
+						let mentionTag = "";
+						if (hasSelection && selectedText) {
+							const lineTag = startLine === endLine ? ('#L' + startLine) : ('#L' + startLine + '-' + endLine);
+							mentionTag = '@' + activeFile + ' ' + lineTag;
+							window.__dsh_mention_context = {
+								tag: mentionTag,
+								file: activePath || activeFile,
+								lineTag,
+								snippet: selectedText
+							};
+						} else if (activeFile) {
+							mentionTag = '@' + activeFile;
+							window.__dsh_mention_context = null;
+						}
+
+						const inputVal = mentionTag ? (mentionTag + ' ') : '';
+						setChatInputValue(inputVal);
 					}
 				};
 				window.addEventListener('keydown', onKeyDown);
@@ -4189,109 +4128,33 @@ clientSource = clientSource.replace(
 
 clientSource = clientSource.replace(
 	'const fileRoot = tabsState.root != null ? tabsState.root : sessionCwd;',
-	`// @ Mention File & Slash Commands State in Chat
-			const [atFileOpen, setAtFileOpen] = react.useState(false);
-			const [atFileQuery, setAtFileQuery] = react.useState("");
-			const [slashCmdOpen, setSlashCmdOpen] = react.useState(false);
-			const [slashCmdQuery, setSlashCmdQuery] = react.useState("");
-
+	`// Intercept Enter in chat to expand @mention with referenced snippet seamlessly
 			react.useEffect(() => {
-				const onInput = (e) => {
-					const target = e.target;
-					if (!target || !(target.matches && (target.matches('.vk_colRight textarea') || target.matches('.vk_colRight [contenteditable="true"]') || target.matches('textarea')))) return;
-					const val = target.value || target.innerText || "";
-					const lastAt = val.lastIndexOf("@");
-					const lastSlash = val.lastIndexOf("/");
-					if (lastAt !== -1 && lastAt >= val.length - 25) {
-						const q = val.slice(lastAt + 1).split(/\\s/)[0];
-						setAtFileQuery(q);
-						setAtFileOpen(true);
-					} else {
-						setAtFileOpen(false);
-					}
-					if (lastSlash === 0 || (lastSlash > 0 && val[lastSlash - 1] === " ")) {
-						const q = val.slice(lastSlash);
-						setSlashCmdQuery(q);
-						setSlashCmdOpen(true);
-					} else {
-						setSlashCmdOpen(false);
-					}
-				};
-				document.addEventListener("input", onInput);
-				return () => document.removeEventListener("input", onInput);
-			}, []);
-
-			const handleSelectAtFile = (fileObj) => {
-				setAtFileOpen(false);
-				const chatInput = document.querySelector('.vk_colRight textarea, .vk_colRight [contenteditable="true"], textarea, [contenteditable="true"]');
-				if (!chatInput) return;
-				const val = chatInput.value || chatInput.innerText || "";
-				const lastAt = val.lastIndexOf("@");
-				if (lastAt !== -1) {
-					const newVal = val.slice(0, lastAt) + "@" + fileObj.path + " ";
-					setChatInputValue(newVal);
-				}
-			};
-
-			const handleSelectSlashCmd = (cmd) => {
-				setSlashCmdOpen(false);
-				setChatInputValue(cmd.prefix);
-			};
-
-			// Enhance chat code blocks with ⚡ Apply & 📋 Copy
-			react.useEffect(() => {
-				const enhanceBlocks = () => {
-					const blocks = document.querySelectorAll('.vk_colRight pre:not(.vk_code_enhanced)');
-					blocks.forEach((pre) => {
-						pre.classList.add('vk_code_enhanced');
-						const bar = document.createElement('div');
-						bar.className = 'vk_chat_code_bar';
-
-						const copyBtn = document.createElement('button');
-						copyBtn.className = 'vk_code_action_btn';
-						copyBtn.innerHTML = '📋 Copy';
-						copyBtn.onclick = (e) => {
-							e.stopPropagation();
-							const codeEl = pre.querySelector('code') || pre;
-							navigator.clipboard?.writeText(codeEl.innerText);
-							copyBtn.innerHTML = '✓ Copied!';
-							setTimeout(() => { copyBtn.innerHTML = '📋 Copy'; }, 2000);
-						};
-
-						const applyBtn = document.createElement('button');
-						applyBtn.className = 'vk_code_action_btn';
-						applyBtn.innerHTML = '⚡ Apply to Tab';
-						applyBtn.title = 'Apply this code snippet to active tab';
-						applyBtn.onclick = (e) => {
-							e.stopPropagation();
-							const codeEl = pre.querySelector('code') || pre;
-							const codeText = codeEl.innerText;
-							if (tabsState && tabsState.active) {
-								openFile({ path: tabsState.active, name: tabsState.active.split(/[\\\\/]/).pop() });
-								setTimeout(() => {
-									const txtArea = document.querySelector('.vk_textarea');
-									if (txtArea) {
-										txtArea.value = codeText;
-										txtArea.dispatchEvent(new Event('input', { bubbles: true }));
-									}
-								}, 100);
+				const onChatKeyDown = (e) => {
+					if (e.key === 'Enter' && !e.shiftKey) {
+						const target = e.target;
+						if (!target || !(target.matches && (target.matches('.vk_colRight textarea') || target.matches('.vk_colRight [contenteditable="true"]') || target.matches('textarea')))) return;
+						const val = target.value || target.innerText || "";
+						const ctx = window.__dsh_mention_context;
+						if (ctx && ctx.tag && val.includes(ctx.tag) && ctx.snippet) {
+							const userMsg = val.replace(ctx.tag, '').trim();
+							const fileName = ctx.file ? ctx.file.split(/[\\\\/]/).pop() : 'document';
+							const snippetLines = ctx.snippet.split('\\\\n').map(l => '> ' + l).join('\\\\n');
+							const expanded = '> 📄 **[' + fileName + '](file://' + ctx.file + ')** \`(' + ctx.lineTag + ')\`\\\\n> \`\`\`\\\\n' + snippetLines + '\\\\n> \`\`\`\\\\n\\\\n' + (userMsg || ('Please examine ' + ctx.tag));
+							if (target.tagName === 'TEXTAREA' || target.tagName === 'INPUT') {
+								target.value = expanded;
+								target.dispatchEvent(new Event('input', { bubbles: true }));
+							} else {
+								target.innerText = expanded;
+								target.dispatchEvent(new Event('input', { bubbles: true }));
 							}
-						};
-
-						bar.appendChild(applyBtn);
-						bar.appendChild(copyBtn);
-						pre.insertBefore(bar, pre.firstChild);
-					});
+							window.__dsh_mention_context = null;
+						}
+					}
 				};
-
-				const obs = new MutationObserver(enhanceBlocks);
-				const col = document.querySelector('.vk_colRight');
-				if (col) {
-					obs.observe(col, { childList: true, subtree: true });
-					enhanceBlocks();
-				}
-				return () => obs.disconnect();
-			}, [tabsState, openFile]);
+				document.addEventListener('keydown', onChatKeyDown, true);
+				return () => document.removeEventListener('keydown', onChatKeyDown, true);
+			}, []);
 
 			// Intercept clicks on file paths or tool badges in conversation / trajectory to open file directly in tab
 			react.useEffect(() => {
@@ -4387,8 +4250,6 @@ const newAppFrameReturn = `const showOpenChatBtn = cols.right === 0 && panels.mo
 					h(CommandPaletteModal, { isOpen: cmdPalette, onClose: () => setCmdPalette(false), onExecuteAction: handleCommandPaletteAction }),
 					h(ShortcutsCheatSheetModal, { isOpen: shortcutsModalOpen, onClose: () => setShortcutsModalOpen(false) }),
 					h(DocumentStatsModal, { isOpen: statsModalOpen, fileName: tabsState && tabsState.active ? tabsState.active.split(/[\\\\/]/).pop() : "document.md", content: tabsState && tabsState.active && tabsState[tabsState.active] ? tabsState[tabsState.active].content : "", onClose: () => setStatsModalOpen(false) }),
-					h(AtFileMentionDropdown, { isOpen: atFileOpen, query: atFileQuery, onSelect: handleSelectAtFile, onClose: () => setAtFileOpen(false) }),
-					h(ChatSlashCommandDropdown, { isOpen: slashCmdOpen, query: slashCmdQuery, onSelect: handleSelectSlashCmd, onClose: () => setSlashCmdOpen(false) }),
 					isZenMode ? h("div", { className: "vk_zen_banner", onClick: () => handleCommandPaletteAction("zen_mode") }, "🧘 Zen Mode Active — Press Esc or Click to Exit") : null,
 					toastMsg ? h("div", { className: "vk_toast_msg" }, toastMsg) : null,
 					showOpenChatBtn ? h("button", {

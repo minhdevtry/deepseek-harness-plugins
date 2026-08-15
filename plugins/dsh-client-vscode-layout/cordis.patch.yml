@@ -1,0 +1,27 @@
+# Profile bundle layer for the VS Code workbench frame.
+#
+# Applied automatically: `dsh plugin --profile web add link:<this dir>` installs
+# the package and appends it to the profile's `dsh.profile.bundles`, and the
+# launcher composes this patch over the base entry list at boot. Nothing edits
+# the operator's own `cordis.patch.yml` — that file stays theirs.
+#
+# Two edits, and the order between them does not matter (patches compose over
+# the entry list, not over each other):
+
+# 1. Retire the stock frame. `root` is a `single` slot: two occupants is a
+#    load-time failure by design, so the stock AppFrame has to stand down
+#    before ours can take the column layout over. See
+#    src/client/contract/slots.ts for why occupying `root` is the only way to
+#    re-place the sidebar / conversation / details holes.
+- id: ui-layout
+  disabled: true
+
+# 2. Mount this package. The node half (exports ".") is an empty cordis plugin;
+#    the browser half rides the `dsh.client` declaration in package.json and is
+#    served at /plugins/<id>/client.js.
+#
+#    `ui-sidebar` and `ui-conversation` stay enabled on purpose — this frame
+#    re-hosts their slots rather than replacing them.
+- insert:
+    - id: ui-vscode-layout
+      name: '@anoslide/dsh-client-vscode-layout'

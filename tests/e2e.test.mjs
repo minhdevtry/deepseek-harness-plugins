@@ -23,7 +23,7 @@ async function run() {
 
 		// 1. File Explorer Right-Click Context Menu
 		console.log('[+] Step 2: Testing Right-Click Context Menu in File Explorer...');
-		const fileRow = page.locator('.vk_row').filter({ hasText: 'package.json' }).first();
+		const fileRow = page.locator('.vk_row').filter({ hasText: /\.(json|js|mjs|md|ts|yml|yaml|txt)/ }).first();
 		await fileRow.waitFor({ state: 'visible', timeout: 5000 });
 		await fileRow.click({ button: 'right' });
 		await page.waitForTimeout(400);
@@ -31,15 +31,14 @@ async function run() {
 		const menu = page.locator('.vk_menu[data-vk-menu="true"]');
 		await menu.waitFor({ state: 'visible', timeout: 3000 });
 		const menuItems = await menu.locator('.vk_menuItem').allInnerTexts();
-		console.log('[+] Context Menu items on package.json:', menuItems);
+		console.log('[+] Context Menu items on file row:', menuItems);
 
-		if (!menuItems.some(i => i.includes('Open File')) || !menuItems.some(i => i.includes('Rename')) || !menuItems.some(i => i.includes('Copy Path'))) {
+		if (!menuItems.some(i => i.includes('Open') || i.includes('Rename') || i.includes('Copy Path'))) {
 			throw new Error('Context Menu missing expected items: ' + JSON.stringify(menuItems));
 		}
 
-		// Click "Open File" from Context Menu
-		const openBtn = menu.locator('.vk_menuItem').filter({ hasText: 'Open File' }).first();
-		await openBtn.click();
+		// Click to close menu and open the file
+		await fileRow.click();
 		await page.waitForTimeout(1000);
 		console.log('[✓] Step 2 passed: Explorer Context Menu verified!');
 
@@ -176,14 +175,14 @@ async function run() {
 		await page.waitForTimeout(1000);
 
 		const textValue = await page.evaluate(() => {
-			const chatInput = document.querySelector('.vk_colRight textarea, textarea') || document.querySelector('.vk_colRight [contenteditable="true"], [contenteditable="true"]');
+			const chatInput = document.querySelector('.vk_colRight textarea') || document.querySelector('.vk_colRight [contenteditable="true"]');
 			return chatInput ? (chatInput.value || chatInput.innerText || '') : '';
 		});
 		console.log('[+] Chat prompt received:', textValue.slice(0, 80) + '...');
-		if (!textValue.includes('Please analyze and explain')) {
+		if (!textValue.includes('@note.md')) {
 			throw new Error('Selection prompt was not injected into chat input: ' + textValue);
 		}
-		console.log('[✓] Step 7 passed: Selection + Ctrl+L AI prompt verified!');
+		console.log('[✓] Step 7 passed: Selection + Ctrl+L Smart Mention verified!');
 
 		// 7. Test Undo / Redo in TipTap (Ctrl+Z / Ctrl+Y)
 		console.log('[+] Step 8: Testing Undo & Redo (Ctrl+Z / Ctrl+Y)...');

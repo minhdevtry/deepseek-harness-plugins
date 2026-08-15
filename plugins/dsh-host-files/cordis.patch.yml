@@ -1,0 +1,9 @@
+# Profile bundle layer for the workspace file service.
+#
+# Self-contained on purpose: this package carries its own row rather than
+# relying on the client package's patch to mount it. The two halves are
+# separately installable, and a profile that wants the file endpoints without
+# the frame (or the reverse) stays a valid composition.
+- insert:
+    - id: vscode-host-files
+      name: '@anoslide/dsh-host-files'
