@@ -27,6 +27,7 @@ import { InlineAI } from './ui/InlineAI.tsx'
 import { Toast, type ToastItem, type ToastType } from './ui/Toast.tsx'
 import { getLineRangeForSelection } from './utils/chatComposer.ts'
 import { appendToComposer, focusComposer } from './composer.ts'
+import { installWorkbenchOpener } from './fileOpener.ts'
 import css from './AppFrame.module.css'
 
 /**
@@ -117,6 +118,15 @@ export function AppFrame({
   // breakpoint-free.
   const narrow = viewport < SIDEBAR_AUTO_COLLAPSE
   useEffect(() => { actions.setNarrow(narrow) }, [actions, narrow])
+
+  // Seat the workbench opener the file-click interception delegates to
+  // (fileOpener.ts). Only a mounted frame can take a file, which is exactly
+  // what the install/retract pair says: with no frame on screen the
+  // interception reports false and the host opens the path its own way.
+  useEffect(() => installWorkbenchOpener((path) => {
+    actions.openFile(path)
+    return true
+  }), [actions])
 
   const sidebarCollapsed = narrow ? !panels.narrowExpanded : panels.sidebar === 0
   const sidebarPreference = sidebarCollapsed

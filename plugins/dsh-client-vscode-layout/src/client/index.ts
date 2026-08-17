@@ -31,6 +31,8 @@ import { createViewState, type ExplorerView } from './explorer/views.ts'
 import { RailViews, type RailViewsInjected } from './explorer/RailViews.tsx'
 import { createFileSource } from './inputTriggers/fileSource.ts'
 import { installComposerWriter } from './composer.ts'
+import { openInWorkbench, routeFor } from './fileOpener.ts'
+import { readFile } from './api/files.ts'
 
 // Contract exports only (export discipline): the ctx.layout face consumers and
 // test fakes type against, plus the owner shares registrants compose with. The
@@ -105,6 +107,40 @@ export function apply(ctx: ClientContext): void {
     input.setDraft(`${draft}${gap}${text} `)
     return true
   }), 'vscode-layout: composer writer')
+
+  /**
+   * Route a clicked file into the workbench instead of the OS (see fileOpener.ts).
+   *
+   * A decoration, not a replacement: anything the workbench cannot genuinely
+   * show — a PDF, an archive, a directory, or any path at all while the frame
+   * is unmounted — falls through to the host's own method, and unloading the
+   * plugin puts the original back.
+   *
+   * The probe asks for positive evidence, not absence of it: a path whose name
+   * settles nothing (`Makefile`, `LICENSE`, `~/notes`) is claimed only if the
+   * host can actually read it as a file. Testing for a directory instead would
+   * claim everything a directory test merely *failed* on — a path outside the
+   * sandbox, a broken symlink — and hand the operator a tab that cannot open
+   * where the OS would have done something sensible. Paths with a known file
+   * extension skip the probe, so the common click costs no extra round trip.
+   */
+  ctx.effect(() => {
+    const workspaces = ctx.workspaces
+    // No workspaces service: nothing to decorate, and nothing to undo either.
+    if (workspaces === undefined) return () => {}
+    const original = workspaces.openPath.bind(workspaces)
+    workspaces.openPath = async (path: string): Promise<void> => {
+      const route = routeFor(path)
+      if (route === 'os') return original(path)
+      if (route === 'probe') {
+        const probe = await readFile(path)
+        if (!probe.ok) return original(path)
+      }
+      if (openInWorkbench(path)) return
+      return original(path)
+    }
+    return () => { workspaces.openPath = original }
+  }, 'vscode-layout: file clicks open in the workbench')
 
   /**
    * Transient operator feedback.
