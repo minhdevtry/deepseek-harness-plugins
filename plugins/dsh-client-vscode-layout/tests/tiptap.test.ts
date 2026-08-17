@@ -42,8 +42,11 @@ describe('stabilize fixed-point algorithm', () => {
       return `${input}\n`
     }
     const result = stabilize(start, drifting)
-    assert.equal(calls, 4) // MAX_PASSES = 4
-    assert.equal(result, 'start\n\n\n\n')
+    // MAX_PASSES = 8. Raised from 4 once stabilizing moved off the keystroke
+    // path onto save alone: passes are now paid once per write, so the budget
+    // buys convergence rather than latency.
+    assert.equal(calls, 8)
+    assert.equal(result, `start${'\n'.repeat(8)}`)
   })
 })
 

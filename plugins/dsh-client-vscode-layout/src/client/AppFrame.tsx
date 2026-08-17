@@ -210,7 +210,14 @@ export function AppFrame({
           if (activeSel && activeSel.path === panels.activePath && activeSel.rangeString) {
             lineTag = ` ${activeSel.rangeString}`
           } else {
-            const sel = window.getSelection()?.toString() || ''
+            // The WYSIWYG surface publishes the selected text without a range —
+            // resolving line numbers there means serialising the document, which
+            // is now a click-time cost, not a per-keystroke one. Prefer its text
+            // over the DOM selection, which a floating menu can have collapsed.
+            const reported = activeSel?.path === panels.activePath
+              ? (activeSel.selectedText as string | undefined)
+              : undefined
+            const sel = reported ?? window.getSelection()?.toString() ?? ''
             if (sel.trim().length > 0) {
               const docText = (window as any).__dsh_get_active_text?.(panels.activePath) || ''
               if (docText) {

@@ -21,8 +21,14 @@
 import { Editor } from '@tiptap/core'
 import { documentExtensions } from './extensions.ts'
 
-/** Iterations allowed while hunting for the fixed point. */
-const MAX_PASSES = 4
+/**
+ * Iterations allowed while hunting for the fixed point.
+ *
+ * Eight rather than four: this used to run on every keystroke, where the budget
+ * had to stay tiny, and now runs once per save (see tiptap/documents.ts). More
+ * passes means *less* residual drift, paid for at a moment nobody is typing.
+ */
+const MAX_PASSES = 8
 
 /** A TipTap editor exposing the markdown storage face. */
 type MarkdownEditor = Editor & { storage: { markdown: { getMarkdown: () => string } } }
@@ -86,8 +92,13 @@ export function stabilize(text: string, once: (input: string) => string): string
 /**
  * One real parse/serialize round trip, on a detached editor.
  *
- * Exported so `serializeStable` is not the only way to reach it — the file
- * loader uses it to decide whether opening a document would rewrite it.
+ * Exported for the fixed-point tests, which need a real round trip to assert
+ * that convergence is a property of the actual serializer and not just of the
+ * stand-in transform. Nothing else calls it: an earlier plan had the file loader
+ * use it to warn that opening a document would reformat it, and that warning was
+ * dropped on purpose — reformat-on-open is the accepted cost of WYSIWYG, so the
+ * dialog would have fired on nearly every markdown file and taught operators to
+ * dismiss it.
  * @param text - markdown to normalise.
  * @returns the markdown TipTap would emit for that input.
  */
@@ -104,6 +115,21 @@ export function roundTrip(text: string): string {
   } finally {
     editor.destroy()
   }
+}
+
+/**
+ * One serialization pass, no fixed-point hunt — markdown for *reading*.
+ *
+ * Where {@link serializeStable} is for text that will be written to disk, this
+ * is for text that will be measured or displayed: line-number arithmetic for a
+ * mention, the raw view, a copy to the clipboard. Convergence does not matter
+ * when nothing is saved, and one pass instead of up to {@link MAX_PASSES} keeps
+ * it cheap enough to call from a click handler.
+ * @param editor - the live editor.
+ * @returns the markdown TipTap emits for the current document.
+ */
+export function serializeOnce(editor: Editor): string {
+  return cleanMarkdown(markdownOf(editor))
 }
 
 /** Read the markdown storage face off an editor. */

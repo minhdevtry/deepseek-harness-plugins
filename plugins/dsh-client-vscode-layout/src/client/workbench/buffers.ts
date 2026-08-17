@@ -15,7 +15,7 @@
  * short-circuits on shared structure, so the check stays cheap on every
  * keystroke where `toString()` on a large file would not.
  */
-import { EditorState, type Extension, type Text } from '@codemirror/state'
+import { EditorState, Transaction, type Extension, type Text } from '@codemirror/state'
 import { readFile, writeFile, type ApiResult } from '../api/files.ts'
 
 /** What the registry knows about one path. */
@@ -158,17 +158,28 @@ export class BufferRegistry {
   }
 
   /**
-   * Replace a buffer's text content directly (e.g. from the TipTap WYSIWYG editor).
+   * Replace a buffer's text content directly (e.g. projected from the WYSIWYG tree).
    *
-   * Dispatches a transaction across the whole document so extensions and undo history
-   * remain valid, recomputes dirtiness against the disk document, and notifies if changed.
+   * Dispatches a transaction across the whole document so extensions stay valid,
+   * recomputes dirtiness against the disk document, and notifies if changed.
+   *
+   * @param path - absolute file path.
+   * @param text - the replacement text.
+   * @param opts.addToHistory - whether the replacement is undoable here.
+   *   Pass `false` for a projection of a document owned elsewhere: the write is
+   *   not an edit anybody made in *this* buffer, and recording it would put a
+   *   whole-document replacement on the undo stack that steps past every real
+   *   edit around it. Defaults to true, which is right for a genuine text edit.
    */
-  setText(path: string, text: string): void {
+  setText(path: string, text: string, opts?: { addToHistory?: boolean }): void {
     const buffer = this.#buffers.get(path)
     if (buffer?.kind !== 'text') return
     if (buffer.state.doc.toString() === text) return
     const transaction = buffer.state.update({
       changes: { from: 0, to: buffer.state.doc.length, insert: text },
+      ...(opts?.addToHistory === false
+        ? { annotations: Transaction.addToHistory.of(false) }
+        : {}),
     })
     buffer.state = transaction.state
     const dirty = !buffer.state.doc.eq(buffer.diskDoc)

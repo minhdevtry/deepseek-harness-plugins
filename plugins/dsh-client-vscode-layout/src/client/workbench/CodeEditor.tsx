@@ -11,7 +11,7 @@
  */
 import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react'
 import { EditorView } from '@codemirror/view'
-import { Compartment, StateEffect, type Text, type TransactionSpec } from '@codemirror/state'
+import { Compartment, EditorState, StateEffect, type Extension, type Text, type TransactionSpec } from '@codemirror/state'
 import { unifiedMergeView } from '@codemirror/merge'
 import type { BufferRegistry } from './buffers.ts'
 import css from './CodeEditor.module.css'
@@ -35,6 +35,15 @@ export interface CodeEditorProps {
   revealLine?: number | undefined
   /** Original disk document when inline per-hunk diff is active. */
   diffOriginal?: Text | undefined
+  /**
+   * Lock the document against editing.
+   *
+   * Dynamic, so it rides a compartment rather than the buffer's baked-in
+   * extension set: the markdown raw view toggles this every time the operator
+   * switches between rich and raw, and rebuilding the state to change it would
+   * throw away the very undo history this component exists to preserve.
+   */
+  readOnly?: boolean | undefined
   onCursor: (info: CursorInfo) => void
 }
 
@@ -52,12 +61,13 @@ export interface CodeEditorHandle {
 
 /** The editing surface (see module doc). */
 export const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(function CodeEditor(
-  { path, registry, revealLine, diffOriginal, onCursor }: CodeEditorProps,
+  { path, registry, revealLine, diffOriginal, readOnly, onCursor }: CodeEditorProps,
   ref,
 ) {
   const hostRef = useRef<HTMLDivElement | null>(null)
   const viewRef = useRef<EditorView | null>(null)
   const diffCompartment = useRef(new Compartment())
+  const readOnlyCompartment = useRef(new Compartment())
 
   useImperativeHandle(ref, () => ({
     dispatch: (spec) => { viewRef.current?.dispatch(spec) },
@@ -79,7 +89,10 @@ export const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(function
 
     const view = new EditorView({
       state: buffer.state.update({
-        effects: StateEffect.appendConfig.of(diffCompartment.current.of(initialDiff)),
+        effects: StateEffect.appendConfig.of([
+          diffCompartment.current.of(initialDiff),
+          readOnlyCompartment.current.of(lockExtension(readOnly === true)),
+        ]),
       }).state,
       parent: host,
       // `dispatchTransactions`, not the legacy `dispatch`: the older hook
@@ -156,5 +169,25 @@ export const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(function
     })
   }, [diffOriginal])
 
+  // Same for the lock: a reconfigure, so toggling raw view keeps the state.
+  useEffect(() => {
+    const view = viewRef.current
+    if (!view) return
+    view.dispatch({
+      effects: readOnlyCompartment.current.reconfigure(lockExtension(readOnly === true)),
+    })
+  }, [readOnly])
+
   return <div ref={hostRef} className={css.host} />
 })
+
+/**
+ * The extensions that make a document read-only.
+ * @param locked - whether to lock it.
+ * @returns the locking extensions, or nothing when editable.
+ */
+function lockExtension(locked: boolean): Extension {
+  // Both halves are needed: `readOnly` refuses document changes, `editable`
+  // takes the caret out of the DOM so the browser stops offering to type.
+  return locked ? [EditorState.readOnly.of(true), EditorView.editable.of(false)] : []
+}

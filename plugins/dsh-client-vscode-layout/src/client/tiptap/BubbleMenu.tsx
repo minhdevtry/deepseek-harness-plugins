@@ -9,16 +9,22 @@ import type { Editor } from '@tiptap/core'
 import { HighlightPalette } from './highlight/HighlightPalette.tsx'
 import { getLineRangeForSelection } from '../utils/chatComposer.ts'
 import { appendToComposer, focusComposer } from '../composer.ts'
-import type { BufferRegistry } from '../workbench/buffers.ts'
 import css from './BubbleMenu.module.css'
 
 export interface BubbleMenuProps {
   editor: Editor
   path?: string
-  registry?: BufferRegistry
+  /**
+   * The document's markdown, resolved on demand.
+   *
+   * A thunk rather than a string: it is needed only when Mention is clicked,
+   * and serialising the document on every render of a menu that follows the
+   * caret would be exactly the cost this editor was restructured to avoid.
+   */
+  markdown?: () => string
 }
 
-export function BubbleMenu({ editor, path, registry }: BubbleMenuProps) {
+export function BubbleMenu({ editor, path, markdown }: BubbleMenuProps) {
   const menuRef = useRef<HTMLDivElement | null>(null)
   const [visible, setVisible] = useState(false)
   const [coords, setCoords] = useState<{ top: number; left: number }>({ top: 0, left: 0 })
@@ -346,7 +352,7 @@ export function BubbleMenu({ editor, path, registry }: BubbleMenuProps) {
                 onClick={() => {
                   const { from, to } = editor.state.selection
                   const selectedText = editor.state.doc.textBetween(from, to, '\n')
-                  const fullText = registry ? registry.getText(path) || '' : ''
+                  const fullText = markdown ? markdown() : ''
                   const { rangeString } = getLineRangeForSelection(fullText, selectedText)
                   const filename = path.split('/').pop() || path
                   if (appendToComposer(`@${filename} ${rangeString}`)) focusComposer()

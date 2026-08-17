@@ -57,6 +57,17 @@ function baseNameOf(path: string): string {
 }
 
 /**
+ * Whether a path is markdown — the one extension that gets a WYSIWYG document
+ * rather than a plain buffer, so several call sites need to agree on the test.
+ * @param path - file path.
+ * @returns true for `.md` and `.markdown`.
+ */
+export function isMarkdown(path: string): boolean {
+  const ext = extensionOf(path)
+  return ext === 'md' || ext === 'markdown'
+}
+
+/**
  * The language name for the status bar.
  * @returns a human name; 'Plain Text' when nothing is recognised.
  */

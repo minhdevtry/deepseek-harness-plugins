@@ -1,16 +1,21 @@
 /**
- * TipTap Notion WYSIWYG Editor Host.
+ * TipTap Notion WYSIWYG editor host — a *view*, not an owner.
  *
- * Full-featured Notion suite: slash menu, bubble menu, interactive table toolbar,
- * callouts, task lists, code blocks with 1-click copy, media modals, and TOC outline.
+ * Full-featured Notion suite: slash menu, bubble menu, interactive table
+ * toolbar, callouts, task lists, code blocks with 1-click copy, media modals,
+ * and TOC outline.
  *
- * Synchronizes with BufferRegistry via serializeStable (fixed-point guarantee).
+ * The document itself belongs to `tiptap/documents.ts`. This component borrows
+ * it: attach on mount, detach on unmount, never construct and never destroy.
+ * That is what makes the undo history survive a tab switch — it used to build
+ * its own `Editor` in an effect keyed on the path, so every switch destroyed
+ * the ProseMirror state and every edit you had made became unreachable.
+ *
+ * Nothing here serialises markdown. The registry projects it at save time.
  */
 import { useEffect, useRef, useState } from 'react'
-import { Editor } from '@tiptap/core'
-import type { BufferRegistry } from '../workbench/buffers.ts'
-import { documentExtensions } from './extensions.ts'
-import { serializeStable } from './markdown.ts'
+import type { Editor } from '@tiptap/core'
+import type { DocumentRegistry } from './documents.ts'
 import { SlashMenu } from './SlashMenu.tsx'
 import { BubbleMenu } from './BubbleMenu.tsx'
 import { TableControls } from './TableControls.tsx'
@@ -18,13 +23,21 @@ import { MediaModal, type MediaModalType } from './MediaModal.tsx'
 import { TableOfContents } from './toc/TableOfContents.tsx'
 import { FindBar } from './findBar/FindBar.tsx'
 import { FrontmatterWidget } from './frontmatter/FrontmatterWidget.tsx'
-import { getLineRangeForSelection } from '../utils/chatComposer.ts'
 import css from './TipTapEditor.module.css'
 
 export interface TipTapEditorProps {
   path: string
-  registry: BufferRegistry
+  /** Owner of the document; this component only borrows it. */
+  documents: DocumentRegistry
   onSave: (path: string) => void
+  /**
+   * Show the markdown source instead of this editor.
+   *
+   * The counterpart of the raw view's "Switch to Notion WYSIWYG" button, which
+   * had no way in from this side. Read-only over there — the tree is the
+   * document — so this is a viewer, not a second editor.
+   */
+  onViewRaw: () => void
 }
 
 interface SlashState {
@@ -35,8 +48,9 @@ interface SlashState {
 
 export function TipTapEditor({
   path,
-  registry,
+  documents,
   onSave,
+  onViewRaw,
 }: TipTapEditorProps) {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const [editor, setEditor] = useState<Editor | null>(null)
@@ -45,7 +59,7 @@ export function TipTapEditor({
   const [outlineOpen, setOutlineOpen] = useState(false)
   const [findBarOpen, setFindBarOpen] = useState(false)
 
-  const isDirty = registry.isDirty(path)
+  const isDirty = documents.isDirty(path)
 
   useEffect(() => {
     try {
@@ -53,44 +67,37 @@ export function TipTapEditor({
     } catch {}
   }, [])
 
-  // Initialize TipTap Editor with shared extension set
+  // Borrow the document for as long as this view is on screen.
   useEffect(() => {
     const el = containerRef.current
     if (el === null) return
 
-    const initialContent = registry.getText(path) ?? ''
+    const instance = documents.attach(path, el)
+    if (instance === undefined) return
 
-    const instance = new Editor({
-      element: el,
-      extensions: documentExtensions(),
-      content: initialContent,
-      onUpdate: ({ editor: ed }) => {
-        // Sync stable markdown back to BufferRegistry
-        const md = serializeStable(ed)
-        registry.setText(path, md)
-
-        // Check for slash menu trigger
-        detectSlashCommand(ed)
-      },
-      onSelectionUpdate: ({ editor: ed }) => {
-        detectSlashCommand(ed)
-        const { from, to, empty } = ed.state.selection
-        if (!empty) {
-          const selectedText = ed.state.doc.textBetween(from, to, '\n')
-          const docText = registry.getText(path) || ''
-          const { startLine, endLine, rangeString } = getLineRangeForSelection(docText, selectedText)
-          ;(window as any).__dsh_active_selection = {
-            path,
-            selectedText,
-            startLine,
-            endLine,
-            rangeString,
-          }
-        } else {
-          ;(window as any).__dsh_active_selection = null
-        }
-      },
-    })
+    // Listeners are added per mount and removed on the way out. The editor
+    // outlives this component, so leaving them attached would stack a fresh
+    // pair on every tab switch.
+    const onUpdate = (): void => { detectSlashCommand(instance) }
+    const onSelection = (): void => {
+      detectSlashCommand(instance)
+      const { from, to, empty } = instance.state.selection
+      if (empty) {
+        ;(window as any).__dsh_active_selection = null
+        return
+      }
+      // Selected text only. The line range used to be computed here, on every
+      // cursor move, which meant serialising the document to search it — and
+      // now that markdown is a save-time projection it would cost even more.
+      // The two consumers (Ctrl+L and the bubble menu's Mention button) resolve
+      // the range when they act, which is a click rather than a keystroke.
+      ;(window as any).__dsh_active_selection = {
+        path,
+        selectedText: instance.state.doc.textBetween(from, to, '\n'),
+      }
+    }
+    instance.on('update', onUpdate)
+    instance.on('selectionUpdate', onSelection)
 
     setEditor(instance)
 
@@ -128,10 +135,15 @@ export function TipTapEditor({
 
     return () => {
       el.removeEventListener('click', handlePreClicks)
-      instance.destroy()
+      instance.off('update', onUpdate)
+      instance.off('selectionUpdate', onSelection)
+      instance.off('update', addCopyButtons)
+      // `detach`, never `destroy`: the document — and with it the undo history —
+      // belongs to the registry and has to survive this view going away.
+      documents.detach(path)
       setEditor(null)
     }
-  }, [path, registry])
+  }, [documents, path])
 
   /** Detect if the cursor is directly after a "/" trigger for slash menu */
   const detectSlashCommand = (ed: Editor) => {
@@ -171,24 +183,36 @@ export function TipTapEditor({
     }
   }
 
-  // Handle hotkeys (Ctrl+S, Ctrl+F, Ctrl+Z, Ctrl+Y)
+  /**
+   * Document-scoped shortcuts that are not already bound inside the editor.
+   *
+   * Undo/redo are deliberately absent. They used to live here, on `window`,
+   * calling `editor.commands.undo()` without checking `defaultPrevented` or
+   * where focus was — which broke undo in two ways at once. Inside the editor
+   * ProseMirror's own keymap had already run `undo` and called
+   * `preventDefault()`; preventDefault does not stop propagation, so the event
+   * reached this listener and undid a *second* step. And outside the editor —
+   * the chat composer, a rename box, the raw CodeMirror view — this fired
+   * anyway, silently rewinding a document nobody was looking at (and
+   * preventDefault killed the native undo of plain inputs).
+   *
+   * Every surface already ships a correct, focus-scoped undo: ProseMirror's
+   * keymap here, `historyKeymap` in CodeMirror, the host's own handler in the
+   * composer. The fix is to bind nothing globally and let focus decide. The
+   * toolbar's Undo/Redo buttons stay: those name their target explicitly.
+   */
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Someone closer to the focus already claimed this chord (CodeMirror
+      // binds Mod-s itself, for one). A window listener is the last to hear an
+      // event and must never be the second to act on it.
+      if (e.defaultPrevented) return
       if ((e.ctrlKey || e.metaKey) && e.key === 's') {
         e.preventDefault()
         onSave(path)
       } else if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
         e.preventDefault()
         setFindBarOpen((prev) => !prev)
-      } else if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
-        e.preventDefault()
-        editor?.commands.undo()
-      } else if (
-        ((e.ctrlKey || e.metaKey) && e.key === 'z' && e.shiftKey) ||
-        ((e.ctrlKey || e.metaKey) && e.key === 'y')
-      ) {
-        e.preventDefault()
-        editor?.commands.redo()
       }
     }
 
@@ -196,7 +220,7 @@ export function TipTapEditor({
     return () => {
       window.removeEventListener('keydown', handleKeyDown)
     }
-  }, [editor, onSave, path])
+  }, [onSave, path])
 
   return (
     <div className={css.wrapper}>
@@ -277,14 +301,22 @@ export function TipTapEditor({
           type="button"
           className={css.actionBtn}
           onClick={() => {
-            if (editor) {
-              const md = serializeStable(editor)
-              navigator.clipboard.writeText(md).then(() => alert('Markdown copied to clipboard!'))
-            }
+            const md = documents.preview(path)
+            if (md === undefined) return
+            navigator.clipboard.writeText(md).then(() => alert('Markdown copied to clipboard!'))
           }}
           title="Copy Clean Markdown"
         >
           📋 Copy MD
+        </button>
+
+        <button
+          type="button"
+          className={css.actionBtn}
+          onClick={onViewRaw}
+          title="View the markdown source (read-only)"
+        >
+          {'</> Raw'}
         </button>
 
         <button
@@ -312,12 +344,15 @@ export function TipTapEditor({
 
       {/* Main Document Canvas with Frontmatter Widget */}
       <div className={css.canvas} onClick={() => { editor?.commands.focus() }}>
-        <FrontmatterWidget rawMarkdown={registry.getText(path) || ''} />
+        {/* The file's own text, not a re-serialisation: frontmatter is a
+            file-level header this surface renders as a card rather than as
+            editable nodes, so the tree is not where it lives. */}
+        <FrontmatterWidget rawMarkdown={documents.source(path) ?? ''} />
         <div ref={containerRef} className={css.container} />
       </div>
 
       {/* Floating Bubble Menu on Selection */}
-      {editor && <BubbleMenu editor={editor} path={path} registry={registry} />}
+      {editor && <BubbleMenu editor={editor} path={path} markdown={() => documents.preview(path) ?? ''} />}
 
       {/* In-Editor FindBar */}
       {editor && (

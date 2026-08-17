@@ -1,10 +1,22 @@
 /**
  * The centre column: tab strip, breadcrumb, editor, status bar.
  *
- * Owns the `BufferRegistry` and turns gestures into calls on it; the tab list
- * itself lives in the frame store, because the explorer highlights the active
- * path too. List arithmetic is delegated to `model/tabs.ts` so the closing
- * rules stay assertable without mounting anything.
+ * Owns the two document registries and turns gestures into calls on them; the
+ * tab list itself lives in the frame store, because the explorer highlights the
+ * active path too. List arithmetic is delegated to `model/tabs.ts` so the
+ * closing rules stay assertable without mounting anything.
+ *
+ * **Two registries, one rule: the document outlives the view.** `BufferRegistry`
+ * holds a CodeMirror `EditorState` per path; `DocumentRegistry` holds a TipTap
+ * `Editor` per markdown path. Both exist so that a tab switch cannot destroy an
+ * undo history — the mistake this column used to make on the markdown side, and
+ * the reason Ctrl+Z there could not reach past the last time you looked at
+ * another file.
+ *
+ * Which registry is authoritative depends on the file. For markdown it is the
+ * tree: the text CodeMirror views are read-only (see `mdTextReadOnly` below) and the
+ * buffer is refreshed from the tree at save time and whenever a text-shaped view
+ * needs to read it. For everything else the buffer is the only document there is.
  *
  * The editor's own text never enters React state. What React holds here is the
  * tab list, the dirty set, the caret position and the save indicator.
@@ -18,6 +30,8 @@ import { bracketMatching, indentOnInput } from '@codemirror/language'
 import { gitStatus } from '../api/files.ts'
 import { Dialog } from '../ui/Dialog.tsx'
 import { BufferRegistry } from './buffers.ts'
+import { DocumentRegistry } from '../tiptap/documents.ts'
+import { isMarkdown } from './language.ts'
 import { languageExtension, languageName } from './language.ts'
 import { editorTheme } from './theme.ts'
 import { CodeEditor, type CodeEditorHandle, type CursorInfo } from './CodeEditor.tsx'
@@ -108,19 +122,54 @@ export function Workbench({
   })
   const registry = registryRef.current
 
+  // The WYSIWYG document registry. Same lifetime as the buffer registry and the
+  // same purpose: a document that outlives every view that shows it.
+  const documentsRef = useRef<DocumentRegistry | null>(null)
+  documentsRef.current ??= new DocumentRegistry()
+  const documents = documentsRef.current
+
+  useEffect(() => () => { documents.dispose() }, [documents])
+
   const buffers = useSyncExternalStore(
     useCallback(listener => registry.subscribe(listener), [registry]),
     useCallback(() => registry.getSnapshot(), [registry]),
   )
 
+  const docs = useSyncExternalStore(
+    useCallback(listener => documents.subscribe(listener), [documents]),
+    useCallback(() => documents.getSnapshot(), [documents]),
+  )
+
   const status = activePath === undefined ? undefined : registry.status(activePath)
 
+  /**
+   * Push the current tree into the text buffer.
+   *
+   * The one place markdown crosses from tree to text. Called at moments the
+   * operator can see — a save, or opening a view that reads text — never on a
+   * keystroke, which is what used to fill the buffer's undo history with one
+   * whole-document replacement per character typed.
+   *
+   * `addToHistory: false` because this is a projection, not an edit: there is
+   * nothing here for anyone to step back through, and the tree's own history is
+   * where undo belongs.
+   */
+  const projectMarkdown = useCallback((path: string, stable: boolean): string | undefined => {
+    const md = stable ? documents.markdown(path) : documents.preview(path)
+    if (md === undefined) return undefined
+    registry.setText(path, md, { addToHistory: false })
+    return md
+  }, [documents, registry])
+
   useEffect(() => {
-    ;(window as any).__dsh_get_active_text = (p: string) => registry.getText(p)
+    // Prefers the tree for markdown: the buffer is only refreshed at visible
+    // moments now, so it is the stale one between them.
+    ;(window as any).__dsh_get_active_text = (p: string) =>
+      documents.preview(p) ?? registry.getText(p)
     return () => {
       delete (window as any).__dsh_get_active_text
     }
-  }, [registry])
+  }, [documents, registry])
 
   // Load whatever the active tab needs. Reading `buffers.version` is what makes
   // this re-run after a load settles, so the editor mounts once the state exists.
@@ -129,17 +178,31 @@ export function Workbench({
     if (registry.status(activePath) === undefined) void registry.load(activePath)
   }, [activePath, registry, buffers.version])
 
+  // Open the WYSIWYG document once its text has landed. Parsing happens here,
+  // exactly once per path, rather than inside the view's mount effect.
+  useEffect(() => {
+    if (activePath === undefined || !isMarkdown(activePath)) return
+    if (documents.editor(activePath) !== undefined) return
+    const text = registry.getText(activePath)
+    if (text === undefined) return
+    documents.open(activePath, text)
+  }, [activePath, documents, registry, buffers.version])
+
   const save = useCallback(async (path: string): Promise<boolean> => {
     setSaveState('saving')
+    // Markdown is written from the tree, through the fixed-point serializer, so
+    // what reaches disk regenerates to itself.
+    const written = isMarkdown(path) ? projectMarkdown(path, true) : undefined
     const result = await registry.save(path)
     if (!result.ok) {
       setSaveState({ error: result.error })
       onNotify(`Save failed: ${result.error}`)
       return false
     }
+    if (written !== undefined) documents.markSaved(path, written)
     setSaveState('saved')
     return true
-  }, [onNotify, registry])
+  }, [documents, onNotify, projectMarkdown, registry])
 
   saveRef.current = (path) => { void save(path) }
 
@@ -150,15 +213,27 @@ export function Workbench({
     return () => { clearTimeout(timer) }
   }, [saveState])
 
+  /**
+   * Everything with unsaved edits, from whichever registry owns it.
+   *
+   * A markdown tab is dirty when its *tree* differs from what was parsed, which
+   * the buffer cannot know any more: it only hears about the tree at save time.
+   */
+  const dirty = useMemo(() => {
+    const all = new Set(buffers.dirty)
+    for (const path of docs.dirty) all.add(path)
+    return all
+  }, [buffers.dirty, docs.dirty])
+
   // Auto-save: debounced per dirty path, and re-armed whenever the dirty set
-  // changes. Nothing here reads the document — the registry writes what it holds.
+  // changes. Nothing here reads the document — save() projects and writes.
   useEffect(() => {
-    if (!autoSave || buffers.dirty.size === 0) return
+    if (!autoSave || dirty.size === 0) return
     const timer = setTimeout(() => {
-      for (const path of buffers.dirty) void save(path)
+      for (const path of dirty) void save(path)
     }, AUTOSAVE_MS)
     return () => { clearTimeout(timer) }
-  }, [autoSave, buffers, save])
+  }, [autoSave, dirty, save])
 
   // Git branch for the status bar, refreshed when the workspace changes.
   useEffect(() => {
@@ -172,24 +247,33 @@ export function Workbench({
     return () => { live = false }
   }, [explorerRoot])
 
+  /** Drop a path from both registries — closing a tab ends its document. */
+  const forget = useCallback((path: string) => {
+    registry.forget(path)
+    documents.forget(path)
+  }, [documents, registry])
+
   /** Close a tab, asking first when it would lose edits. */
   const requestClose = useCallback((path: string) => {
-    if (registry.isDirty(path)) { setPendingClose({ path, busy: false }); return }
-    registry.forget(path)
+    if (registry.isDirty(path) || documents.isDirty(path)) {
+      setPendingClose({ path, busy: false })
+      return
+    }
+    forget(path)
     onSetTabs(tabModel.close(tabs, path), tabModel.activeAfterClose(tabs, path, activePath))
-  }, [activePath, onSetTabs, registry, tabs])
+  }, [activePath, documents, forget, onSetTabs, registry, tabs])
 
   const closeNow = useCallback((path: string) => {
-    registry.forget(path)
+    forget(path)
     onSetTabs(tabModel.close(tabs, path), tabModel.activeAfterClose(tabs, path, activePath))
     setPendingClose(undefined)
-  }, [activePath, onSetTabs, registry, tabs])
+  }, [activePath, forget, onSetTabs, tabs])
 
-  /** Adopt a bulk-close result, forgetting every buffer that went away. */
+  /** Adopt a bulk-close result, forgetting every document that went away. */
   const applyBulk = useCallback((remaining: string[]) => {
-    for (const path of tabs) if (!remaining.includes(path)) registry.forget(path)
+    for (const path of tabs) if (!remaining.includes(path)) forget(path)
     onSetTabs(remaining, tabModel.activeAfterBulk(remaining, activePath))
-  }, [activePath, onSetTabs, registry, tabs])
+  }, [activePath, forget, onSetTabs, tabs])
 
   const copyPath = useCallback((path: string) => {
     navigator.clipboard.writeText(path).then(
@@ -198,20 +282,67 @@ export function Workbench({
     )
   }, [onNotify])
 
-  /** Restore the disk text through the live view, so the revert stays undoable. */
+  /** Throw away a tab's unsaved edits and go back to what is on disk. */
   const discard = useCallback((path: string) => {
+    const buffer = registry.status(path)
+    if (buffer?.kind !== 'text') return
+    if (isMarkdown(path)) {
+      // A markdown tab's edits live in the tree, and every text view of it is
+      // read-only, so the revert cannot ride a transaction through the view.
+      // Re-parse from disk — which does throw the undo history away, and that is
+      // precisely what the operator asked for — and put the same text back in
+      // the buffer so neither registry is left claiming to be dirty.
+      const disk = buffer.diskDoc.toString()
+      documents.reopen(path, disk)
+      registry.setText(path, disk, { addToHistory: false })
+      return
+    }
+    // Everything else goes through the live view, which keeps the revert itself
+    // undoable: an accidental discard is recoverable with Ctrl+Z.
     const spec = registry.revertSpec(path)
-    if (spec === undefined) return
-    editorRef.current?.dispatch(spec)
-  }, [registry])
+    if (spec !== undefined) editorRef.current?.dispatch(spec)
+  }, [documents, registry])
 
-  const dirty = buffers.dirty
   const isImage = activePath !== undefined && /\.(png|jpe?g|gif|webp|svg|ico|bmp)$/i.test(activePath)
   const isCsv = activePath !== undefined && /\.(csv|tsv)$/i.test(activePath)
   const isHtml = activePath !== undefined && /\.(html|htm)$/i.test(activePath)
-  const isMd = activePath !== undefined && /\.(md|markdown)$/i.test(activePath)
+  const isMd = activePath !== undefined && isMarkdown(activePath)
 
   const isRaw = activePath !== undefined && (rawModes[activePath] ?? false)
+
+  /**
+   * Every *text* view of a markdown file is read-only — raw and diff alike.
+   *
+   * With the tree as the authority, an editable text view would be a second
+   * editable document over the same file: two undo histories, and an edit with
+   * nowhere coherent to land. It would not even survive — the next projection
+   * overwrites the buffer wholesale. Read-only makes the markdown/tree boundary
+   * one-way, crossed only when projecting for a save or a view, which is what
+   * lets Ctrl+Z mean one unambiguous thing.
+   *
+   * Both views keep doing what they are actually for: reading the markdown, and
+   * seeing what a save would change. CSV and HTML raw modes are untouched; they
+   * have no second document.
+   */
+  const mdTextReadOnly = isMd && (isRaw || diffOpen)
+
+  /**
+   * Reveal a text view of the active file, refreshing the buffer first.
+   *
+   * The projection has to happen *before* the state flip, not in an effect
+   * afterwards: CodeMirror builds its view from `buffer.state` as it mounts, and
+   * React runs a child's mount effect before the parent's. A projection that
+   * ran after the flip would land in the registry while the view on screen had
+   * already been built from the stale text — and the view's first `sync` would
+   * then overwrite the projection with what it was showing.
+   *
+   * Cheap-once (no fixed-point hunt): nothing here is being written to disk.
+   * @param flip - the state change that puts the text view on screen.
+   */
+  const showTextView = useCallback((flip: () => void) => {
+    if (activePath !== undefined && isMarkdown(activePath)) projectMarkdown(activePath, false)
+    flip()
+  }, [activePath, projectMarkdown])
 
   const language = useMemo(() => {
     if (activePath === undefined) return undefined
@@ -258,15 +389,31 @@ export function Workbench({
           <div className={css.notice}>Binary file — no preview ({status.size.toLocaleString()} bytes).</div>
         )}
         {!isImage && status?.kind === 'text' && activePath !== undefined && (
-          isMd && !diffOpen
+          isMd && !isRaw && !diffOpen
             ? (
               <div className={css.editor}>
-                <TipTapEditor
-                  key={activePath}
-                  path={activePath}
-                  registry={registry}
-                  onSave={(p) => { void save(p) }}
-                />
+                {/*
+                  Gated on the document existing. `TipTapEditor` attaches in an
+                  effect keyed to `[documents, path]`, so it gets exactly one
+                  chance to find the document — mounting it before the open
+                  effect has run would leave it permanently blank. `docs.version`
+                  re-renders us the moment the document lands.
+                */}
+                {documents.editor(activePath) !== undefined
+                  ? (
+                    <TipTapEditor
+                      key={activePath}
+                      path={activePath}
+                      documents={documents}
+                      onSave={(p) => { void save(p) }}
+                      onViewRaw={() => {
+                        showTextView(() => {
+                          setRawModes(prev => ({ ...prev, [activePath]: true }))
+                        })
+                      }}
+                    />
+                  )
+                  : <div className={css.notice}>Opening…</div>}
               </div>
             )
             : isCsv && !isRaw && !diffOpen
@@ -336,6 +483,7 @@ export function Workbench({
                         registry={registry}
                         revealLine={activeLine}
                         diffOriginal={diffOpen ? status.diskDoc : undefined}
+                        readOnly={mdTextReadOnly}
                         onCursor={setCursor}
                       />
                     </div>
@@ -355,7 +503,7 @@ export function Workbench({
         onToggleAutoSave={onToggleAutoSave}
         diffOpen={diffOpen}
         onToggleDiff={activePath !== undefined && dirty.has(activePath)
-          ? () => { setDiffOpen(open => !open) }
+          ? () => { showTextView(() => { setDiffOpen(open => !open) }) }
           : undefined}
         saveState={saveState}
       />
