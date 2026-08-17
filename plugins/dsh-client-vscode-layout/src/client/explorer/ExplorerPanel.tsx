@@ -53,6 +53,8 @@ export interface ExplorerPanelProps {
   listWorkspaces?: (() => WorkspaceItemInfo[]) | undefined
   /** Toast notifier. */
   onNotify?: ((message: string, type?: 'info' | 'success' | 'warning' | 'error') => void) | undefined
+  /** Toggle/Collapse sidebar. */
+  onToggleCollapse?: (() => void) | undefined
 }
 
 /** How long a footer status message stays before clearing, in ms. */
@@ -62,7 +64,7 @@ const NOTICE_MS = 4000
 export function ExplorerPanel({
   collapsed, activePath, onOpenFile, onAskAI, sessions,
   root, workspaceRoot, onRootChange, onWorkspaceRootResolved,
-  openWorkspace, pickDirectory, listWorkspaces, onNotify,
+  openWorkspace, pickDirectory, listWorkspaces, onNotify, onToggleCollapse,
 }: ExplorerPanelProps) {
   const [tab, setTab] = useState<ExplorerTab>('explorer')
   const [rootError, setRootError] = useState<string | undefined>(undefined)
@@ -123,6 +125,18 @@ export function ExplorerPanel({
             {id === 'explorer' ? 'Explorer' : id === 'search' ? 'Search' : id === 'scm' ? 'SCM' : 'Sessions'}
           </button>
         ))}
+        {onToggleCollapse && (
+          <button
+            type="button"
+            className={css.collapseTabBtn}
+            title="Collapse Sidebar (Ctrl+B)"
+            onClick={onToggleCollapse}
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="15 18 9 12 15 6" />
+            </svg>
+          </button>
+        )}
       </div>
 
       {tab === 'explorer' && (

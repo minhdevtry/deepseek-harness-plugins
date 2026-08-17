@@ -6,18 +6,24 @@
  */
 import { useLayoutEffect, useRef, useState } from 'react'
 import type { Editor } from '@tiptap/core'
+import { HighlightPalette } from './highlight/HighlightPalette.tsx'
+import { getLineRangeForSelection, insertMentionIntoChat } from '../utils/chatComposer.ts'
+import type { BufferRegistry } from '../workbench/buffers.ts'
 import css from './BubbleMenu.module.css'
 
 export interface BubbleMenuProps {
   editor: Editor
+  path?: string
+  registry?: BufferRegistry
 }
 
-export function BubbleMenu({ editor }: BubbleMenuProps) {
+export function BubbleMenu({ editor, path, registry }: BubbleMenuProps) {
   const menuRef = useRef<HTMLDivElement | null>(null)
   const [visible, setVisible] = useState(false)
   const [coords, setCoords] = useState<{ top: number; left: number }>({ top: 0, left: 0 })
   const [linkMode, setLinkMode] = useState(false)
   const [linkUrl, setLinkUrl] = useState('')
+  const [showPalette, setShowPalette] = useState(false)
 
   // Update bubble visibility & position on editor state change
   useLayoutEffect(() => {
@@ -256,15 +262,22 @@ export function BubbleMenu({ editor }: BubbleMenuProps) {
           >
             {'</>'}
           </button>
-          <button
-            type="button"
-            className={css.btn}
-            data-active={editor.isActive('highlight') || undefined}
-            onClick={() => { editor.chain().focus().toggleHighlight().run() }}
-            title="Highlight"
-          >
-            🖊️
-          </button>
+          <div style={{ position: 'relative', display: 'inline-flex' }}>
+            <button
+              type="button"
+              className={css.btn}
+              data-active={editor.isActive('highlight') || undefined}
+              onClick={() => setShowPalette((prev) => !prev)}
+              title="Highlight Color"
+            >
+              🎨
+            </button>
+            {showPalette && (
+              <div style={{ position: 'absolute', top: '100%', left: 0, marginTop: 4, zIndex: 100 }}>
+                <HighlightPalette editor={editor} onClose={() => setShowPalette(false)} />
+              </div>
+            )}
+          </div>
           <button
             type="button"
             className={css.btn}
@@ -304,6 +317,46 @@ export function BubbleMenu({ editor }: BubbleMenuProps) {
           >
             ⇥
           </button>
+          <button
+            type="button"
+            className={css.btn}
+            data-active={editor.isActive({ textAlign: 'justify' }) || undefined}
+            onClick={() => { editor.chain().focus().setTextAlign('justify').run() }}
+            title="Align Justify"
+          >
+            ⇿
+          </button>
+
+          {path && (
+            <>
+              <span className={css.divider} />
+              <button
+                type="button"
+                className={css.btn}
+                style={{
+                  color: 'var(--dsw-alias-state-business-primary, #2563eb)',
+                  fontWeight: 600,
+                  fontSize: 12,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 4,
+                  padding: '2px 8px'
+                }}
+                onClick={() => {
+                  const { from, to } = editor.state.selection
+                  const selectedText = editor.state.doc.textBetween(from, to, '\n')
+                  const fullText = registry ? registry.getText(path) || '' : ''
+                  const { rangeString } = getLineRangeForSelection(fullText, selectedText)
+                  const filename = path.split('/').pop() || path
+                  const mention = `@${filename} ${rangeString}`
+                  insertMentionIntoChat(mention)
+                }}
+                title="Mention Selection in Chat (Ctrl+L)"
+              >
+                💬 Mention
+              </button>
+            </>
+          )}
         </>
       )}
     </div>

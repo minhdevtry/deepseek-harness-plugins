@@ -32,8 +32,8 @@ export type Group = (typeof GROUPS)[number]
 export type CommandId =
   | 'paragraph' | 'heading1' | 'heading2' | 'heading3'
   | 'bulletList' | 'orderedList' | 'taskList' | 'blockquote'
-  | 'codeBlock' | 'table' | 'image' | 'youtube'
-  | 'callout' | 'divider'
+  | 'codeBlock' | 'table' | 'image' | 'youtube' | 'video'
+  | 'callout' | 'divider' | 'mermaid' | 'mathBlock'
 
 /** One entry in the slash menu. */
 export interface SlashCommand {
@@ -72,10 +72,13 @@ export const SLASH_COMMANDS: readonly SlashCommand[] = [
   { id: 'taskList', group: 'lists', title: 'To-do list', hint: 'Checkboxes you can tick', aliases: ['todo', 'task', 'checkbox', 'check'], shortcut: '[]' },
 
   { id: 'image', group: 'media', title: 'Image', hint: 'Embed a picture by URL', aliases: ['picture', 'photo', 'img'] },
-  { id: 'youtube', group: 'media', title: 'YouTube', hint: 'Embed a video', aliases: ['video', 'yt', 'embed'] },
+  { id: 'youtube', group: 'media', title: 'YouTube', hint: 'Embed a YouTube video', aliases: ['video', 'yt', 'embed'] },
+  { id: 'video', group: 'media', title: 'Video Player', hint: 'Embed YouTube, Bilibili or MP4 video', aliases: ['bilibili', 'movie', 'media', 'mp4', 'clip'] },
   { id: 'table', group: 'media', title: 'Table', hint: 'Insert a table with header row', aliases: ['grid', 'spreadsheet'] },
 
   { id: 'codeBlock', group: 'advanced', title: 'Code block', hint: 'Syntax-highlighted code', aliases: ['snippet', 'fence', 'pre'], shortcut: '```' },
+  { id: 'mermaid', group: 'advanced', title: 'Mermaid Diagram', hint: 'Interactive flowcharts, sequence & state diagrams', aliases: ['chart', 'flowchart', 'graph', 'sequence', 'architecture', 'state'] },
+  { id: 'mathBlock', group: 'advanced', title: 'LaTeX Math Formula', hint: 'Mathematical equations with KaTeX', aliases: ['katex', 'equation', 'calc', 'symbol'], shortcut: '$$' },
   { id: 'callout', group: 'advanced', title: 'Callout', hint: 'Highlight a note, tip or warning', aliases: ['note', 'info', 'tip', 'warning', 'admonition', 'alert'] },
   { id: 'divider', group: 'advanced', title: 'Divider', hint: 'Horizontal rule', aliases: ['hr', 'rule', 'separator', 'line'], shortcut: '---' },
 ]

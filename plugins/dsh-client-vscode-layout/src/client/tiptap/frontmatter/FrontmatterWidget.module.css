@@ -1,0 +1,101 @@
+.card {
+  width: 100%;
+  max-width: 840px;
+  margin: 0 auto 24px auto;
+  box-sizing: border-box;
+  background: var(--dsw-alias-bg-base, #f8fafc);
+  border: 1px solid var(--dsw-alias-border-l1, #e2e8f0);
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+  font-family: inherit;
+}
+
+.header {
+  padding: 8px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--dsw-alias-bg-elevated, #ffffff);
+  border-bottom: 1px solid var(--dsw-alias-border-l2, #e2e8f0);
+}
+
+.badge {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--dsw-alias-state-business-primary, #2563eb);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.toggleBtn {
+  background: transparent;
+  border: none;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--dsw-alias-label-secondary, #64748b);
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.toggleBtn:hover {
+  background: var(--dsw-alias-bg-hover, #f1f5f9);
+  color: var(--dsw-alias-label-primary, #0f172a);
+}
+
+.content {
+  padding: 12px 16px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.fieldLabel {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: capitalize;
+  color: var(--dsw-alias-label-tertiary, #94a3b8);
+}
+
+.fieldValue {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--dsw-alias-label-primary, #0f172a);
+}
+
+.tagsWrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 2px;
+}
+
+.tagPill {
+  background: rgba(37, 99, 235, 0.1);
+  color: #2563eb;
+  border: 1px solid rgba(37, 99, 235, 0.2);
+  border-radius: 12px;
+  padding: 1px 8px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.rawEditor {
+  padding: 8px 14px;
+  background: var(--dsw-alias-bg-base, #0f172a);
+  color: #e2e8f0;
+  font-family: monospace;
+  font-size: 12px;
+  border-top: 1px solid var(--dsw-alias-border-l1, #334155);
+  white-space: pre-wrap;
+}

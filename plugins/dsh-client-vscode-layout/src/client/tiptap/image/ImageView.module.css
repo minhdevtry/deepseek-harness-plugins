@@ -1,0 +1,132 @@
+.wrapper {
+  margin: 1.5em 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  user-select: none;
+}
+
+.imageContainer {
+  position: relative;
+  display: inline-block;
+  max-width: 100%;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--dsw-alias-border-l1, #cbd5e1);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.imageContainer:hover {
+  border-color: var(--dsw-alias-state-business-primary, #3b82f6);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+}
+
+.image {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  object-fit: contain;
+}
+
+.floatingToolbar {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: rgba(15, 23, 42, 0.85);
+  backdrop-filter: blur(6px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 6px;
+  padding: 3px 6px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.imageContainer:hover .floatingToolbar {
+  opacity: 1;
+}
+
+.toolBtn {
+  background: transparent;
+  border: none;
+  color: #f8fafc;
+  font-size: 11px;
+  padding: 3px 6px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.toolBtn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  color: #38bdf8;
+}
+
+.caption {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--dsw-alias-label-secondary, #64748b);
+  text-align: center;
+  font-style: italic;
+  outline: none;
+  min-width: 60px;
+  max-width: 80%;
+  border-bottom: 1px dashed transparent;
+  cursor: text;
+}
+
+.caption:focus {
+  border-bottom-color: var(--dsw-alias-state-business-primary, #3b82f6);
+  color: var(--dsw-alias-label-primary, #1e293b);
+}
+
+.resizeHandle {
+  position: absolute;
+  bottom: 4px;
+  right: 4px;
+  width: 14px;
+  height: 14px;
+  background: var(--dsw-alias-state-business-primary, #3b82f6);
+  border: 2px solid #ffffff;
+  border-radius: 3px;
+  cursor: se-resize;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.imageContainer:hover .resizeHandle {
+  opacity: 1;
+}
+
+/* Lightbox Modal */
+.lightboxBackdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.88);
+  backdrop-filter: blur(8px);
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: zoom-out;
+  animation: fadeIn 0.15s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.lightboxImage {
+  max-width: 92vw;
+  max-height: 90vh;
+  object-fit: contain;
+  border-radius: 6px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+  cursor: default;
+}

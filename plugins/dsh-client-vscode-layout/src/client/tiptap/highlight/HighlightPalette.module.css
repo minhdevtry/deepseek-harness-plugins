@@ -1,0 +1,42 @@
+.palette {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 6px;
+  background: var(--dsw-alias-bg-elevated, #ffffff);
+  border: 1px solid var(--dsw-alias-border-l1, #e2e8f0);
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.colorDot {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  cursor: pointer;
+  padding: 0;
+  transition: transform 0.1s ease, border-color 0.1s ease;
+}
+
+.colorDot:hover {
+  transform: scale(1.2);
+  border-color: var(--dsw-alias-state-business-primary, #2563eb);
+}
+
+.clearBtn {
+  background: transparent;
+  border: 1px solid var(--dsw-alias-border-l2, #cbd5e1);
+  border-radius: 4px;
+  font-size: 10px;
+  padding: 2px 6px;
+  cursor: pointer;
+  color: var(--dsw-alias-label-secondary, #64748b);
+  margin-left: 4px;
+}
+
+.clearBtn:hover {
+  color: #ef4444;
+  border-color: #fca5a5;
+  background: #fee2e2;
+}

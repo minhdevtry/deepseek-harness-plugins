@@ -26,6 +26,12 @@ import { CodeBlockLowlight } from '@tiptap/extension-code-block-lowlight'
 import { createLowlight, common } from 'lowlight'
 import { Markdown } from 'tiptap-markdown'
 import { Callout } from './Callout.ts'
+import { CalloutDecorations } from './callouts/CalloutDecorations.ts'
+import { MermaidExtension } from './mermaid/MermaidExtension.tsx'
+import { MathBlockExtension } from './math/MathExtension.tsx'
+import { HeadingFoldExtension } from './headingFold/HeadingFoldPlugin.ts'
+import { VideoEmbedExtension } from './video/VideoExtension.tsx'
+import { RichImageExtension } from './image/ImageViewExtension.tsx'
 
 /** Shared highlighter; building it per editor would re-register every grammar. */
 const lowlight = createLowlight(common)
@@ -50,6 +56,12 @@ export function documentExtensions(): Extensions {
     Underline,
     Highlight.configure({ multicolor: true }),
     Callout,
+    CalloutDecorations,
+    HeadingFoldExtension,
+    MermaidExtension,
+    MathBlockExtension,
+    VideoEmbedExtension,
+    RichImageExtension,
     Image,
     Youtube.configure({ controls: true, nocookie: true }),
     Table.configure({ resizable: true }),

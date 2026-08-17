@@ -122,6 +122,10 @@ export function createLayoutStore(): EngineStoreHandle<LayoutState, LayoutAction
     },
     actions: {
       setSidebar: (d, px: number) => {
+        if (px < 80) {
+          d.sidebar = 0
+          return
+        }
         const clamped = clampWidth(px, SIDEBAR_MIN, SIDEBAR_MAX)
         d.sidebar = clamped
         if (typeof window !== 'undefined' && clamped > 0) {

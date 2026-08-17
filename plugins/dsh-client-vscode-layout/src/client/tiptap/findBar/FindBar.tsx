@@ -1,0 +1,208 @@
+import { useEffect, useRef, useState } from 'react'
+import type { Editor } from '@tiptap/core'
+import css from './FindBar.module.css'
+
+declare class Highlight {
+  constructor(...ranges: Range[])
+}
+declare namespace CSS {
+  const highlights: Map<string, Highlight>
+}
+
+export interface FindBarProps {
+  editor: Editor
+  isOpen: boolean
+  onClose: () => void
+}
+
+export function FindBar({ editor, isOpen, onClose }: FindBarProps) {
+  const [query, setQuery] = useState('')
+  const [matchCase, setMatchCase] = useState(false)
+  const [currentIndex, setCurrentIndex] = useState(0)
+  const [matchCount, setMatchCount] = useState(0)
+  const rangesRef = useRef<Range[]>([])
+  const inputRef = useRef<HTMLInputElement | null>(null)
+
+  // Focus input when opened
+  useEffect(() => {
+    if (isOpen) {
+      setTimeout(() => {
+        inputRef.current?.focus()
+        inputRef.current?.select()
+      }, 30)
+    } else {
+      clearHighlights()
+      setQuery('')
+      setMatchCount(0)
+      rangesRef.current = []
+    }
+  }, [isOpen])
+
+  // Clear Highlights helper
+  const clearHighlights = () => {
+    if (typeof CSS !== 'undefined' && 'highlights' in CSS) {
+      CSS.highlights.delete('tiptap-find-highlight')
+      CSS.highlights.delete('tiptap-find-current')
+    }
+  }
+
+  // Search and update highlights across editor DOM
+  const performSearch = (text: string, caseSensitive: boolean, activeIdx: number) => {
+    const editorDom = editor.view.dom
+    if (!editorDom || !text.trim()) {
+      clearHighlights()
+      setMatchCount(0)
+      rangesRef.current = []
+      return
+    }
+
+    const treeWalker = document.createTreeWalker(editorDom, NodeFilter.SHOW_TEXT, null)
+    const ranges: Range[] = []
+    const needle = caseSensitive ? text : text.toLowerCase()
+
+    let node = treeWalker.nextNode()
+    while (node) {
+      const nodeText = node.textContent || ''
+      const haystack = caseSensitive ? nodeText : nodeText.toLowerCase()
+      let startPos = 0
+
+      while ((startPos = haystack.indexOf(needle, startPos)) !== -1) {
+        try {
+          const range = document.createRange()
+          range.setStart(node, startPos)
+          range.setEnd(node, startPos + needle.length)
+          ranges.push(range)
+        } catch {
+          // ignore detached node errors
+        }
+        startPos += needle.length
+      }
+
+      node = treeWalker.nextNode()
+    }
+
+    rangesRef.current = ranges
+    const total = ranges.length
+    setMatchCount(total)
+
+    if (total === 0) {
+      clearHighlights()
+      setCurrentIndex(0)
+      return
+    }
+
+    const validIdx = ((activeIdx % total) + total) % total
+    setCurrentIndex(validIdx)
+
+    if (typeof CSS !== 'undefined' && 'highlights' in CSS) {
+      CSS.highlights.set('tiptap-find-highlight', new Highlight(...ranges))
+      if (ranges[validIdx]) {
+        CSS.highlights.set('tiptap-find-current', new Highlight(ranges[validIdx]))
+        // Scroll current match into view
+        const rect = ranges[validIdx].getBoundingClientRect()
+        if (rect && rect.top !== 0) {
+          const container = editorDom.parentElement || window
+          if (container instanceof HTMLElement) {
+            const containerRect = container.getBoundingClientRect()
+            if (rect.top < containerRect.top || rect.bottom > containerRect.bottom) {
+              ranges[validIdx].startContainer.parentElement?.scrollIntoView({
+                behavior: 'smooth',
+                block: 'center',
+              })
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // Trigger search on query or matchCase change
+  useEffect(() => {
+    if (!isOpen) return
+    performSearch(query, matchCase, 0)
+  }, [query, matchCase, isOpen])
+
+  const handleNext = () => {
+    if (matchCount === 0) return
+    const nextIdx = (currentIndex + 1) % matchCount
+    performSearch(query, matchCase, nextIdx)
+  }
+
+  const handlePrev = () => {
+    if (matchCount === 0) return
+    const prevIdx = (currentIndex - 1 + matchCount) % matchCount
+    performSearch(query, matchCase, prevIdx)
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      if (e.shiftKey) {
+        handlePrev()
+      } else {
+        handleNext()
+      }
+    } else if (e.key === 'Escape') {
+      e.preventDefault()
+      onClose()
+      editor.commands.focus()
+    }
+  }
+
+  if (!isOpen) return null
+
+  return (
+    <div className={css.findBar} role="search" onClick={(e) => e.stopPropagation()}>
+      <input
+        ref={inputRef}
+        type="text"
+        className={css.input}
+        placeholder="Find in document..."
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        onKeyDown={handleKeyDown}
+        spellCheck={false}
+      />
+
+      <span className={css.count}>
+        {query.trim() ? (matchCount > 0 ? `${currentIndex + 1} / ${matchCount}` : '0 of 0') : ''}
+      </span>
+
+      <button
+        type="button"
+        className={css.btn}
+        onClick={handlePrev}
+        disabled={matchCount === 0}
+        title="Previous match (Shift+Enter)"
+      >
+        ▲
+      </button>
+
+      <button
+        type="button"
+        className={css.btn}
+        onClick={handleNext}
+        disabled={matchCount === 0}
+        title="Next match (Enter)"
+      >
+        ▼
+      </button>
+
+      <span className={css.divider} />
+
+      <button
+        type="button"
+        className={css.btn}
+        data-active={matchCase || undefined}
+        onClick={() => setMatchCase((c) => !c)}
+        title="Match Case"
+      >
+        Aa
+      </button>
+
+      <button type="button" className={css.btn} onClick={onClose} title="Close (Esc)">
+        ✕
+      </button>
+    </div>
+  )
+}

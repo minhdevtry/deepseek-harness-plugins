@@ -22,6 +22,7 @@ import { createLayoutStore } from './stores.ts'
 import { LayoutController } from './service.ts'
 import { ThemePresenter } from './theme-presenter.ts'
 import { mountSprite } from './explorer/icons/index.ts'
+import { insertMentionIntoChat } from './utils/chatComposer.ts'
 
 // Contract exports only (export discipline): the ctx.layout face consumers and
 // test fakes type against, plus the owner shares registrants compose with. The
@@ -54,21 +55,13 @@ export function apply(ctx: ClientContext): void {
   ctx.effect(() => mountSprite(), 'vscode-layout: file icon sprite')
 
   /**
-   * Ask the assistant about a file. Components never see ctx, so this is built
-   * here and delivered through the registration's inject face. Queued rather
-   * than steered: the operator asked a question, they did not interrupt.
+   * Mention a file in the AI chat composer. Inserts `@filename` into the input
+   * and focuses the composer so the operator can type their own question.
    */
   const askAI: FrameInjected['askAI'] = (path) => {
-    // Event-handler code may read a live snapshot directly; only *render* code
-    // has to go through a framework hook.
-    const current = ctx.sessions.list.getSnapshot().current
-    if (current === undefined) return
-    const session = ctx.sessions.binding(current)?.session
-    if (session === undefined) return
-    void session.prompt(
-      [{ type: 'text', text: `Please analyse and explain this file: ${path}` }],
-      'queue',
-    )
+    const filename = path.split('/').pop() || path
+    const mention = `@${filename}`
+    insertMentionIntoChat(mention)
   }
 
   /**

@@ -24,6 +24,7 @@ import { QuickOpen } from './ui/QuickOpen.tsx'
 import { CommandPalette, type CommandItem } from './ui/CommandPalette.tsx'
 import { InlineAI } from './ui/InlineAI.tsx'
 import { Toast, type ToastItem, type ToastType } from './ui/Toast.tsx'
+import { getLineRangeForSelection, insertMentionIntoChat } from './utils/chatComposer.ts'
 import css from './AppFrame.module.css'
 
 /** Full composed props: runtime share + child-slot render share + store share + injected face. */
@@ -154,14 +155,26 @@ export function AppFrame({
         actions.toggleSidebar()
       } else if (mod && e.key.toLowerCase() === 'l' && !e.shiftKey) {
         e.preventDefault()
-        const sel = window.getSelection()?.toString() || ''
-        if (sel.trim().length > 0 && panels.activePath) {
+        if (panels.activePath) {
           actions.openRight()
           actions.setRightTab('chat')
           const filename = panels.activePath.split('/').pop() || panels.activePath
-          const line = panels.activeLine ?? 1
-          askAI(`@${filename} #L${line}\n\`\`\`\n${sel.trim()}\n\`\`\`\n`)
-          handleNotify(`Mentioned @${filename} #L${line} in Chat`, 'info')
+          const activeSel = (window as any).__dsh_active_selection
+          let lineTag = ''
+          if (activeSel && activeSel.path === panels.activePath && activeSel.rangeString) {
+            lineTag = ` ${activeSel.rangeString}`
+          } else {
+            const sel = window.getSelection()?.toString() || ''
+            if (sel.trim().length > 0) {
+              const docText = (window as any).__dsh_get_active_text?.(panels.activePath) || ''
+              if (docText) {
+                const { rangeString } = getLineRangeForSelection(docText, sel)
+                if (rangeString) lineTag = ` ${rangeString}`
+              }
+            }
+          }
+          const mention = `@${filename}${lineTag}`
+          insertMentionIntoChat(mention)
         } else {
           if (colsRef.current.right === 0) {
             actions.openRight()
@@ -237,7 +250,9 @@ export function AppFrame({
         if (panels.activePath) {
           actions.openRight()
           actions.setRightTab('chat')
-          askAI(panels.activePath)
+          const filename = panels.activePath.split('/').pop() || panels.activePath
+          const mention = `@${filename}`
+          insertMentionIntoChat(mention)
         } else {
           handleNotify('No active file open', 'warning')
         }
@@ -248,11 +263,18 @@ export function AppFrame({
   const handleInlineAISubmit = useCallback((prompt: string, contextSnippet?: string) => {
     actions.openRight()
     actions.setRightTab('chat')
-    const fileContext = panels.activePath ? `Regarding ${panels.activePath.split('/').pop()}:\n` : ''
-    const snippetContext = contextSnippet && contextSnippet.length > 0 ? `\n\`\`\`\n${contextSnippet}\n\`\`\`\n` : ''
-    askAI(`${fileContext}${prompt}${snippetContext}`)
-    handleNotify('AI request sent to Chat', 'success')
-  }, [actions, askAI, handleNotify, panels.activePath])
+    const filename = panels.activePath ? (panels.activePath.split('/').pop() || panels.activePath) : ''
+    let mentionTag = filename ? `@${filename}` : ''
+    if (filename && contextSnippet && contextSnippet.trim().length > 0) {
+      const docText = (window as any).__dsh_get_active_text?.(panels.activePath!) || ''
+      if (docText) {
+        const { rangeString } = getLineRangeForSelection(docText, contextSnippet)
+        if (rangeString) mentionTag = `@${filename} ${rangeString}`
+      }
+    }
+    const fullMention = mentionTag ? `${mentionTag} ${prompt}` : prompt
+    insertMentionIntoChat(fullMention)
+  }, [actions, panels.activePath])
 
   return (
     <div
@@ -280,9 +302,25 @@ export function AppFrame({
           pickDirectory={pickDirectory}
           listWorkspaces={listWorkspaces}
           onNotify={handleNotify}
+          onToggleCollapse={actions.toggleSidebar}
           sessions={renderSlot('sidebar', { collapsed: sidebarCollapsed, width: cols.sidebar })}
         />
       </div>
+
+      {sidebarCollapsed && (
+        <button
+          type="button"
+          className={css.sidebarRestoreBtn}
+          onClick={actions.toggleSidebar}
+          title="Restore Explorer (Ctrl+B)"
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect width="18" height="18" x="3" y="3" rx="2" />
+            <path d="M9 3v18" />
+            <path d="m14 9 3 3-3 3" />
+          </svg>
+        </button>
+      )}
 
       <div className={css.centerCol}>
         <Workbench

@@ -92,11 +92,28 @@ export const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(function
         registry.sync(path, instance.state)
         const head = instance.state.selection.main
         const line = instance.state.doc.lineAt(head.head)
+        const selectedCount = Math.abs(head.to - head.from)
         cursorRef.current({
           line: line.number,
           column: head.head - line.from + 1,
-          selected: Math.abs(head.to - head.from),
+          selected: selectedCount,
         })
+        if (selectedCount > 0) {
+          const from = Math.min(head.from, head.to)
+          const to = Math.max(head.from, head.to)
+          const startLine = instance.state.doc.lineAt(from).number
+          const endLine = instance.state.doc.lineAt(to).number
+          const rangeString = startLine === endLine ? `#L${startLine}` : `#L${startLine}-L${endLine}`
+          ;(window as any).__dsh_active_selection = {
+            path,
+            selectedText: instance.state.sliceDoc(from, to),
+            startLine,
+            endLine,
+            rangeString,
+          }
+        } else {
+          ;(window as any).__dsh_active_selection = null
+        }
       },
     })
 

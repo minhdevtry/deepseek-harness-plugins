@@ -27,7 +27,7 @@ export interface Columns {
 /** Editor column floor; only the final fallback may go below it. */
 export const CENTER_MIN = 300
 /** Sidebar drag clamp floor. */
-export const SIDEBAR_MIN = 220
+export const SIDEBAR_MIN = 100
 /** Sidebar drag clamp ceiling. */
 export const SIDEBAR_MAX = 500
 /** Sidebar width before any user drag. */

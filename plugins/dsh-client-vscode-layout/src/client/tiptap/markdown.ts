@@ -28,6 +28,25 @@ const MAX_PASSES = 4
 type MarkdownEditor = Editor & { storage: { markdown: { getMarkdown: () => string } } }
 
 /**
+ * Clean up noisy serialization artifacts (<br />, &#x20;, excessive newlines)
+ */
+export function cleanMarkdown(md: string): string {
+  let text = md
+    // Replace isolated &#x20; with spaces
+    .replace(/&#x20;/g, ' ')
+    // Clean table cells with <br />
+    .replace(/\|\s*<br\s*\/?>\s*\|/g, '|  |')
+    .replace(/\|\s*<br\s*\/?>/g, '| ')
+    .replace(/<br\s*\/?>\s*\|/g, ' |')
+    // Clean standalone <br /> tags
+    .replace(/\n\s*<br\s*\/?>\s*\n/g, '\n\n')
+    // Normalize 3+ newlines down to 2
+    .replace(/\n{3,}/g, '\n\n')
+
+  return text.trimEnd() + '\n'
+}
+
+/**
  * Serialize the editor's document to markdown, normalised to a fixed point.
  *
  * The extra passes run on a throwaway headless editor, never on the live one:
@@ -37,8 +56,8 @@ type MarkdownEditor = Editor & { storage: { markdown: { getMarkdown: () => strin
  * @returns markdown that regenerates to itself.
  */
 export function serializeStable(editor: Editor): string {
-  const source = markdownOf(editor)
-  return stabilize(source, roundTrip)
+  const source = cleanMarkdown(markdownOf(editor))
+  return cleanMarkdown(stabilize(source, (input) => cleanMarkdown(roundTrip(input))))
 }
 
 /**

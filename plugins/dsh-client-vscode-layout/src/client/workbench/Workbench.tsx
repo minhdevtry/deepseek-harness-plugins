@@ -115,6 +115,13 @@ export function Workbench({
 
   const status = activePath === undefined ? undefined : registry.status(activePath)
 
+  useEffect(() => {
+    ;(window as any).__dsh_get_active_text = (p: string) => registry.getText(p)
+    return () => {
+      delete (window as any).__dsh_get_active_text
+    }
+  }, [registry])
+
   // Load whatever the active tab needs. Reading `buffers.version` is what makes
   // this re-run after a load settles, so the editor mounts once the state exists.
   useEffect(() => {
@@ -251,7 +258,7 @@ export function Workbench({
           <div className={css.notice}>Binary file — no preview ({status.size.toLocaleString()} bytes).</div>
         )}
         {!isImage && status?.kind === 'text' && activePath !== undefined && (
-          isMd && !isRaw && !diffOpen
+          isMd && !diffOpen
             ? (
               <div className={css.editor}>
                 <TipTapEditor
@@ -259,10 +266,6 @@ export function Workbench({
                   path={activePath}
                   registry={registry}
                   onSave={(p) => { void save(p) }}
-                  onToggleRawMode={() => {
-                    setRawModes(prev => ({ ...prev, [activePath]: true }))
-                  }}
-                  isRawMode={false}
                 />
               </div>
             )

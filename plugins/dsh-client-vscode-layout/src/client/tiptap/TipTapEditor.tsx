@@ -15,15 +15,16 @@ import { SlashMenu } from './SlashMenu.tsx'
 import { BubbleMenu } from './BubbleMenu.tsx'
 import { TableControls } from './TableControls.tsx'
 import { MediaModal, type MediaModalType } from './MediaModal.tsx'
-import { OutlineDrawer } from './OutlineDrawer.tsx'
+import { TableOfContents } from './toc/TableOfContents.tsx'
+import { FindBar } from './findBar/FindBar.tsx'
+import { FrontmatterWidget } from './frontmatter/FrontmatterWidget.tsx'
+import { getLineRangeForSelection } from '../utils/chatComposer.ts'
 import css from './TipTapEditor.module.css'
 
 export interface TipTapEditorProps {
   path: string
   registry: BufferRegistry
   onSave: (path: string) => void
-  onToggleRawMode?: () => void
-  isRawMode?: boolean
 }
 
 interface SlashState {
@@ -36,16 +37,21 @@ export function TipTapEditor({
   path,
   registry,
   onSave,
-  onToggleRawMode,
-  isRawMode = false,
 }: TipTapEditorProps) {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const [editor, setEditor] = useState<Editor | null>(null)
   const [slashState, setSlashState] = useState<SlashState | null>(null)
   const [mediaModal, setMediaModal] = useState<MediaModalType | null>(null)
   const [outlineOpen, setOutlineOpen] = useState(false)
+  const [findBarOpen, setFindBarOpen] = useState(false)
 
   const isDirty = registry.isDirty(path)
+
+  useEffect(() => {
+    try {
+      localStorage.removeItem('dsh_toc_pinned')
+    } catch {}
+  }, [])
 
   // Initialize TipTap Editor with shared extension set
   useEffect(() => {
@@ -68,6 +74,21 @@ export function TipTapEditor({
       },
       onSelectionUpdate: ({ editor: ed }) => {
         detectSlashCommand(ed)
+        const { from, to, empty } = ed.state.selection
+        if (!empty) {
+          const selectedText = ed.state.doc.textBetween(from, to, '\n')
+          const docText = registry.getText(path) || ''
+          const { startLine, endLine, rangeString } = getLineRangeForSelection(docText, selectedText)
+          ;(window as any).__dsh_active_selection = {
+            path,
+            selectedText,
+            startLine,
+            endLine,
+            rangeString,
+          }
+        } else {
+          ;(window as any).__dsh_active_selection = null
+        }
       },
     })
 
@@ -150,12 +171,15 @@ export function TipTapEditor({
     }
   }
 
-  // Handle hotkeys (Ctrl+S, Ctrl+Z, Ctrl+Y)
+  // Handle hotkeys (Ctrl+S, Ctrl+F, Ctrl+Z, Ctrl+Y)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 's') {
         e.preventDefault()
         onSave(path)
+      } else if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+        e.preventDefault()
+        setFindBarOpen((prev) => !prev)
       } else if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
         e.preventDefault()
         editor?.commands.undo()
@@ -178,35 +202,25 @@ export function TipTapEditor({
     <div className={css.wrapper}>
       {/* Top action bar */}
       <div className={css.topBar}>
-        {onToggleRawMode && (
-          <div className={css.modeToggle}>
-            <button
-              type="button"
-              className={`${css.modeBtn} ${!isRawMode ? css.modeBtnActive : ''}`}
-              onClick={() => { if (isRawMode) onToggleRawMode() }}
-              title="Notion WYSIWYG Mode"
-            >
-              📝 Notion
-            </button>
-            <button
-              type="button"
-              className={`${css.modeBtn} ${isRawMode ? css.modeBtnActive : ''}`}
-              onClick={() => { if (!isRawMode) onToggleRawMode() }}
-              title="Raw Markdown Editor"
-            >
-              💻 Raw
-            </button>
-          </div>
-        )}
-
         <button
           type="button"
           className={`${css.actionBtn} ${outlineOpen ? css.actionBtnActive : ''}`}
-          onClick={() => { setOutlineOpen(open => !open) }}
-          title="Document Outline"
+          onClick={() => { setOutlineOpen((open) => !open) }}
+          title="Document Outline / Table of Contents"
         >
           📑 Outline
         </button>
+
+        <button
+          type="button"
+          className={`${css.actionBtn} ${findBarOpen ? css.actionBtnActive : ''}`}
+          onClick={() => { setFindBarOpen((open) => !open) }}
+          title="Find in document (Ctrl+F)"
+        >
+          🔍 Find
+        </button>
+
+        <span style={{ width: 1, height: 16, background: 'var(--dsw-alias-border-l2, #cbd5e1)', margin: '0 4px' }} />
 
         <button
           type="button"
@@ -228,7 +242,59 @@ export function TipTapEditor({
           ↪ Redo
         </button>
 
+        <span style={{ width: 1, height: 16, background: 'var(--dsw-alias-border-l2, #cbd5e1)', margin: '0 4px' }} />
+
+        <button
+          type="button"
+          className={css.actionBtn}
+          onClick={() => { (editor?.commands as any).setMermaid?.() }}
+          title="Insert Mermaid Diagram"
+        >
+          📊 Mermaid
+        </button>
+
+        <button
+          type="button"
+          className={css.actionBtn}
+          onClick={() => { (editor?.commands as any).setMathBlock?.() }}
+          title="Insert LaTeX Math"
+        >
+          ∑ Math
+        </button>
+
+        <button
+          type="button"
+          className={css.actionBtn}
+          onClick={() => { editor?.chain().focus().toggleCallout({ type: 'info' }).run() }}
+          title="Insert Callout"
+        >
+          💡 Callout
+        </button>
+
         <span className={css.spacer} />
+
+        <button
+          type="button"
+          className={css.actionBtn}
+          onClick={() => {
+            if (editor) {
+              const md = serializeStable(editor)
+              navigator.clipboard.writeText(md).then(() => alert('Markdown copied to clipboard!'))
+            }
+          }}
+          title="Copy Clean Markdown"
+        >
+          📋 Copy MD
+        </button>
+
+        <button
+          type="button"
+          className={css.actionBtn}
+          onClick={() => { window.print() }}
+          title="Print / Export PDF"
+        >
+          📄 Print
+        </button>
 
         <button
           type="button"
@@ -244,13 +310,23 @@ export function TipTapEditor({
       {/* Contextual Table Controls */}
       {editor && <TableControls editor={editor} />}
 
-      {/* Main Document Canvas */}
+      {/* Main Document Canvas with Frontmatter Widget */}
       <div className={css.canvas} onClick={() => { editor?.commands.focus() }}>
+        <FrontmatterWidget rawMarkdown={registry.getText(path) || ''} />
         <div ref={containerRef} className={css.container} />
       </div>
 
       {/* Floating Bubble Menu on Selection */}
-      {editor && <BubbleMenu editor={editor} />}
+      {editor && <BubbleMenu editor={editor} path={path} registry={registry} />}
+
+      {/* In-Editor FindBar */}
+      {editor && (
+        <FindBar
+          editor={editor}
+          isOpen={findBarOpen}
+          onClose={() => setFindBarOpen(false)}
+        />
+      )}
 
       {/* Slash Command Menu */}
       {editor && slashState && (
@@ -273,11 +349,13 @@ export function TipTapEditor({
         />
       )}
 
-      {/* Outline Drawer */}
-      {editor && outlineOpen && (
-        <OutlineDrawer
+      {/* Upgraded Table of Contents / Outline Panel */}
+      {editor && (
+        <TableOfContents
           editor={editor}
-          onClose={() => { setOutlineOpen(false) }}
+          isOpen={outlineOpen}
+          onOpen={() => setOutlineOpen(true)}
+          onClose={() => setOutlineOpen(false)}
         />
       )}
     </div>

@@ -1,0 +1,374 @@
+/* ─── Apple / Linear Studio Grade Design System for TOC ────────── */
+:root {
+  --toc-surface: #ffffff;
+  --toc-surface-header: #f8fafc;
+  --toc-surface-hover: rgba(0, 0, 0, 0.04);
+  --toc-surface-active: rgba(15, 23, 42, 0.07);
+  --toc-border: #e2e8f0;
+  --toc-border-subtle: #f1f5f9;
+  --toc-text-primary: #0f172a;
+  --toc-text-secondary: #334155;
+  --toc-text-tertiary: #64748b;
+  --toc-accent: #0f172a;
+  --toc-accent-subtle: rgba(15, 23, 42, 0.05);
+  --toc-shadow: -4px 0 24px rgba(0, 0, 0, 0.08);
+}
+
+:global([data-theme="dark"]) {
+  --toc-surface: #18181b;
+  --toc-surface-header: #121214;
+  --toc-surface-hover: rgba(255, 255, 255, 0.06);
+  --toc-surface-active: rgba(255, 255, 255, 0.1);
+  --toc-border: rgba(255, 255, 255, 0.1);
+  --toc-border-subtle: rgba(255, 255, 255, 0.05);
+  --toc-text-primary: #f8fafc;
+  --toc-text-secondary: #cbd5e1;
+  --toc-text-tertiary: #64748b;
+  --toc-accent: #f8fafc;
+  --toc-accent-subtle: rgba(255, 255, 255, 0.08);
+  --toc-shadow: -4px 0 24px rgba(0, 0, 0, 0.35);
+}
+
+/* ─── TOC Main Panel (Acrylic Glass Overlay Drawer) ────────── */
+.tocPanel {
+  position: absolute;
+  top: 38px;
+  right: 0;
+  bottom: 0;
+  width: 260px;
+  box-sizing: border-box;
+  background: var(--toc-surface);
+  z-index: 40;
+  display: none; /* Strictly hidden when closed */
+  flex-direction: column;
+  overflow: visible;
+  border-left: 1px solid var(--toc-border);
+  box-shadow: var(--toc-shadow);
+  user-select: none;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", sans-serif;
+}
+
+.tocPanelOpen {
+  display: flex !important; /* Only shown when explicitly opened */
+  animation: tocDrawerIn 0.18s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes tocDrawerIn {
+  from {
+    opacity: 0;
+    transform: translateX(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.tocPanelPinned {
+  box-shadow: none;
+}
+
+/* ─── Drag Resize Handle ────────────────────────────────────── */
+.resizeHandle {
+  position: absolute;
+  left: -4px;
+  top: 0;
+  bottom: 0;
+  width: 8px;
+  cursor: ew-resize;
+  z-index: 50;
+  transition: background 0.15s ease;
+}
+
+.resizeHandle:hover {
+  background: rgba(15, 23, 42, 0.2);
+}
+
+/* ─── Minimalist Studio Header ──────────────────────────────── */
+.tocHeader {
+  display: flex;
+  align-items: center;
+  height: 38px;
+  padding: 0 8px 0 14px;
+  background: var(--toc-surface-header);
+  border-bottom: 1px solid var(--toc-border);
+  flex-shrink: 0;
+  gap: 6px;
+}
+
+.tocHeaderTitle {
+  flex: 1;
+  min-width: 0;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--toc-text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.headingCountBadge {
+  font-size: 10px;
+  font-weight: 600;
+  background: rgba(0, 0, 0, 0.06);
+  color: var(--toc-text-tertiary);
+  padding: 1px 6px;
+  border-radius: 10px;
+}
+
+/* ─── Header Action Buttons (Glassmorphic Ghost) ─────────────── */
+.tocHeaderBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--toc-text-secondary);
+  cursor: pointer;
+  transition: all 0.12s ease;
+  flex-shrink: 0;
+  padding: 0;
+}
+
+.tocHeaderBtn:hover {
+  background: var(--toc-surface-hover);
+  color: var(--toc-text-primary);
+}
+
+.tocHeaderBtnActive {
+  color: var(--toc-text-primary) !important;
+  background: var(--toc-surface-active) !important;
+  border-color: var(--toc-border) !important;
+}
+
+/* ─── Search Input Box ──────────────────────────────────────── */
+.searchBox {
+  padding: 6px 10px;
+  background: var(--toc-surface);
+  border-bottom: 1px solid var(--toc-border);
+  flex-shrink: 0;
+}
+
+.searchInput {
+  width: 100%;
+  padding: 4px 8px;
+  font-size: 11.5px;
+  border: 1px solid var(--toc-border);
+  border-radius: 5px;
+  background: var(--toc-surface-header);
+  color: var(--toc-text-primary);
+  outline: none;
+  box-sizing: border-box;
+}
+
+.searchInput:focus {
+  border-color: var(--toc-text-primary);
+  background: var(--toc-surface);
+}
+
+.searchInput::placeholder {
+  color: var(--toc-text-tertiary);
+}
+
+/* ─── Headings List ─────────────────────────────────────────── */
+.tocList {
+  flex: 1;
+  overflow-y: auto;
+  padding: 6px 4px;
+  background: var(--toc-surface);
+  scrollbar-width: thin;
+}
+
+.tocList::-webkit-scrollbar {
+  width: 4px;
+}
+
+.tocList::-webkit-scrollbar-thumb {
+  background: var(--toc-border);
+  border-radius: 4px;
+}
+
+.tocEmpty {
+  padding: 32px 16px;
+  font-size: 12px;
+  color: var(--toc-text-tertiary);
+  text-align: center;
+}
+
+/* ─── Individual Heading Item Row ───────────────────────────── */
+.tocItem {
+  display: flex;
+  align-items: center;
+  padding: 4px 8px;
+  font-size: 12px;
+  line-height: 1.45;
+  cursor: pointer;
+  color: var(--toc-text-secondary);
+  border-radius: 5px;
+  margin: 1px 0;
+  position: relative;
+  transition: all 0.1s ease;
+}
+
+.tocItem:hover {
+  background: var(--toc-surface-hover);
+  color: var(--toc-text-primary);
+}
+
+/* Active Heading Highlight (ScrollSpy) */
+.tocItemActive {
+  background: var(--toc-surface-active) !important;
+  color: var(--toc-text-primary) !important;
+  font-weight: 600 !important;
+}
+
+.tocItemActive::before {
+  content: '';
+  position: absolute;
+  left: 2px;
+  top: 5px;
+  bottom: 5px;
+  width: 3px;
+  background: var(--toc-text-primary);
+  border-radius: 2px;
+}
+
+.tocItemH1 {
+  font-weight: 600;
+  color: var(--toc-text-primary);
+  font-size: 12.5px;
+}
+
+.tocItemH2 {
+  font-weight: 500;
+  font-size: 12px;
+}
+
+.tocItemH3, .tocItemH4, .tocItemH5, .tocItemH6 {
+  font-weight: 400;
+  font-size: 11.5px;
+  color: var(--toc-text-tertiary);
+}
+
+.collapseToggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  margin-right: 3px;
+  border-radius: 3px;
+  cursor: pointer;
+  opacity: 0.55;
+  border: none;
+  background: transparent;
+  color: inherit;
+  padding: 0;
+  transition: opacity 0.15s ease;
+}
+
+.collapseToggle:hover {
+  opacity: 1;
+  background: var(--toc-surface-hover);
+}
+
+.collapsePlaceholder {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  margin-right: 3px;
+  opacity: 0.25;
+  font-size: 10px;
+}
+
+.itemLabel {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  border: none;
+  background: transparent;
+  text-align: left;
+  padding: 0;
+  font-size: inherit;
+  font-weight: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+/* ─── Footer Stats Bar ──────────────────────────────────────── */
+.tocFooter {
+  padding: 8px 14px;
+  background: var(--toc-surface-header);
+  border-top: 1px solid var(--toc-border);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--toc-text-tertiary);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+
+/* ─── Floating Designer Capsule Pill Button (Right Margin) ──── */
+.pillBtn {
+  position: absolute;
+  top: 50%;
+  right: 12px;
+  transform: translateY(-50%);
+  width: 28px;
+  height: 52px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 14px;
+  cursor: pointer;
+  user-select: none;
+  z-index: 35;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.04);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  padding: 0;
+  color: #475569;
+}
+
+.pillBtn:hover {
+  width: 32px;
+  height: 56px;
+  background: #ffffff;
+  color: #0f172a;
+  border-color: rgba(0, 0, 0, 0.15);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12), 0 2px 6px rgba(0, 0, 0, 0.06);
+  transform: translateY(-50%) scale(1.04);
+}
+
+.pillBtn:active {
+  transform: translateY(-50%) scale(0.96);
+}
+
+.pillGrip {
+  width: 3px;
+  height: 18px;
+  background: #94a3b8;
+  border-radius: 2px;
+  transition: background 0.15s ease;
+}
+
+.pillBtn:hover .pillGrip {
+  background: #0f172a;
+}

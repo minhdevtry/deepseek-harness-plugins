@@ -12,6 +12,19 @@
  * `<style data-plugin="<id>">` tag at factory execution (the loader removes
  * plugin-owned tags on unload).
  */
+// Polyfill Promise.withResolvers for Node.js < 22 environments
+if (typeof (Promise as any).withResolvers === 'undefined') {
+  ;(Promise as any).withResolvers = function <T>() {
+    let resolve!: (value: T | PromiseLike<T>) => void
+    let reject!: (reason?: any) => void
+    const promise = new Promise<T>((res, rej) => {
+      resolve = res
+      reject = rej
+    })
+    return { promise, resolve, reject }
+  }
+}
+
 import { readFile } from 'node:fs/promises'
 import { basename, dirname, resolve as resolvePath } from 'node:path'
 import type { UserConfig } from 'tsdown'
@@ -91,6 +104,7 @@ function browserHalf(id: string): UserConfig {
     dts: false,
     sourcemap: true,
     clean: false,
+    codeSplitting: false,
     deps: {
       // Loader module-table entries stay external; tsdown auto-externalizes
       // package dependencies, so everything NOT in the table must inline
@@ -109,6 +123,7 @@ function browserHalf(id: string): UserConfig {
     },
     plugins: [purityGate(), cssModules(id)],
     outputOptions: {
+      inlineDynamicImports: true,
       entryFileNames: 'client.js',
       banner: `window.__ModuleLoader__.load({ id: ${JSON.stringify(id)}, factory: (require) => {`,
       footer: 'return module.exports; } });',

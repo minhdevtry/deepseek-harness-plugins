@@ -29,8 +29,11 @@ const ICONS: Record<CommandId, string> = {
   taskList: '☑',
   image: '🖼️',
   youtube: '▶️',
+  video: '🎬',
   table: '⊞',
   codeBlock: '</>',
+  mermaid: '📊',
+  mathBlock: '∑',
   callout: '💡',
   divider: '―',
 }
@@ -39,7 +42,7 @@ const GROUP_TITLES: Record<string, string> = {
   basic: 'Basic Blocks',
   lists: 'Lists',
   media: 'Media & Embeds',
-  advanced: 'Advanced',
+  advanced: 'Advanced & Visuals',
 }
 
 export function SlashMenu({
@@ -126,6 +129,12 @@ export function SlashMenu({
       case 'codeBlock':
         editor.chain().focus().toggleCodeBlock().run()
         break
+      case 'mermaid':
+        (editor.commands as any).setMermaid?.()
+        break
+      case 'mathBlock':
+        (editor.commands as any).setMathBlock?.()
+        break
       case 'callout':
         editor.chain().focus().toggleCallout({ type: 'info' }).run()
         break
@@ -136,6 +145,9 @@ export function SlashMenu({
         onOpenMediaModal('image')
         break
       case 'youtube':
+        onOpenMediaModal('youtube')
+        break
+      case 'video':
         onOpenMediaModal('youtube')
         break
       case 'table':

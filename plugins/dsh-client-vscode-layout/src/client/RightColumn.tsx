@@ -66,8 +66,8 @@ export function RightColumn({ collapsed, tab, hasDetails, onTab, onClose, chat, 
           </button>
         </div>
 
-        <div className={css.panel} hidden={active !== 'chat'}>{chat}</div>
-        <div className={css.panel} hidden={active !== 'details'}>{details}</div>
+        <div data-dsh-chat-panel="true" className={css.panel} hidden={active !== 'chat'}>{chat}</div>
+        <div data-dsh-details-panel="true" className={css.panel} hidden={active !== 'details'}>{details}</div>
       </div>
     </div>
   )

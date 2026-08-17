@@ -12,6 +12,7 @@ import * as syncProtocol from "y-protocols/sync";
 import * as awarenessProtocol from "y-protocols/awareness";
 import * as encoding from "lib0/encoding";
 import * as decoding from "lib0/decoding";
+import { uploadImageToR2 } from "./r2Service.js";
 
 /** Plugin name (for loader entry). */
 const name = "dsh-host-files";
@@ -768,6 +769,53 @@ function apply(ctx) {
 						return sendJson(res, 200, { ok: true });
 					} catch (err) {
 						return sendJson(res, 500, { ok: false, error: err.message });
+					}
+				}
+				if (url.pathname === "/vscode-files/upload-image") {
+					const root = body?.root ? resolve(body.root) : SANDBOX_ROOT;
+					const storage = body?.storage || "local";
+					const base64Data = body?.data;
+					const mimeType = body?.mimeType || "image/png";
+					const altText = body?.altText || "image";
+
+					if (!base64Data) {
+						return sendJson(res, 400, { ok: false, error: "missing image data" });
+					}
+
+					const raw = typeof base64Data === "string" ? base64Data.replace(/^data:image\/\w+;base64,/, "") : "";
+					const buffer = Buffer.from(raw, "base64");
+
+					if (storage === "r2") {
+						try {
+							const r2Config = body?.r2Config || {};
+							const publicUrl = await uploadImageToR2(r2Config, buffer, mimeType, altText);
+							return sendJson(res, 200, { ok: true, url: publicUrl });
+						} catch (err) {
+							return sendJson(res, 500, { ok: false, error: err.message });
+						}
+					} else {
+						// Local storage with MD5 deduplication
+						try {
+							const imagesDir = join(root, "images");
+							await mkdir(imagesDir, { recursive: true });
+							const extMap = {
+								"image/png": ".png",
+								"image/jpeg": ".jpg",
+								"image/jpg": ".jpg",
+								"image/gif": ".gif",
+								"image/webp": ".webp",
+								"image/svg+xml": ".svg",
+							};
+							const ext = extMap[mimeType] || ".png";
+							const md5Hash = crypto.createHash("md5").update(buffer).digest("hex").slice(0, 10);
+							const filename = `${md5Hash}${ext}`;
+							const absPath = join(imagesDir, filename);
+							await writeFile(absPath, buffer);
+							const relPath = "./images/" + filename;
+							return sendJson(res, 200, { ok: true, url: `/vscode-files/raw?path=${encodeURIComponent(absPath)}`, relPath });
+						} catch (err) {
+							return sendJson(res, 500, { ok: false, error: err.message });
+						}
 					}
 				}
 			}
