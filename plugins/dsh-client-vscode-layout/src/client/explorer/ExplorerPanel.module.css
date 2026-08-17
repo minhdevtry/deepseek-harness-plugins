@@ -5,60 +5,18 @@
   min-width: 0;
 }
 
-/* Collapsed: the subtree stays mounted (it hosts another plugin's session
-   list) but skips layout and paint entirely. */
-.panel[data-collapsed] {
-  content-visibility: hidden;
-}
-
-.tabBar {
-  display: flex;
-  align-items: center;
-  gap: 2px;
+/* The pane's own section header (VS Code's viewlet title). */
+.viewTitle {
   flex: none;
-  padding: 6px 6px 0;
-}
-
-.tab {
-  padding: 5px 9px;
-  border: none;
-  border-radius: 6px 6px 0 0;
-  background: transparent;
+  padding: 10px 12px 6px;
   color: var(--dsw-alias-label-secondary);
   font-size: 11px;
-  font-family: inherit;
   font-weight: 700;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
-  cursor: pointer;
-}
-
-.tab:hover {
-  background: var(--dsw-alias-interactive-bg-hover);
-}
-
-.tab[data-active] {
-  color: var(--dsw-alias-label-primary);
-  background: var(--dsw-alias-interactive-bg-selected);
-}
-
-.collapseTabBtn {
-  margin-left: auto;
-  padding: 3px 5px;
-  border: none;
-  border-radius: 4px;
-  background: transparent;
-  color: var(--dsw-alias-label-secondary);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.12s ease;
-}
-
-.collapseTabBtn:hover {
-  background: var(--dsw-alias-interactive-bg-hover);
-  color: var(--dsw-alias-label-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .toolbar {
@@ -108,7 +66,8 @@
 
 .workspaceDropdown {
   position: absolute;
-  top: 66px;
+  /* Clears the view title + toolbar stacked above it. */
+  top: 62px;
   left: 6px;
   right: 6px;
   max-height: 320px;

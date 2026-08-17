@@ -62,6 +62,7 @@ type LayoutActions = {
   setSidebar: (draft: LayoutState, px: number) => void
   setRight: (draft: LayoutState, px: number, viewport: number) => void
   toggleSidebar: (draft: LayoutState) => void
+  openSidebar: (draft: LayoutState) => void
   setNarrow: (draft: LayoutState, narrow: boolean) => void
   openRight: (draft: LayoutState) => void
   closeRight: (draft: LayoutState) => void
@@ -163,6 +164,27 @@ export function createLayoutStore(): EngineStoreHandle<LayoutState, LayoutAction
             d.sidebar = 0
           }
         }
+      },
+      // Reveal without toggling. The host's sidebar asks for this when one of
+      // its rail icons wants room (ui-sidebar's expandSidebar), where a plain
+      // toggle would close an already-open column instead.
+      openSidebar: (d) => {
+        if (d.narrow) {
+          d.narrowExpanded = true
+          return
+        }
+        if (d.sidebar !== 0) return
+        let saved = SIDEBAR_DEFAULT
+        if (typeof window !== 'undefined') {
+          try {
+            const val = localStorage.getItem('dsh_vscode_sidebar_width')
+            if (val) {
+              const parsed = parseInt(val, 10)
+              if (!isNaN(parsed) && parsed >= SIDEBAR_MIN) saved = parsed
+            }
+          } catch {}
+        }
+        d.sidebar = saved
       },
       // Crossing the breakpoint in either direction drops the override: the
       // narrow default is auto-collapsed, the wide state is the preference.

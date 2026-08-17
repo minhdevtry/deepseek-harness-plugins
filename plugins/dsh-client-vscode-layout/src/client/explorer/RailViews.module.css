@@ -1,0 +1,65 @@
+/* The switcher sits inside ui-sidebar's footArea, so it inherits that column's
+   fill and only draws its own rows. Rail is the default shape; [data-wide]
+   is the expanded one, matching the host's own foot rows. */
+.group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  width: 100%;
+}
+
+.group[data-wide] {
+  align-items: stretch;
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+  font-family: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+
+.group[data-wide] .item {
+  width: 100%;
+  height: 34px;
+  justify-content: flex-start;
+  padding: 0 10px;
+}
+
+.item:hover {
+  background: var(--dsw-alias-interactive-bg-hover);
+  color: var(--dsw-alias-label-primary);
+}
+
+.item[data-active] {
+  background: var(--dsw-alias-interactive-bg-selected);
+  color: var(--dsw-alias-label-primary);
+}
+
+.icon {
+  flex: none;
+}
+
+.label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .item {
+    transition: none;
+  }
+}

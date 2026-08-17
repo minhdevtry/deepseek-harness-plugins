@@ -20,11 +20,22 @@
  * Sidebar owner share: live column state from the frame's concession solve.
  * Shape fixed by the stock contract (`.ref/deepseek-harness/packages/client/
  * ui-layout/src/client/index.ts`).
+ *
+ * Both fields carry their stock MEANING, not merely their stock shape: the
+ * occupant renders itself at `width`, and `collapsed` asks it for its own 56px
+ * rail. Honouring that is what keeps SidebarRoot's brand row, New Session,
+ * workspace icons and Settings alive — an earlier revision passed this frame's
+ * whole-column width to an occupant nested inside a tab, and SidebarRoot duly
+ * sized itself to 0, taking every one of those controls off screen with it.
+ *
+ * This frame drives them from the active view (explorer/views.ts): the
+ * `sessions` view hands the column over whole (`collapsed: false`), and every
+ * other view leaves the host its rail (`collapsed: true`, `width: RAIL`).
  */
 export interface SidebarOwnerProps {
-  /** True when the sidebar is closed. */
+  /** True when the occupant should render its compact icon rail. */
   collapsed: boolean
-  /** Rendered column width in px (0 when collapsed — this frame has no icon rail). */
+  /** Rendered width in px: the rail width when collapsed, else the full column. */
   width: number
 }
 
@@ -50,11 +61,6 @@ export interface WorkspaceItemInfo {
 
 export type FrameInjected = {
   /**
-   * Ask the assistant about a file. Queues a turn in the current session; a
-   * no-op when no session is open, since there is nowhere to send it.
-   */
-  askAI: (path: string) => void
-  /**
    * Surface a transient message. Routed through the injected face rather than
    * a component-level toast so the overlay milestone can replace the
    * implementation without touching a single caller.
@@ -72,6 +78,14 @@ export type FrameInjected = {
    * Retrieve list of currently registered workspaces.
    */
   listWorkspaces?: (() => WorkspaceItemInfo[]) | undefined
+  /**
+   * Active left-column view. Lives outside the layout store because the rail
+   * switcher that writes it is a separate registration in the host's footer
+   * seat, and a store belongs to the entry that seats it (explorer/views.ts).
+   */
+  useExplorerView: () => import('../explorer/views.ts').ExplorerView
+  /** Switch the left-column view. */
+  setExplorerView: (view: import('../explorer/views.ts').ExplorerView) => void
 }
 
 declare module '@deepseek-ai/dsh-client-ui-slots' {

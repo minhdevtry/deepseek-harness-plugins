@@ -15,6 +15,11 @@
 import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
 // Type-only: pulls the theme plugin's Context merge (ctx.theme).
 import type {} from '@deepseek-ai/dsh-client-ui-theme/client'
+// Type-only: pulls ui-sidebar's SlotMap merge, so the footer-action seat this
+// package registers into resolves. We do not own that hole — we join it.
+import type {} from '@deepseek-ai/dsh-client-ui-sidebar/client'
+import type { InputTriggerServiceContract } from '@deepseek-ai/dsh-client-ui-input-trigger/client'
+import type { IConversation } from '@deepseek-ai/dsh-client-ui-conversation/client'
 import type { PanelActions } from './service.ts'
 import type { FrameInjected } from './contract/slots.ts'
 import { AppFrame } from './AppFrame.tsx'
@@ -22,7 +27,10 @@ import { createLayoutStore } from './stores.ts'
 import { LayoutController } from './service.ts'
 import { ThemePresenter } from './theme-presenter.ts'
 import { mountSprite } from './explorer/icons/index.ts'
-import { insertMentionIntoChat } from './utils/chatComposer.ts'
+import { createViewState, type ExplorerView } from './explorer/views.ts'
+import { RailViews, type RailViewsInjected } from './explorer/RailViews.tsx'
+import { createFileSource } from './inputTriggers/fileSource.ts'
+import { installComposerWriter } from './composer.ts'
 
 // Contract exports only (export discipline): the ctx.layout face consumers and
 // test fakes type against, plus the owner shares registrants compose with. The
@@ -48,21 +56,55 @@ export const inject = ['slots', 'theme', 'sessions', 'workspaces']
  * @param ctx - client root context.
  */
 export function apply(ctx: ClientContext): void {
-  const layout = new LayoutController()
+  // Shared by two registrations that cannot see each other's stores: the frame
+  // (root) and the rail switcher (ui-sidebar's footer seat). See explorer/views.ts.
+  const views = createViewState()
+  const layout = new LayoutController(views)
+
+  /**
+   * Select a left-column view, revealing the column if it is collapsed.
+   *
+   * Both callers reach the rail while it is the only thing on screen — a rail
+   * icon click and a Ctrl+Shift chord — and a bare view write there would set a
+   * view nobody can see. `openSidebar` is a no-op once the column is open, so
+   * this stays safe to call unconditionally.
+   */
+  let panels: PanelActions | undefined
+  const selectView = (view: ExplorerView): void => {
+    views.set(view)
+    panels?.openSidebar()
+  }
 
   // The file-type symbol sprite must be in the document for the explorer's
   // <use href="#id"> references to resolve. One DOM write, retracted on unload.
   ctx.effect(() => mountSprite(), 'vscode-layout: file icon sprite')
 
   /**
-   * Mention a file in the AI chat composer. Inserts `@filename` into the input
-   * and focuses the composer so the operator can type their own question.
+   * Seat the composer writer (see composer.ts) on the host's own input face.
+   *
+   * `conversation` is read through ctx.get rather than declared in `inject`
+   * for the same reason as inputTriggers below: ui-conversation is an ordinary
+   * profile entry, and a hard dependency would take the whole frame down with
+   * it. Without it the write simply reports false and the caller notifies.
+   *
+   * The current session is resolved per call, not captured: the operator can
+   * switch sessions between two Ctrl+L presses and each mention belongs to
+   * whichever composer is on screen at the time.
    */
-  const askAI: FrameInjected['askAI'] = (path) => {
-    const filename = path.split('/').pop() || path
-    const mention = `@${filename}`
-    insertMentionIntoChat(mention)
-  }
+  ctx.effect(() => installComposerWriter((text) => {
+    const conversation = ctx.get('conversation') as IConversation | undefined
+    if (conversation === undefined) return false
+    const sessionId = ctx.sessions.list.getSnapshot().current
+    if (sessionId === undefined) return false
+    const actx = ctx.sessions.scope(sessionId)
+    if (actx === undefined) return false
+    const input = conversation.input.for(actx)
+    const draft = input.state.getSnapshot().draft
+    // Never weld onto the operator's last word; never double-space either.
+    const gap = draft.length === 0 || /\s$/.test(draft) ? '' : ' '
+    input.setDraft(`${draft}${gap}${text} `)
+    return true
+  }), 'vscode-layout: composer writer')
 
   /**
    * Transient operator feedback.
@@ -138,7 +180,11 @@ export function apply(ctx: ClientContext): void {
       // ctx-backed callbacks its components cannot build themselves.
       inject: (actions: PanelActions): FrameInjected => {
         layout.attachPanels(actions)
-        return { askAI, notify, openWorkspace, pickDirectory, listWorkspaces }
+        panels = actions
+        return {
+          notify, openWorkspace, pickDirectory, listWorkspaces,
+          useExplorerView: views.use, setExplorerView: selectView,
+        }
       },
     }, AppFrame)
     return () => {
@@ -147,6 +193,46 @@ export function apply(ctx: ClientContext): void {
       void disposeService()
     }
   }, 'vscode-layout: service + root registration')
+
+  /**
+   * The view switcher, into ui-sidebar's `sidebar.footer.action` seat.
+   *
+   * `slots.inject` rather than a bare register: that hole is declared by
+   * ui-sidebar's own entry, which may activate after this one (or re-declare on
+   * reload), and inject re-runs the registration against each live declaration
+   * instead of throwing on a hole that is not there yet.
+   *
+   * The seat is a `list`, so this is purely additive — Settings and every
+   * shipped footer action stay exactly where they were.
+   */
+  ctx.effect(() => ctx.slots.inject('sidebar.footer.action', () => ctx.slots.register({
+    name: 'sidebar.footer.action',
+    id: 'vscode-layout-views',
+    // Above Settings, below anything the host considers more urgent.
+    order: 20,
+    inject: (): RailViewsInjected => ({
+      useExplorerView: views.use,
+      setExplorerView: selectView,
+    }),
+  }, RailViews)), 'vscode-layout: rail view switcher')
+
+  /**
+   * Workspace files as an `@` group, beside ui-subagent's agents.
+   *
+   * `ctx.inject` defers until the service exists: ui-input-trigger is an
+   * ordinary profile entry an operator may disable, and a hard dependency would
+   * take this whole frame down with it. Without the service the composer simply
+   * offers no file candidates.
+   */
+  ctx.inject(['inputTriggers', 'sessions'], (scope: ClientContext) => {
+    const inputTriggers = scope.inputTriggers as InputTriggerServiceContract
+    scope.effect(
+      () => inputTriggers.registerSource(createFileSource(
+        session => scope.sessions.list.getSnapshot().byId[session.sessionId]?.cwd,
+      )),
+      'vscode-layout: @ workspace files',
+    )
+  })
 
   // Theme presentation: pure DOM writes from resolved snapshots — initial state
   // through the getter once, then event-driven only; no React path.

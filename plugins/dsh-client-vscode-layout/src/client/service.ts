@@ -18,6 +18,7 @@
  */
 import type { BoundActions } from '@deepseek-ai/dsh-client-ui-slots'
 import type { createLayoutStore } from './stores.ts'
+import type { ViewState } from './explorer/views.ts'
 
 /** The layout store's bound action set (framework-baked, draft params peeled). */
 export type PanelActions = BoundActions<ReturnType<typeof createLayoutStore>>
@@ -39,6 +40,15 @@ export interface ILayout {
 /** Cross-plugin panel-action face (`ctx.layout`). */
 export class LayoutController implements ILayout {
   #panels: PanelActions | undefined
+  readonly #views: ViewState
+
+  /**
+   * @param views - the shared left-column view seam, needed because "expand the
+   *   sidebar" means "give the sessions view the column" in this frame.
+   */
+  constructor(views: ViewState) {
+    this.#views = views
+  }
 
   /**
    * Adopt the root entry's bound store actions. Called from the root
@@ -51,9 +61,25 @@ export class LayoutController implements ILayout {
     this.#panels = actions
   }
 
-  /** Toggle the sidebar panel (closed ⟷ contract default width). */
+  /**
+   * Toggle the sidebar panel.
+   *
+   * Callers are the host's own controls — ui-sidebar's collapse button and the
+   * rail icons ui-workspace routes through `expandSidebar`. In the stock shell
+   * the sidebar IS the column, so "expand" is unambiguous; here the column is
+   * shared with the workbench views, and the host is expanded exactly when the
+   * `sessions` view owns it. A request made from any other view therefore hands
+   * the column over rather than collapsing it — otherwise clicking a rail
+   * workspace icon would close the column the operator was asking to open.
+   */
   toggleSidebar(): void {
-    this.#require().toggleSidebar()
+    const panels = this.#require()
+    if (this.#views.get() === 'sessions') {
+      panels.toggleSidebar()
+      return
+    }
+    this.#views.set('sessions')
+    panels.openSidebar()
   }
 
   /**

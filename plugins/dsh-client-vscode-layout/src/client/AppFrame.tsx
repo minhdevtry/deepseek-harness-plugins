@@ -13,19 +13,32 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { PropsRenderSlots, PropsRuntime, PropsStore } from '@deepseek-ai/dsh-client-ui-slots'
-import { computeColumns, SIDEBAR_AUTO_COLLAPSE, SIDEBAR_DEFAULT } from './columns.ts'
+import { computeColumns, RAIL_WIDTH, SIDEBAR_AUTO_COLLAPSE, SIDEBAR_DEFAULT } from './columns.ts'
 import type { createLayoutStore } from './stores.ts'
 import type { FrameInjected } from './contract/slots.ts'
 import { DragHandle } from './DragHandle.tsx'
 import { RightColumn } from './RightColumn.tsx'
 import { ExplorerPanel } from './explorer/ExplorerPanel.tsx'
+import type { ExplorerView } from './explorer/views.ts'
 import { Workbench } from './workbench/Workbench.tsx'
 import { QuickOpen } from './ui/QuickOpen.tsx'
 import { CommandPalette, type CommandItem } from './ui/CommandPalette.tsx'
 import { InlineAI } from './ui/InlineAI.tsx'
 import { Toast, type ToastItem, type ToastType } from './ui/Toast.tsx'
-import { getLineRangeForSelection, insertMentionIntoChat } from './utils/chatComposer.ts'
+import { getLineRangeForSelection } from './utils/chatComposer.ts'
+import { appendToComposer, focusComposer } from './composer.ts'
 import css from './AppFrame.module.css'
+
+/**
+ * Ctrl/Cmd+Shift chords that select a left-column view, keyed by the letter.
+ * The `sessions` view is deliberately absent: it is the host's surface and
+ * reachable from the rail, and VS Code binds no viewlet key to it.
+ */
+const VIEW_KEYS: Record<string, ExplorerView | undefined> = {
+  e: 'explorer',
+  f: 'search',
+  g: 'scm',
+}
 
 /** Full composed props: runtime share + child-slot render share + store share + injected face. */
 export type AppFrameProps =
@@ -36,8 +49,9 @@ export type AppFrameProps =
 
 /** The three-column workbench frame (see module doc). */
 export function AppFrame({
-  useStore, useSessions, actions, renderSlot, askAI, notify,
+  useStore, useSessions, actions, renderSlot, notify,
   openWorkspace, pickDirectory, listWorkspaces,
+  useExplorerView, setExplorerView,
 }: AppFrameProps) {
   const panels = useStore(s => s)
   // The details surface is session-strict: it has nothing to show until a real
@@ -64,22 +78,36 @@ export function AppFrame({
   const frameRef = useRef<HTMLDivElement | null>(null)
   const [viewport, setViewport] = useState(() => window.innerWidth)
 
-  // Track the frame's own box (not the window): rAF-throttled ResizeObserver.
+  // Track the frame's own box, not the window: the column solve is about the
+  // space this frame actually got.
+  //
+  // The observer writes straight through — no requestAnimationFrame hop. Its
+  // callbacks are already delivered at most once per frame by spec, so the hop
+  // bought no coalescing, and it made the whole layout depend on rAF running:
+  // wherever frames are not being produced (a background tab, a hidden pane)
+  // every resize was swallowed and the solver kept its mount-time width, which
+  // conceded the sidebar to zero and stranded the column there.
   useEffect(() => {
     const el = frameRef.current
     if (el === null) return
-    let raf: number | null = null
-    const observer = new ResizeObserver(() => {
-      raf ??= requestAnimationFrame(() => {
-        raf = null
-        const width = el.getBoundingClientRect().width
-        if (width > 0) setViewport(width)
-      })
-    })
+    const measure = (): void => {
+      // A zero measurement is a detached or not-yet-laid-out frame, never a
+      // real viewport; keeping the last good width beats solving against 0.
+      const width = el.getBoundingClientRect().width
+      if (width > 0) setViewport(width)
+    }
+    const observer = new ResizeObserver(measure)
     observer.observe(el)
+    // Backstop. ResizeObserver notifications are delivered inside the rendering
+    // steps, so a document that is not producing frames — a background tab, an
+    // undisplayed pane — never hears about a resize and keeps solving against
+    // its mount-time width, which concedes the sidebar to zero. `resize` is
+    // dispatched outside that machinery, so it still lands.
+    window.addEventListener('resize', measure)
+    measure()
     return () => {
       observer.disconnect()
-      if (raf !== null) cancelAnimationFrame(raf)
+      window.removeEventListener('resize', measure)
     }
   }, [])
 
@@ -97,6 +125,17 @@ export function AppFrame({
   const cols = computeColumns(viewport, sidebarPreference, panels.right)
   const colsRef = useRef(cols)
   colsRef.current = cols
+
+  // Which view fills the column beside the host rail. `sessions` is the host's
+  // own surface, so it takes the column whole rather than sitting in a pane.
+  const view = useExplorerView()
+
+  // A collapsed sidebar is RAIL_WIDTH here, not zero: the host's rail is the
+  // permanent affordance (its toggle re-expands through ctx.layout), which is
+  // why this frame ships no restore button of its own.
+  const leftWidth = sidebarCollapsed ? RAIL_WIDTH : cols.sidebar
+  const stockCollapsed = sidebarCollapsed || view !== 'sessions'
+  const stockWidth = stockCollapsed ? RAIL_WIDTH : leftWidth
 
   // The drag base is the rendered width captured at drag start (grabbing a
   // concession-clamped panel must not jump back to the stored preference); it
@@ -153,6 +192,13 @@ export function AppFrame({
       } else if (mod && e.key.toLowerCase() === 'b') {
         e.preventDefault()
         actions.toggleSidebar()
+      } else if (mod && e.shiftKey && VIEW_KEYS[e.key.toLowerCase()] !== undefined) {
+        // VS Code's viewlet keys. Search earns one because it is a *mode*, not
+        // a permanent tab — that is the whole reason it stopped occupying a
+        // slot in the column's chrome. Selecting also reveals a collapsed
+        // column (index.ts), so the chord works from the rail.
+        e.preventDefault()
+        setExplorerView(VIEW_KEYS[e.key.toLowerCase()]!)
       } else if (mod && e.key.toLowerCase() === 'l' && !e.shiftKey) {
         e.preventDefault()
         if (panels.activePath) {
@@ -173,8 +219,8 @@ export function AppFrame({
               }
             }
           }
-          const mention = `@${filename}${lineTag}`
-          insertMentionIntoChat(mention)
+          if (appendToComposer(`@${filename}${lineTag}`)) focusComposer()
+          else handleNotify('Open a session first', 'warning')
         } else {
           if (colsRef.current.right === 0) {
             actions.openRight()
@@ -188,7 +234,7 @@ export function AppFrame({
 
     window.addEventListener('keydown', handleKeyDown)
     return () => { window.removeEventListener('keydown', handleKeyDown) }
-  }, [actions, askAI, handleNotify, panels.activeLine, panels.activePath])
+  }, [actions, handleNotify, panels.activeLine, panels.activePath, setExplorerView])
 
   // Commands for Command Palette
   const commands: CommandItem[] = useMemo(() => [
@@ -251,14 +297,14 @@ export function AppFrame({
           actions.openRight()
           actions.setRightTab('chat')
           const filename = panels.activePath.split('/').pop() || panels.activePath
-          const mention = `@${filename}`
-          insertMentionIntoChat(mention)
+          if (appendToComposer(`@${filename}`)) focusComposer()
+          else handleNotify('Open a session first', 'warning')
         } else {
           handleNotify('No active file open', 'warning')
         }
       },
     },
-  ], [actions, askAI, cols.right, handleNotify, panels.activePath, panels.autoSave])
+  ], [actions, cols.right, handleNotify, panels.activePath, panels.autoSave])
 
   const handleInlineAISubmit = useCallback((prompt: string, contextSnippet?: string) => {
     actions.openRight()
@@ -273,54 +319,45 @@ export function AppFrame({
       }
     }
     const fullMention = mentionTag ? `${mentionTag} ${prompt}` : prompt
-    insertMentionIntoChat(fullMention)
-  }, [actions, panels.activePath])
+    if (appendToComposer(fullMention)) focusComposer()
+    else handleNotify('Open a session first', 'warning')
+  }, [actions, handleNotify, panels.activePath])
 
   return (
     <div
       ref={frameRef}
       className={css.frame}
-      style={{ gridTemplateColumns: `${cols.sidebar}px minmax(0, 1fr) ${cols.right}px` }}
+      style={{ gridTemplateColumns: `${leftWidth}px minmax(0, 1fr) ${cols.right}px` }}
       data-sidebar-collapsed={sidebarCollapsed || undefined}
       data-right-collapsed={cols.right === 0 || undefined}
       data-dragging={dragging || undefined}
     >
       <div className={css.sidebarCol}>
-        {/* The explorer column. The stock session-list slot renders inside it
-            as one tab — re-placing that hole is the whole reason this package
-            occupies 'root' (contract/slots.ts). */}
-        <ExplorerPanel
-          collapsed={sidebarCollapsed}
-          activePath={panels.activePath}
-          onOpenFile={actions.openFile}
-          onAskAI={askAI}
-          root={panels.explorerRoot}
-          workspaceRoot={panels.workspaceRoot}
-          onRootChange={actions.setExplorerRoot}
-          onWorkspaceRootResolved={actions.setWorkspaceRoot}
-          openWorkspace={openWorkspace}
-          pickDirectory={pickDirectory}
-          listWorkspaces={listWorkspaces}
-          onNotify={handleNotify}
-          onToggleCollapse={actions.toggleSidebar}
-          sessions={renderSlot('sidebar', { collapsed: sidebarCollapsed, width: cols.sidebar })}
-        />
+        {/* The host's sidebar IS the column, at its stock width and with its
+            stock collapse semantics — that is what keeps its brand row, New
+            Session, workspace controls and Settings working (contract/slots.ts).
+            On the `sessions` view it takes the column whole; on ours it renders
+            its 56px rail and our panel fills the rest. Either way the subtree
+            stays mounted, so switching views never refetches its session list. */}
+        {renderSlot('sidebar', { collapsed: stockCollapsed, width: stockWidth })}
+        {!sidebarCollapsed && (
+          <div className={css.viewPane} hidden={view === 'sessions'}>
+            <ExplorerPanel
+              view={view === 'sessions' ? 'explorer' : view}
+              activePath={panels.activePath}
+              onOpenFile={actions.openFile}
+              root={panels.explorerRoot}
+              workspaceRoot={panels.workspaceRoot}
+              onRootChange={actions.setExplorerRoot}
+              onWorkspaceRootResolved={actions.setWorkspaceRoot}
+              openWorkspace={openWorkspace}
+              pickDirectory={pickDirectory}
+              listWorkspaces={listWorkspaces}
+              onNotify={handleNotify}
+            />
+          </div>
+        )}
       </div>
-
-      {sidebarCollapsed && (
-        <button
-          type="button"
-          className={css.sidebarRestoreBtn}
-          onClick={actions.toggleSidebar}
-          title="Restore Explorer (Ctrl+B)"
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <rect width="18" height="18" x="3" y="3" rx="2" />
-            <path d="M9 3v18" />
-            <path d="m14 9 3 3-3 3" />
-          </svg>
-        </button>
-      )}
 
       <div className={css.centerCol}>
         <Workbench
@@ -376,10 +413,13 @@ export function AppFrame({
 
       {/* A closed column has no edge to grab. */}
       {!sidebarCollapsed && (
-        <DragHandle side="sidebar" left={cols.sidebar} onStart={onSidebarStart} onDrag={onSidebarDrag} onEnd={onDragEnd} />
+        <DragHandle side="sidebar" left={leftWidth} onStart={onSidebarStart} onDrag={onSidebarDrag} onEnd={onDragEnd} />
       )}
+      {/* The right column's left edge is derived from the frame, not summed
+          from the left tracks: the rail floor decouples the rendered left
+          width from the solver's `sidebar`, so the sum would drift. */}
       {cols.right > 0 && (
-        <DragHandle side="right" left={cols.sidebar + cols.center} onStart={onRightStart} onDrag={onRightDrag} onEnd={onDragEnd} />
+        <DragHandle side="right" left={viewport - cols.right} onStart={onRightStart} onDrag={onRightDrag} onEnd={onDragEnd} />
       )}
     </div>
   )

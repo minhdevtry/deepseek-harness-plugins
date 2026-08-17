@@ -32,6 +32,13 @@ export const SIDEBAR_MIN = 100
 export const SIDEBAR_MAX = 500
 /** Sidebar width before any user drag. */
 export const SIDEBAR_DEFAULT = 280
+/**
+ * The host sidebar's icon rail, and therefore this frame's floor for the left
+ * column: collapsing hides our view pane but never the rail, the same way VS
+ * Code keeps its activity bar. Fixed by ui-sidebar's own rail layout — the
+ * frame reports it, it does not choose it.
+ */
+export const RAIL_WIDTH = 56
 /** Viewport width below which the sidebar auto-collapses; a manual toggle below it re-expands over the squeezed center. */
 export const SIDEBAR_AUTO_COLLAPSE = 1024
 /** Right (chat) column drag clamp floor. */

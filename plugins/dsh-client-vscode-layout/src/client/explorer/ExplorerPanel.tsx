@@ -1,40 +1,38 @@
 /**
- * The left column: Explorer, Search, and Sessions as three tabs.
+ * The view pane beside the host's rail: Explorer, Search, or Source Control.
  *
- * "Sessions" is the stock session-list slot, re-hosted here as a tab. That
- * relocation is the reason this package occupies the shell's root slot at all
- * (contract/slots.ts) — the slot renders where the frame puts it, and the
- * frame hands the rendered subtree down as a prop.
+ * Deliberately NOT the column. The column belongs to ui-sidebar's SidebarRoot,
+ * which draws the brand row, New Session, the workspace controls and Settings
+ * at the width the frame hands it (contract/slots.ts); this panel fills the
+ * space left over. Sessions is therefore absent here — selecting it hands the
+ * column back to the host rather than nesting the host inside a tab.
  *
- * The panel owns the column's *chrome*: which tab shows, the workspace root,
- * the hidden-files preference, and the footer status line. The tree owns
- * listings and editing; the search panel owns its query. Tab subtrees stay
- * mounted so switching away and back keeps scroll position, expansion state
- * and search results.
+ * The panel owns only what is genuinely ours: the workspace root, the
+ * hidden-files preference, and the footer status line. Which view shows is the
+ * frame's (explorer/views.ts), because the rail switcher writes it from a
+ * different registration. There is no collapse control here either — the host
+ * rail's own toggle is the one affordance, routed through ctx.layout.
+ *
+ * View subtrees stay mounted so switching away and back keeps scroll position,
+ * expansion state and search results.
  */
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { workspaceRoot as resolveWorkspaceRoot } from '../api/files.ts'
 import type { WorkspaceItemInfo } from '../contract/slots.ts'
+import type { ExplorerView } from './views.ts'
 import { FileTree, type FileTreeHandle } from './FileTree.tsx'
 import { SearchPanel } from './SearchPanel.tsx'
 import { ScmPanel } from './ScmPanel.tsx'
 import css from './ExplorerPanel.module.css'
 
-/** Which tab the column is showing. */
-export type ExplorerTab = 'explorer' | 'search' | 'scm' | 'sessions'
-
 /** Explorer panel props. */
 export interface ExplorerPanelProps {
-  /** True when the frame solved this column to zero width. */
-  collapsed: boolean
+  /** Which of this panel's views is showing (never `sessions` — that is the host's). */
+  view: Exclude<ExplorerView, 'sessions'>
   /** Path of the file open in the editor, highlighted in the tree. */
   activePath: string | undefined
   /** Reveal a file, optionally at a 1-based line. */
   onOpenFile: (path: string, line?: number) => void
-  /** Compose an "explain this file" prompt for the assistant. */
-  onAskAI: (path: string) => void
-  /** The re-hosted session-list slot, rendered as the Sessions tab. */
-  sessions: ReactNode
   /**
    * The directory being browsed. Held by the frame rather than here because
    * the centre column's breadcrumb navigates it too.
@@ -53,8 +51,6 @@ export interface ExplorerPanelProps {
   listWorkspaces?: (() => WorkspaceItemInfo[]) | undefined
   /** Toast notifier. */
   onNotify?: ((message: string, type?: 'info' | 'success' | 'warning' | 'error') => void) | undefined
-  /** Toggle/Collapse sidebar. */
-  onToggleCollapse?: (() => void) | undefined
 }
 
 /** How long a footer status message stays before clearing, in ms. */
@@ -62,11 +58,10 @@ const NOTICE_MS = 4000
 
 /** The explorer column (see module doc). */
 export function ExplorerPanel({
-  collapsed, activePath, onOpenFile, onAskAI, sessions,
+  view, activePath, onOpenFile,
   root, workspaceRoot, onRootChange, onWorkspaceRootResolved,
-  openWorkspace, pickDirectory, listWorkspaces, onNotify, onToggleCollapse,
+  openWorkspace, pickDirectory, listWorkspaces, onNotify,
 }: ExplorerPanelProps) {
-  const [tab, setTab] = useState<ExplorerTab>('explorer')
   const [rootError, setRootError] = useState<string | undefined>(undefined)
   const [showHidden, setShowHidden] = useState(false)
   const [pathDraft, setPathDraft] = useState<string | undefined>(undefined)
@@ -105,41 +100,16 @@ export function ExplorerPanel({
     return () => { clearTimeout(timer) }
   }, [notice])
 
-  // A collapsed column stays mounted at zero width rather than unmounting:
-  // the Sessions tab hosts another plugin's subtree, and dropping it would
-  // discard its state and make it refetch on every collapse. aria-hidden keeps
-  // the invisible column out of the accessibility tree.
   return (
-    <div className={css.panel} data-collapsed={collapsed || undefined} aria-hidden={collapsed || undefined}>
-      <div className={css.tabBar} role="tablist" aria-label="Explorer">
-        {(['explorer', 'search', 'scm', 'sessions'] as const).map(id => (
-          <button
-            key={id}
-            type="button"
-            role="tab"
-            className={css.tab}
-            aria-selected={tab === id}
-            data-active={tab === id || undefined}
-            onClick={() => { setTab(id) }}
-          >
-            {id === 'explorer' ? 'Explorer' : id === 'search' ? 'Search' : id === 'scm' ? 'SCM' : 'Sessions'}
-          </button>
-        ))}
-        {onToggleCollapse && (
-          <button
-            type="button"
-            className={css.collapseTabBtn}
-            title="Collapse Sidebar (Ctrl+B)"
-            onClick={onToggleCollapse}
-          >
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="15 18 9 12 15 6" />
-            </svg>
-          </button>
-        )}
+    <div className={css.panel}>
+      {/* The view's own name, matching VS Code's section header. The host's
+          brand row sits in the rail beside this, so the pane names itself
+          rather than competing with it. */}
+      <div className={css.viewTitle}>
+        {view === 'explorer' ? 'Explorer' : view === 'search' ? 'Search' : 'Source Control'}
       </div>
 
-      {tab === 'explorer' && (
+      {view === 'explorer' && (
         <div className={css.toolbar}>
           <button
             type="button"
@@ -279,9 +249,9 @@ export function ExplorerPanel({
       )}
 
       <div className={css.body}>
-        {/* Panels hide rather than unmount: switching tabs must not discard
-            tree expansion or a search result set. */}
-        <div className={css.pane} hidden={tab !== 'explorer'}>
+        {/* Views hide rather than unmount: switching must not discard tree
+            expansion or a search result set. */}
+        <div className={css.pane} hidden={view !== 'explorer'}>
           {rootError !== undefined && <div className={css.notice} data-error>{rootError}</div>}
           {root !== undefined && (
             <FileTree
@@ -290,18 +260,16 @@ export function ExplorerPanel({
               showHidden={showHidden}
               activePath={activePath}
               onOpenFile={onOpenFile}
-              onAskAI={onAskAI}
               onNotify={notify}
             />
           )}
         </div>
-        <div className={css.pane} hidden={tab !== 'search'}>
+        <div className={css.pane} hidden={view !== 'search'}>
           {root !== undefined && <SearchPanel root={root} onOpenFile={onOpenFile} />}
         </div>
-        <div className={css.pane} hidden={tab !== 'scm'}>
+        <div className={css.pane} hidden={view !== 'scm'}>
           {root !== undefined && <ScmPanel root={root} onOpenFile={onOpenFile} onNotify={notify} />}
         </div>
-        <div className={css.pane} hidden={tab !== 'sessions'}>{sessions}</div>
       </div>
 
       {notice !== undefined && <div className={css.footer} role="status">{notice.text}</div>}

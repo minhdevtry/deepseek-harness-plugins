@@ -7,7 +7,8 @@
 import { useLayoutEffect, useRef, useState } from 'react'
 import type { Editor } from '@tiptap/core'
 import { HighlightPalette } from './highlight/HighlightPalette.tsx'
-import { getLineRangeForSelection, insertMentionIntoChat } from '../utils/chatComposer.ts'
+import { getLineRangeForSelection } from '../utils/chatComposer.ts'
+import { appendToComposer, focusComposer } from '../composer.ts'
 import type { BufferRegistry } from '../workbench/buffers.ts'
 import css from './BubbleMenu.module.css'
 
@@ -348,8 +349,7 @@ export function BubbleMenu({ editor, path, registry }: BubbleMenuProps) {
                   const fullText = registry ? registry.getText(path) || '' : ''
                   const { rangeString } = getLineRangeForSelection(fullText, selectedText)
                   const filename = path.split('/').pop() || path
-                  const mention = `@${filename} ${rangeString}`
-                  insertMentionIntoChat(mention)
+                  if (appendToComposer(`@${filename} ${rangeString}`)) focusComposer()
                 }}
                 title="Mention Selection in Chat (Ctrl+L)"
               >

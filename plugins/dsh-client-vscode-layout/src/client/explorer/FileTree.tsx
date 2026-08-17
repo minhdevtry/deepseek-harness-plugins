@@ -10,8 +10,10 @@
  * re-expanding costs nothing. Git status is fetched per root and refreshed
  * after any mutation, since a create or rename changes it.
  *
- * Scope: the tree reports intent outward (`onOpenFile`, `onAskAI`) and never
- * decides what opening a file means — that belongs to the editor.
+ * Scope: the tree reports intent outward (`onOpenFile`) and never decides what
+ * opening a file means — that belongs to the editor. Mentioning a file to the
+ * assistant is not in this menu on purpose: the composer's own `@` menu does
+ * it, in the place the operator is already typing.
  */
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
 import {
@@ -33,8 +35,6 @@ export interface FileTreeProps {
   /** Path of the file currently open in the editor, highlighted in the tree. */
   activePath: string | undefined
   onOpenFile: (path: string) => void
-  /** Compose an "explain this file" prompt for the assistant. */
-  onAskAI: (path: string) => void
   /** Transient status for the panel footer (copied path, failure reason). */
   onNotify: (message: string) => void
 }
@@ -71,7 +71,7 @@ export interface FileTreeHandle {
 
 /** The workspace file tree (see module doc). */
 export const FileTree = forwardRef<FileTreeHandle, FileTreeProps>(function FileTree(
-  { root, showHidden, activePath, onOpenFile, onAskAI, onNotify }: FileTreeProps,
+  { root, showHidden, activePath, onOpenFile, onNotify }: FileTreeProps,
   ref,
 ) {
   const [listings, setListings] = useState<ReadonlyMap<string, Listing>>(new Map())
@@ -246,11 +246,8 @@ export const FileTree = forwardRef<FileTreeHandle, FileTreeProps>(function FileT
       { kind: 'item', label: 'Copy Path', onSelect: () => { copy(row.path, 'Path') } },
       { kind: 'item', label: 'Copy Relative Path', onSelect: () => { copy(rel, 'Relative path') } },
     )
-    if (row.kind === 'file') {
-      items.push({ kind: 'separator' }, { kind: 'item', label: 'Ask AI About This File', onSelect: () => { onAskAI(row.path) } })
-    }
     return items
-  }, [copy, onAskAI, onOpenFile, root])
+  }, [copy, onOpenFile, root])
 
   if (loading) return <div className={css.notice}>Loading files…</div>
   if (rootError !== undefined) return <div className={css.notice} data-error>Unable to read directory: {rootError}</div>

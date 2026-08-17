@@ -7,10 +7,12 @@
 ## 🌟 Key Features (All-in-One Non-Dev & Dev Workspace)
 
 ### 1. 🖥️ Professional 3-Column VS Code IDE Layout
-- **Left Sidebar (280px)**:
-  - 📁 **Explorer Tab**: Workspace file tree with Git status badges (`M`, `U`, `A`, `D`, `R`), hidden files toggle (`👁`), and manual path navigation.
-  - 🔍 **Search Tab (`Ctrl+Shift+F`)**: Fast recursive full-text workspace grep with match count badges, line numbers, and click-to-jump.
-  - 💬 **Quests / Sessions Tab**: Full chat session history management.
+- **Left Sidebar (280px)** — the host's own sidebar keeps the column; these views sit beside its 56px rail:
+  - 🐋 **Host rail (unchanged)**: the shipped `ui-sidebar` renders its brand row, New Session, workspace controls (search sessions, add workspace) and **Settings** exactly as it does in the stock shell. This plugin *adds* to that rail through the `sidebar.footer.action` seat — it re-implements none of it.
+  - 📁 **Explorer (`Ctrl+Shift+E`)**: Workspace file tree with Git status badges (`M`, `U`, `A`, `D`, `R`), hidden files toggle (`👁`), and manual path navigation.
+  - 🔍 **Search (`Ctrl+Shift+F`)**: Fast recursive full-text workspace grep with match count badges, line numbers, and click-to-jump. A *mode*, not a permanent tab — VS Code's convention.
+  - ⑂ **Source Control (`Ctrl+Shift+G`)**: stage, unstage, discard and commit.
+  - 💬 **Sessions**: the host's *own* panel toggle at the top of the column switches to it — no duplicate button in the rail — and it hands the whole column back to the host's sidebar at full width. `Ctrl+B` collapses to the rail rather than to zero, so the host's controls are never off screen.
 - **Center Workspace (Multi-Tab Editor)**:
   - Independent tabs with drag-and-drop reordering, active highlighting, and dirty state indicators (`•` unsaved dot).
   - High-performance server-side syntax highlighting powered by **Shiki** (`github-dark` / `github-light`).
@@ -29,7 +31,8 @@
   - Highlight any text, paragraph, or code lines and press `Ctrl+K`.
   - Floating glassmorphism card appears with quick action chips (`⚡ Polish Text`, `📊 Format Table`, `💡 Summarize`, `🔧 Refactor Code`) or custom natural language instructions.
 - **`@` Mention File Autocomplete in Chat**:
-  - Type `@` in chat input to trigger a floating dropdown with fuzzy-searchable workspace files and instant tagging.
+  - Type `@` in the chat input and workspace files appear as a **`files` group inside the host's own `@` menu**, beside the shipped groups (e.g. `ui-subagent`'s running agents). This is a `ctx.inputTriggers.registerSource` registration, so the menu, keyboard arbitration, IME guard and reference decoration all stay the host's — the plugin adds candidates, it does not replace the composer.
+  - The mentions this plugin composes *for* you — `Ctrl+L`, the TipTap `💬 Mention` bubble button, and `Ask AI About Active File` in the palette — are written through the host's own input face (`ctx.conversation.input.for(actx).setDraft`), not into the composer's DOM. The draft, its revision counter and its reference table stay the host's business, so the `@` menu keeps working on text this plugin appended.
 - **1-Click "⚡ Apply to Tab" & "📋 Copy" on Chat Code Blocks**:
   - Every code block in AI responses has action buttons to apply directly to the open file or copy to clipboard.
 - **AI Assist Quick Actions Menu (`🤖 AI Assist ▾`)**:
@@ -99,7 +102,7 @@
   - `✏️ Rename (F2)`: Rename file/folder.
   - `🗑️ Move to Trash`: Safely move file/folder to OS Recycle Bin / Trash with sleek confirmation.
   - `📋 Copy Path` & `📋 Copy Relative Path`: Copies absolute or workspace-relative path to clipboard.
-  - `🤖 Ask AI About This File`: Auto-generates analysis prompt in chat.
+  - *No "Ask AI about this file" entry, on purpose*: the composer's own `@` menu does that where you are already typing.
 
 ---
 
