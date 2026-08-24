@@ -88,6 +88,10 @@ export const VideoEmbedExtension = Node.create({
   group: 'block',
   atom: true,
   draggable: true,
+  // Above the default 100 so this node's fence interceptor (below) is tried
+  // before CodeBlockLowlight's, which would otherwise claim every ```video
+  // fence as a plain code block.
+  priority: 110,
 
   addAttributes() {
     return {
@@ -126,6 +130,21 @@ export const VideoEmbedExtension = Node.create({
   renderHTML({ HTMLAttributes }) {
     return ['div', mergeAttributes(HTMLAttributes, { class: 'tiptap-video-embed' })]
   },
+
+  // Markdown has no standard video-embed syntax, and raw `<video>`/`<iframe>`
+  // tags aren't in marked's block-HTML tag allowlist (they parse as inert
+  // inline HTML fragments, not a block token) — so, like Mermaid, this rides
+  // the 'code' fence token and claims only fences whose language is 'video'.
+  markdownTokenName: 'code',
+
+  parseMarkdown: (token, helpers) => {
+    if (token.lang !== 'video') {
+      return []
+    }
+    return helpers.createNode('videoEmbed', { src: (token.text || '').trim() })
+  },
+
+  renderMarkdown: (node) => ['```video', (node.attrs?.src as string) || '', '```'].join('\n'),
 
   addNodeView() {
     return ReactNodeViewRenderer(VideoEmbedComponent)

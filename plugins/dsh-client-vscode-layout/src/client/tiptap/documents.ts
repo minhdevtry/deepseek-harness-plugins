@@ -32,7 +32,9 @@
 import { Editor } from '@tiptap/core'
 import type { Node as ProseMirrorNode } from '@tiptap/pm/model'
 import { documentExtensions } from './extensions.ts'
-import { serializeOnce, serializeStable } from './markdown.ts'
+import { encodeRawHtmlLines } from './html/rawHtmlLine.ts'
+import { serializeOnce, serializeStable, stabilizedRoundTrip } from './markdown.ts'
+import { reconcileSerializedMarkdown } from './reconcile.ts'
 
 /** One open markdown document. */
 interface OpenDocument {
@@ -53,6 +55,16 @@ interface OpenDocument {
    * card has to read the file's own text, not a re-serialisation of the tree.
    */
   source: string
+  /**
+   * Canonical form of `source` — what a fresh, unedited parse of it would
+   * serialize to. The other half of {@link reconcileSerializedMarkdown}'s
+   * diff base: comparing `source`'s canonical form against the live tree's
+   * gives a clean, low-noise diff (both sides went through the same
+   * serializer), which is what makes patching it onto `source`'s real bytes
+   * safe. Recomputed after every save, since that changes what "unedited"
+   * canonicalizes to.
+   */
+  baseCanonical: string
   /**
    * The element the editor is mounted into, or null when detached.
    *
@@ -98,6 +110,23 @@ export class DocumentRegistry {
     return doc !== undefined && !doc.editor.state.doc.eq(doc.diskDoc)
   }
 
+  /**
+   * The live tree at this exact instant.
+   *
+   * Snapshot this *before* an async save begins (`writeFile` yields to the
+   * event loop) and hand it back to {@link markSaved} once the write
+   * settles. Without it, `markSaved` would rebase dirtiness against whatever
+   * the tree has become by the time the write finishes — which, if the
+   * operator kept typing during the write, is already ahead of what was
+   * actually saved, and the newer keystrokes would be marked clean without
+   * ever having reached disk.
+   * @param path - absolute file path.
+   * @returns the current tree, or undefined when not open.
+   */
+  snapshotDoc(path: string): ProseMirrorNode | undefined {
+    return this.#docs.get(path)?.editor.state.doc
+  }
+
   /** The live editor for a path, if it is open. */
   editor(path: string): Editor | undefined {
     return this.#docs.get(path)?.editor
@@ -122,9 +151,19 @@ export class DocumentRegistry {
     const editor = new Editor({
       element: null,
       extensions: documentExtensions(),
-      content: markdown,
+      // Encoded only for the parser's benefit — `source` below keeps the
+      // real bytes, since frontmatter and the raw view read the file's own
+      // text, not this editor-internal encoding.
+      content: encodeRawHtmlLines(markdown),
+      contentType: 'markdown',
     })
-    this.#docs.set(path, { editor, diskDoc: editor.state.doc, source: markdown, host: null })
+    this.#docs.set(path, {
+      editor,
+      diskDoc: editor.state.doc,
+      source: markdown,
+      baseCanonical: stabilizedRoundTrip(markdown),
+      host: null,
+    })
     // Dirtiness is derived, so the only listener this registry needs is one
     // that fires when the tree changes. Serialisation is not in this path, and
     // `structural: false` keeps a keystroke from re-rendering the workbench
@@ -209,14 +248,33 @@ export class DocumentRegistry {
    * The markdown for a path — the save-format projection.
    *
    * Expensive by design (`serializeStable` hunts a fixed point through
-   * throwaway editors), which is why it is a method the caller reaches for at
-   * a visible moment rather than something the registry does on every change.
+   * throwaway editors, then reconcile re-verifies the patched result through
+   * another one), which is why it is a method the caller reaches for at a
+   * visible moment rather than something the registry does on every change.
+   *
+   * The bytes this returns are `source` with only the edited region patched
+   * in — not a full re-canonicalization — so saving one paragraph's edit
+   * doesn't rewrite the file's other 500 lines into this editor's preferred
+   * style. See `reconcile.ts` for the mechanism and its safety net.
    * @param path - absolute file path.
-   * @returns markdown that regenerates to itself, or undefined when not open.
+   * @returns markdown ready to write to disk, or undefined when not open.
    */
   markdown(path: string): string | undefined {
     const doc = this.#docs.get(path)
-    return doc === undefined ? undefined : serializeStable(doc.editor)
+    if (doc === undefined) return undefined
+    const edited = serializeStable(doc.editor)
+    return reconcileSerializedMarkdown({
+      originalSource: doc.source,
+      baseCanonical: doc.baseCanonical,
+      edited,
+      roundTrip: (markdown) => {
+        try {
+          return stabilizedRoundTrip(markdown)
+        } catch {
+          return null
+        }
+      },
+    })
   }
 
   /**
@@ -243,15 +301,24 @@ export class DocumentRegistry {
   }
 
   /**
-   * Rebase the dirty comparison after a successful write.
+   * Rebase the dirty comparison and the reconcile baseline after a successful write.
    * @param path - absolute file path.
    * @param written - the markdown that reached disk; becomes the new source.
+   * @param savedDoc - the tree `written` was serialized from, from
+   *   {@link snapshotDoc} taken before the write started. Falling back to the
+   *   live tree when omitted reproduces the old, racy behavior, so every
+   *   caller going through an async write should pass it.
    */
-  markSaved(path: string, written: string): void {
+  markSaved(path: string, written: string, savedDoc?: ProseMirrorNode): void {
     const doc = this.#docs.get(path)
     if (doc === undefined) return
-    doc.diskDoc = doc.editor.state.doc
+    doc.diskDoc = savedDoc ?? doc.editor.state.doc
     doc.source = written
+    // Derived from the bytes that actually reached disk, not from whatever
+    // `markdown()` last computed — the source of truth for "what does the
+    // file canonicalize to now" is the file, not a value passed across two
+    // calls into this method.
+    doc.baseCanonical = stabilizedRoundTrip(written)
     this.#bump(true)
   }
 

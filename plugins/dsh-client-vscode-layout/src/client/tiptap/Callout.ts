@@ -16,6 +16,31 @@ export interface CalloutOptions {
   HTMLAttributes: Record<string, unknown>
 }
 
+/**
+ * GitHub-style alert markdown, e.g. `> [!WARNING]\n> body`. Maps onto our five
+ * callout colors; IMPORTANT collapses onto 'info' since we don't have a
+ * distinct sixth color for it.
+ */
+const CALLOUT_MARKER_TO_TYPE: Record<string, CalloutType> = {
+  note: 'info',
+  tip: 'tip',
+  important: 'info',
+  warning: 'warning',
+  caution: 'danger',
+}
+
+const CALLOUT_TYPE_TO_MARKER: Record<CalloutType, string> = {
+  info: 'NOTE',
+  tip: 'TIP',
+  warning: 'WARNING',
+  danger: 'CAUTION',
+  success: 'TIP',
+}
+
+const CALLOUT_ALERT_START = /^ {0,3}>\s*\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\]/i
+const CALLOUT_ALERT_MARKER_LINE = /^\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\]\s*(.*)$/i
+const CALLOUT_ALERT_QUOTE_LINE = /^ {0,3}>( ?)/
+
 declare module '@tiptap/core' {
   interface Commands<ReturnType> {
     callout: {
@@ -72,6 +97,67 @@ export const Callout = Node.create<CalloutOptions>({
       }),
       0,
     ]
+  },
+
+  // A distinct token name (not 'blockquote') so this doesn't collide with
+  // the native Blockquote extension's own markdown registration — the
+  // markdown library resolves a NODE's renderer by first checking token-name
+  // registrations, so reusing 'blockquote' here would hijack rendering of
+  // every plain blockquote in the document, not just alert-style ones.
+  markdownTokenName: 'calloutAlert',
+
+  markdownTokenizer: {
+    name: 'calloutAlert',
+    level: 'block',
+    start(src) {
+      const match = CALLOUT_ALERT_START.exec(src)
+      return match ? match.index : -1
+    },
+    tokenize(src, _tokens, helper) {
+      const lines = src.split('\n')
+      const firstLine = lines[0] ?? ''
+      if (!CALLOUT_ALERT_START.test(firstLine)) {
+        return undefined
+      }
+      const markerLine = CALLOUT_ALERT_MARKER_LINE.exec(firstLine.replace(CALLOUT_ALERT_QUOTE_LINE, ''))
+      if (!markerLine) {
+        return undefined
+      }
+      const bodyLines: string[] = markerLine[2] ? [markerLine[2]] : []
+      let consumed = 1
+      for (; consumed < lines.length; consumed += 1) {
+        const line = lines[consumed] ?? ''
+        if (!CALLOUT_ALERT_QUOTE_LINE.test(line)) {
+          break
+        }
+        bodyLines.push(line.replace(CALLOUT_ALERT_QUOTE_LINE, ''))
+      }
+      const consumedLines = lines.slice(0, consumed)
+      const raw = consumedLines.join('\n') + (consumed < lines.length ? '\n' : '')
+      const bodyRaw = bodyLines.join('\n')
+      return {
+        type: 'calloutAlert',
+        raw,
+        calloutType: markerLine[1],
+        tokens: bodyRaw.trim() ? helper.blockTokens(bodyRaw) : [],
+      }
+    },
+  },
+
+  parseMarkdown: (token, helpers) => {
+    const calloutType = CALLOUT_MARKER_TO_TYPE[(token.calloutType || '').toLowerCase()] || 'info'
+    const content =
+      token.tokens?.length && helpers.parseBlockChildren
+        ? helpers.parseBlockChildren(token.tokens)
+        : [{ type: 'paragraph' }]
+    return helpers.createNode('callout', { type: calloutType }, content)
+  },
+
+  renderMarkdown: (node, helpers) => {
+    const marker = CALLOUT_TYPE_TO_MARKER[(node.attrs?.type as CalloutType) || 'info'] || 'NOTE'
+    const body = helpers.renderChildren(node.content ?? [])
+    const lines = [`[!${marker}]`, ...body.split('\n')]
+    return lines.map((line) => (line ? `> ${line}` : '>')).join('\n')
   },
 
   addCommands() {

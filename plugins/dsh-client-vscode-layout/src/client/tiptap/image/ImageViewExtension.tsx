@@ -143,6 +143,27 @@ export const RichImageExtension = Node.create({
     return ['img', mergeAttributes(HTMLAttributes)]
   },
 
+  // `width` has no markdown representation (vanilla `![]()` carries no size),
+  // so a resize done in the editor is a UI-only affordance that markdown
+  // save/reload can't round-trip — same limitation the plain Image node has.
+  markdownTokenName: 'image',
+
+  parseMarkdown: (token, helpers) => {
+    return helpers.createNode('richImage', {
+      src: token.href,
+      alt: token.text || '',
+      title: token.title || '',
+      width: 'auto',
+    })
+  },
+
+  renderMarkdown: (node) => {
+    const src = (node.attrs?.src as string) || ''
+    const alt = (node.attrs?.alt as string) || ''
+    const title = (node.attrs?.title as string) || ''
+    return title ? `![${alt}](${src} "${title}")` : `![${alt}](${src})`
+  },
+
   addNodeView() {
     return ReactNodeViewRenderer(ImageViewComponent)
   },

@@ -31,6 +31,7 @@ import { gitStatus } from '../api/files.ts'
 import { Dialog } from '../ui/Dialog.tsx'
 import { BufferRegistry } from './buffers.ts'
 import { DocumentRegistry } from '../tiptap/documents.ts'
+import { SaveQueue } from './saveQueue.ts'
 import { isMarkdown } from './language.ts'
 import { languageExtension, languageName } from './language.ts'
 import { editorTheme } from './theme.ts'
@@ -130,6 +131,15 @@ export function Workbench({
 
   useEffect(() => () => { documents.dispose() }, [documents])
 
+  // Per-path autosave timers and per-path save serialization (see saveQueue.ts
+  // for why a single whole-dirty-set timer and an unqueued save() were both
+  // bugs, not just simplifications).
+  const saveQueueRef = useRef<SaveQueue | null>(null)
+  saveQueueRef.current ??= new SaveQueue()
+  const saveQueue = saveQueueRef.current
+
+  useEffect(() => () => { saveQueue.dispose() }, [saveQueue])
+
   const buffers = useSyncExternalStore(
     useCallback(listener => registry.subscribe(listener), [registry]),
     useCallback(() => registry.getSnapshot(), [registry]),
@@ -188,21 +198,37 @@ export function Workbench({
     documents.open(activePath, text)
   }, [activePath, documents, registry, buffers.version])
 
-  const save = useCallback(async (path: string): Promise<boolean> => {
+  /**
+   * The actual save: project, write, rebase. Never call directly — always
+   * through {@link save}, which queues this per path so a manual Cmd+S
+   * landing mid-autosave for the same file runs after it, not alongside it.
+   */
+  const performSave = useCallback(async (path: string): Promise<boolean> => {
     setSaveState('saving')
     // Markdown is written from the tree, through the fixed-point serializer, so
     // what reaches disk regenerates to itself.
     const written = isMarkdown(path) ? projectMarkdown(path, true) : undefined
+    // Snapshotted *before* the write's await, not after: writeFile yields to
+    // the event loop, and if the operator keeps typing during that gap the
+    // live tree moves on. markSaved has to rebase against the tree `written`
+    // actually came from, or those newer keystrokes get marked clean without
+    // ever reaching disk.
+    const savedDoc = isMarkdown(path) ? documents.snapshotDoc(path) : undefined
     const result = await registry.save(path)
     if (!result.ok) {
       setSaveState({ error: result.error })
       onNotify(`Save failed: ${result.error}`)
       return false
     }
-    if (written !== undefined) documents.markSaved(path, written)
+    if (written !== undefined) documents.markSaved(path, written, savedDoc)
     setSaveState('saved')
     return true
   }, [documents, onNotify, projectMarkdown, registry])
+
+  const save = useCallback(
+    (path: string): Promise<boolean> => saveQueue.enqueue(path, () => performSave(path)),
+    [performSave, saveQueue],
+  )
 
   saveRef.current = (path) => { void save(path) }
 
@@ -225,15 +251,16 @@ export function Workbench({
     return all
   }, [buffers.dirty, docs.dirty])
 
-  // Auto-save: debounced per dirty path, and re-armed whenever the dirty set
-  // changes. Nothing here reads the document — save() projects and writes.
+  // Auto-save: one timer per dirty path (see saveQueue.ts) — editing file B
+  // does not push back file A's already-pending save. Nothing here reads the
+  // document; save() (queued, see above) projects and writes.
   useEffect(() => {
-    if (!autoSave || dirty.size === 0) return
-    const timer = setTimeout(() => {
-      for (const path of dirty) void save(path)
-    }, AUTOSAVE_MS)
-    return () => { clearTimeout(timer) }
-  }, [autoSave, dirty, save])
+    if (!autoSave) {
+      saveQueue.cancelAllAutosaves()
+      return
+    }
+    saveQueue.reconcileAutosave(dirty, AUTOSAVE_MS, (path) => { void save(path) })
+  }, [autoSave, dirty, save, saveQueue])
 
   // Git branch for the status bar, refreshed when the workspace changes.
   useEffect(() => {

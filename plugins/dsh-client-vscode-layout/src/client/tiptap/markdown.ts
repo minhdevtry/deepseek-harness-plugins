@@ -12,14 +12,21 @@
  * *every* pass. Left alone, a file grows a blank line each time it is saved —
  * quiet, cumulative rot.
  *
- * This module's job is to remove that class of bug entirely, by never writing
- * anything but a **fixed point**: text that regenerates to itself. Whatever we
- * put on disk is therefore stable no matter how many times it is opened and
- * saved. The one-time import reformatting remains — that is inherent to
- * WYSIWYG and was accepted deliberately — but it happens once and stops.
+ * This module's job is to remove that class of bug entirely, by never treating
+ * anything but a **fixed point** — text that regenerates to itself — as "the
+ * document's markdown". `stabilizedRoundTrip`/`serializeStable` are how that
+ * fixed point gets computed; what actually reaches disk is `reconcile.ts`'s
+ * job, which patches that fixed point onto the file's real bytes so an edit to
+ * one paragraph does not silently re-canonicalize the other 500 lines around
+ * it (see `tiptap/documents.ts`). The one-time reformat on first open remains
+ * — reconciliation has nothing to preserve until a file has been saved once
+ * through it — but every save after that only touches what actually changed.
  */
 import { Editor } from '@tiptap/core'
 import { documentExtensions } from './extensions.ts'
+import { encodeRawHtmlLines } from './html/rawHtmlLine.ts'
+// Registers `Editor#getMarkdown()` via ambient module augmentation.
+import '@tiptap/markdown'
 
 /**
  * Iterations allowed while hunting for the fixed point.
@@ -29,9 +36,6 @@ import { documentExtensions } from './extensions.ts'
  * passes means *less* residual drift, paid for at a moment nobody is typing.
  */
 const MAX_PASSES = 8
-
-/** A TipTap editor exposing the markdown storage face. */
-type MarkdownEditor = Editor & { storage: { markdown: { getMarkdown: () => string } } }
 
 /**
  * Clean up noisy serialization artifacts (<br />, &#x20;, excessive newlines)
@@ -108,7 +112,12 @@ export function roundTrip(text: string): string {
     // and is discarded with the editor.
     element: document.createElement('div'),
     extensions: documentExtensions(),
-    content: text,
+    // `text` here is markdown that already regenerated raw HTML lines back to
+    // their real bytes (see rawHtmlLine.ts), same as any file loaded from
+    // disk — it has to go through the same encoding before this throwaway
+    // editor parses it, or every stabilize() pass would drop them again.
+    content: encodeRawHtmlLines(text),
+    contentType: 'markdown',
   })
   try {
     return markdownOf(editor)
@@ -132,7 +141,20 @@ export function serializeOnce(editor: Editor): string {
   return cleanMarkdown(markdownOf(editor))
 }
 
-/** Read the markdown storage face off an editor. */
+/** Read the markdown projection off an editor. */
 function markdownOf(editor: Editor): string {
-  return (editor as MarkdownEditor).storage.markdown.getMarkdown()
+  return editor.getMarkdown()
+}
+
+/**
+ * The string analog of {@link serializeStable}: canonical form of `text`,
+ * hunted to a fixed point, for callers that have markdown text rather than a
+ * live editor. Used to seed and re-verify `reconcile.ts`'s baseline, since
+ * that comparison is only meaningful against the same fixed point the live
+ * editor's own save path produces.
+ * @param text - markdown to normalise.
+ * @returns markdown that regenerates to itself.
+ */
+export function stabilizedRoundTrip(text: string): string {
+  return cleanMarkdown(stabilize(cleanMarkdown(roundTrip(text)), (input) => cleanMarkdown(roundTrip(input))))
 }

@@ -12,6 +12,7 @@
  */
 import type { Extensions } from '@tiptap/core'
 import StarterKit from '@tiptap/starter-kit'
+import { Code } from '@tiptap/extension-code'
 import { Table, TableCell, TableHeader, TableRow } from '@tiptap/extension-table'
 import { TaskItem } from '@tiptap/extension-task-item'
 import { TaskList } from '@tiptap/extension-task-list'
@@ -24,7 +25,8 @@ import { TextAlign } from '@tiptap/extension-text-align'
 import { Typography } from '@tiptap/extension-typography'
 import { CodeBlockLowlight } from '@tiptap/extension-code-block-lowlight'
 import { createLowlight, common } from 'lowlight'
-import { Markdown } from 'tiptap-markdown'
+import { Markdown } from '@tiptap/markdown'
+import { renderCompactTableMarkdown } from './table/compactTableMarkdown.ts'
 import { Callout } from './Callout.ts'
 import { CalloutDecorations } from './callouts/CalloutDecorations.ts'
 import { MermaidExtension } from './mermaid/MermaidExtension.tsx'
@@ -32,9 +34,32 @@ import { MathBlockExtension } from './math/MathExtension.tsx'
 import { HeadingFoldExtension } from './headingFold/HeadingFoldPlugin.ts'
 import { VideoEmbedExtension } from './video/VideoExtension.tsx'
 import { RichImageExtension } from './image/ImageViewExtension.tsx'
+import { RawHtmlLineExtension } from './html/rawHtmlLine.ts'
 
 /** Shared highlighter; building it per editor would re-register every grammar. */
 const lowlight = createLowlight(common)
+
+/**
+ * The default Code mark excludes every other mark (`excludes: '_'`), which
+ * drops the enclosing Link mark when parsing `` [`label`](url) `` — a common
+ * convention for linking to code identifiers, file paths, and package names.
+ * Markdown supports a linked code label, so Code must stay exclusive with
+ * text formatting only, not with Link.
+ */
+const RichCode = Code.extend({ excludes: 'code bold italic strike underline' })
+
+/**
+ * The stock Table markdown renderer pads every cell to its column's widest
+ * cell (and stretches the separator row's dashes to match), which is valid
+ * GFM but explodes file size when one cell is much longer than its
+ * neighbors — measured on a real doc with long linked cells: 125KB -> 301KB
+ * for output that renders identically. This keeps everything else (parsing,
+ * node views, commands) and only swaps the renderer for one that emits
+ * single-space-padded cells, matching how these tables were actually authored.
+ */
+const CompactTable = Table.extend({
+  renderMarkdown: (node, helpers) => renderCompactTableMarkdown(node, helpers),
+})
 
 /**
  * Build the extension list.
@@ -50,13 +75,18 @@ export function documentExtensions(): Extensions {
       // instead keeps one registration per name.
       link: false,
       underline: false,
+      // Replaced below by RichCode, which relaxes `excludes` to keep code
+      // labels linkable; leaving both registers the name twice.
+      code: false,
     }),
+    RichCode,
     CodeBlockLowlight.configure({ lowlight }),
     Link.configure({ openOnClick: false, autolink: true }),
     Underline,
     Highlight.configure({ multicolor: true }),
     Callout,
     CalloutDecorations,
+    RawHtmlLineExtension,
     HeadingFoldExtension,
     MermaidExtension,
     MathBlockExtension,
@@ -64,7 +94,7 @@ export function documentExtensions(): Extensions {
     RichImageExtension,
     Image,
     Youtube.configure({ controls: true, nocookie: true }),
-    Table.configure({ resizable: true }),
+    CompactTable.configure({ resizable: true }),
     TableRow,
     TableHeader,
     TableCell,
@@ -72,13 +102,6 @@ export function documentExtensions(): Extensions {
     TaskItem.configure({ nested: true }),
     TextAlign.configure({ types: ['heading', 'paragraph'] }),
     Typography,
-    Markdown.configure({
-      // `\n` between blocks rather than the library's tight default, and no
-      // HTML passthrough: the serializer must emit markdown the parser can
-      // read back identically (see markdown.ts).
-      html: true,
-      transformPastedText: true,
-      transformCopiedText: true,
-    }),
+    Markdown,
   ]
 }

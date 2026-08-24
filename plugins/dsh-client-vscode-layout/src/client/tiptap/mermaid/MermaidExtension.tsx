@@ -180,6 +180,10 @@ export const MermaidExtension = Node.create({
   group: 'block',
   atom: true,
   draggable: true,
+  // Above the default 100 so this node's fence interceptor (below) is tried
+  // before CodeBlockLowlight's, which would otherwise claim every ```mermaid
+  // fence as a plain code block.
+  priority: 110,
 
   addAttributes() {
     return {
@@ -210,6 +214,24 @@ export const MermaidExtension = Node.create({
 
   renderHTML({ HTMLAttributes }) {
     return ['div', mergeAttributes(HTMLAttributes, { class: 'tiptap-mermaid-block' })]
+  },
+
+  // Shares the 'code' token name with CodeBlockLowlight — a fenced code
+  // block is how markdown represents this node — but only claims fences
+  // whose language is 'mermaid'; anything else falls through (returning `[]`
+  // signals "not mine") to CodeBlockLowlight's own handler.
+  markdownTokenName: 'code',
+
+  parseMarkdown: (token, helpers) => {
+    if (token.lang !== 'mermaid') {
+      return []
+    }
+    return helpers.createNode('mermaid', { code: token.text || DEFAULT_MERMAID_CHART })
+  },
+
+  renderMarkdown: (node) => {
+    const code = (node.attrs?.code as string) || DEFAULT_MERMAID_CHART
+    return ['```mermaid', code, '```'].join('\n')
   },
 
   addNodeView() {

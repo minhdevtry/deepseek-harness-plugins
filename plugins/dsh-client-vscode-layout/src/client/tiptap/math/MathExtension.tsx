@@ -11,6 +11,10 @@ declare module '@tiptap/core' {
   }
 }
 
+/** `$$` on its own line, the formula, then `$$` on its own line (KaTeX/MathJax convention). */
+const MATH_BLOCK_START = /^ {0,3}\$\$/m
+const MATH_BLOCK_PATTERN = /^ {0,3}\$\$[ \t]*\n([\s\S]*?)\n {0,3}\$\$[ \t]*(?:\n|$)/
+
 function MathBlockComponent(props: any) {
   const formula = props.node.attrs.formula || ''
   const [isEditing, setIsEditing] = useState<boolean>(!formula.trim())
@@ -149,6 +153,34 @@ export const MathBlockExtension = Node.create({
   renderHTML({ HTMLAttributes }) {
     return ['div', mergeAttributes(HTMLAttributes, { class: 'katex-math-block' })]
   },
+
+  markdownTokenName: 'mathBlock',
+
+  markdownTokenizer: {
+    name: 'mathBlock',
+    level: 'block',
+    start(src) {
+      const match = MATH_BLOCK_START.exec(src)
+      return match ? match.index : -1
+    },
+    tokenize(src) {
+      const match = MATH_BLOCK_PATTERN.exec(src)
+      if (!match || match.index !== 0) {
+        return undefined
+      }
+      return {
+        type: 'mathBlock',
+        raw: match[0],
+        formula: match[1],
+      }
+    },
+  },
+
+  parseMarkdown: (token, helpers) => {
+    return helpers.createNode('mathBlock', { formula: token.formula || '' })
+  },
+
+  renderMarkdown: (node) => `$$\n${(node.attrs?.formula as string) || ''}\n$$`,
 
   addNodeView() {
     return ReactNodeViewRenderer(MathBlockComponent)
