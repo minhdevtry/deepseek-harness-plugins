@@ -54,6 +54,13 @@
   overflow: hidden;
 }
 
+.detailsCol {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
 /* Drag handles are frame children (columns clip overflow): an 8px hit strip
    centered on the column border via inline left, above column content. */
 .handle {

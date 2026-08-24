@@ -77,33 +77,29 @@ export function AppFrame({
   }, [actions, activeSessionCwd, panels.workspaceRoot])
 
   const frameRef = useRef<HTMLDivElement | null>(null)
-  const [viewport, setViewport] = useState(() => window.innerWidth)
+  const [viewport, setViewport] = useState(() => (typeof window !== 'undefined' ? window.innerWidth : 1200))
+  const [isMobile, setIsMobile] = useState(() => (typeof window !== 'undefined' ? window.innerWidth < 1024 : false))
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const mq = window.matchMedia('(max-width: 1023px)')
+    const update = () => { setIsMobile(mq.matches) }
+    update()
+    mq.addEventListener('change', update)
+    return () => { mq.removeEventListener('change', update) }
+  }, [])
 
   // Track the frame's own box, not the window: the column solve is about the
   // space this frame actually got.
-  //
-  // The observer writes straight through — no requestAnimationFrame hop. Its
-  // callbacks are already delivered at most once per frame by spec, so the hop
-  // bought no coalescing, and it made the whole layout depend on rAF running:
-  // wherever frames are not being produced (a background tab, a hidden pane)
-  // every resize was swallowed and the solver kept its mount-time width, which
-  // conceded the sidebar to zero and stranded the column there.
   useEffect(() => {
     const el = frameRef.current
     if (el === null) return
     const measure = (): void => {
-      // A zero measurement is a detached or not-yet-laid-out frame, never a
-      // real viewport; keeping the last good width beats solving against 0.
       const width = el.getBoundingClientRect().width
       if (width > 0) setViewport(width)
     }
     const observer = new ResizeObserver(measure)
     observer.observe(el)
-    // Backstop. ResizeObserver notifications are delivered inside the rendering
-    // steps, so a document that is not producing frames — a background tab, an
-    // undisplayed pane — never hears about a resize and keeps solving against
-    // its mount-time width, which concedes the sidebar to zero. `resize` is
-    // dispatched outside that machinery, so it still lands.
     window.addEventListener('resize', measure)
     measure()
     return () => {
@@ -120,13 +116,14 @@ export function AppFrame({
   useEffect(() => { actions.setNarrow(narrow) }, [actions, narrow])
 
   // Seat the workbench opener the file-click interception delegates to
-  // (fileOpener.ts). Only a mounted frame can take a file, which is exactly
-  // what the install/retract pair says: with no frame on screen the
-  // interception reports false and the host opens the path its own way.
-  useEffect(() => installWorkbenchOpener((path) => {
-    actions.openFile(path)
-    return true
-  }), [actions])
+  // (fileOpener.ts). In mobile mode, let native navigation handle it.
+  useEffect(() => {
+    if (isMobile) return
+    return installWorkbenchOpener((path) => {
+      actions.openFile(path)
+      return true
+    })
+  }, [actions, isMobile])
 
   const sidebarCollapsed = narrow ? !panels.narrowExpanded : panels.sidebar === 0
   const sidebarPreference = sidebarCollapsed
@@ -184,6 +181,7 @@ export function AppFrame({
 
   // Global Keyboard Shortcuts
   useEffect(() => {
+    if (isMobile) return
     const handleKeyDown = (e: KeyboardEvent) => {
       const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0
       const mod = isMac ? e.metaKey : e.ctrlKey
@@ -251,7 +249,7 @@ export function AppFrame({
 
     window.addEventListener('keydown', handleKeyDown)
     return () => { window.removeEventListener('keydown', handleKeyDown) }
-  }, [actions, handleNotify, panels.activeLine, panels.activePath, setExplorerView])
+  }, [actions, handleNotify, isMobile, panels.activeLine, panels.activePath, setExplorerView])
 
   // Commands for Command Palette
   const commands: CommandItem[] = useMemo(() => [
@@ -259,44 +257,58 @@ export function AppFrame({
       id: 'workbench.action.quickOpen',
       title: 'Go to File...',
       category: 'File',
-      shortcut: 'Ctrl+P',
+      keybinding: 'Ctrl+P',
       action: () => { setQuickOpen(true) },
+    },
+    {
+      id: 'workbench.action.toggleChat',
+      title: 'Toggle AI Chat / Details Column',
+      category: 'View',
+      keybinding: 'Ctrl+L',
+      action: () => {
+        if (colsRef.current.right === 0) {
+          actions.openRight()
+          actions.setRightTab('chat')
+        } else {
+          actions.closeRight()
+        }
+      },
     },
     {
       id: 'workbench.action.toggleSidebar',
       title: 'Toggle Primary Sidebar',
       category: 'View',
-      shortcut: 'Ctrl+B',
+      keybinding: 'Ctrl+B',
       action: () => { actions.toggleSidebar() },
     },
     {
-      id: 'workbench.action.toggleRightPanel',
-      title: 'Toggle AI Chat Panel',
+      id: 'workbench.action.showExplorer',
+      title: 'Show Explorer',
       category: 'View',
-      shortcut: 'Ctrl+L',
-      action: () => {
-        if (cols.right === 0) actions.openRight()
-        else actions.closeRight()
-      },
+      keybinding: 'Ctrl+Shift+E',
+      action: () => { setExplorerView('explorer') },
     },
     {
-      id: 'workbench.action.inlineAI',
-      title: 'Inline AI Assist',
-      category: 'AI',
-      shortcut: 'Ctrl+K',
-      action: () => {
-        const sel = window.getSelection()?.toString() || ''
-        setInlineSelection(sel.slice(0, 500))
-        setInlineAIOpen(true)
-      },
+      id: 'workbench.action.showSearch',
+      title: 'Show Search in Files',
+      category: 'View',
+      keybinding: 'Ctrl+Shift+F',
+      action: () => { setExplorerView('search') },
+    },
+    {
+      id: 'workbench.action.showSCM',
+      title: 'Show Source Control',
+      category: 'View',
+      keybinding: 'Ctrl+Shift+G',
+      action: () => { setExplorerView('scm') },
     },
     {
       id: 'workbench.action.toggleAutoSave',
-      title: 'Toggle Auto-Save',
-      category: 'Settings',
+      title: 'Toggle Auto Save',
+      category: 'File',
       action: () => {
         actions.toggleAutoSave()
-        handleNotify(`Auto-Save ${!panels.autoSave ? 'Enabled' : 'Disabled'}`, 'info')
+        handleNotify(`Auto save ${!panels.autoSave ? 'enabled' : 'disabled'}`)
       },
     },
     {
@@ -321,7 +333,7 @@ export function AppFrame({
         }
       },
     },
-  ], [actions, cols.right, handleNotify, panels.activePath, panels.autoSave])
+  ], [actions, cols.right, handleNotify, panels.activePath, panels.autoSave, setExplorerView])
 
   const handleInlineAISubmit = useCallback((prompt: string, contextSnippet?: string) => {
     actions.openRight()
@@ -339,6 +351,39 @@ export function AppFrame({
     if (appendToComposer(fullMention)) focusComposer()
     else handleNotify('Open a session first', 'warning')
   }, [actions, handleNotify, panels.activePath])
+
+  if (isMobile) {
+    const mobileSidebarCollapsed = narrow ? !panels.narrowExpanded : panels.sidebar === 0
+    return (
+      <div
+        ref={frameRef}
+        className={css.frame}
+        data-sidebar-collapsed={mobileSidebarCollapsed || undefined}
+        data-details-collapsed={true}
+        data-dragging={dragging || undefined}
+      >
+        <div className={css.sidebarCol}>
+          {renderSlot('sidebar', {
+            collapsed: mobileSidebarCollapsed,
+            width: mobileSidebarCollapsed ? RAIL_WIDTH : SIDEBAR_DEFAULT,
+          })}
+        </div>
+
+        <div className={css.centerCol}>
+          {renderSlot('conversation', {})}
+        </div>
+
+        <div className={css.detailsCol} style={{ width: 0, display: 'none' }}>
+          {renderSlot('details', {})}
+        </div>
+
+        <div className={css.overlayLayer} data-shell-overlay>
+          {renderSlot('shell.overlay', {})}
+          <Toast toasts={toasts} onDismiss={handleDismissToast} />
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div

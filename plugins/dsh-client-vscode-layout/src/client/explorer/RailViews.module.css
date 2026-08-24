@@ -63,3 +63,9 @@
     transition: none;
   }
 }
+
+@media (max-width: 1023px) {
+  .group {
+    display: none !important;
+  }
+}
