@@ -300,7 +300,7 @@ export function DocLinkMenu({ editor, state, currentPath, root, openTabs, onClos
       const isAbsolute = rawQ.startsWith('/')
 
       if (isTilde || isAbsolute) {
-        let probeDir = rawQ
+        let probeDir: string | undefined
         let searchKeyword = ''
 
         if (rawQ === '~' || rawQ === '~/') {
@@ -312,44 +312,45 @@ export function DocLinkMenu({ editor, state, currentPath, root, openTabs, onClos
           if (slashIdx !== -1) {
             probeDir = rawQ.slice(0, slashIdx)
             searchKeyword = rawQ.slice(slashIdx + 1)
-          } else {
-            probeDir = rawQ
           }
         }
 
-        // 1. Direct directory probe
-        const dirRes = await listDir(probeDir)
-        if (dirRes.ok) {
-          for (const d of dirRes.value.dirs) {
-            if (!seenPaths.has(d.path)) {
-              seenPaths.add(d.path)
-              allHits.push({ name: `${d.name}/`, path: d.path, rel: d.name, isDir: true })
+        if (probeDir) {
+          // 1. Direct directory probe
+          const dirRes = await listDir(probeDir)
+          if (dirRes.ok) {
+            for (const d of dirRes.value.dirs) {
+              if (!seenPaths.has(d.path)) {
+                seenPaths.add(d.path)
+                allHits.push({ name: `${d.name}/`, path: d.path, rel: d.name, isDir: true })
+              }
+            }
+            for (const f of dirRes.value.files) {
+              if (!seenPaths.has(f.path)) {
+                seenPaths.add(f.path)
+                allHits.push({ name: f.name, path: f.path, rel: f.name })
+              }
             }
           }
-          for (const f of dirRes.value.files) {
-            if (!seenPaths.has(f.path)) {
-              seenPaths.add(f.path)
-              allHits.push({ name: f.name, path: f.path, rel: f.name })
-            }
-          }
-        }
 
-        // 2. Search inside probeDir if there's a keyword
-        const searchRes = await searchNames(probeDir, searchKeyword, controller.signal)
-        if (searchRes.ok) {
-          for (const hit of searchRes.value) {
-            if (!seenPaths.has(hit.path)) {
-              seenPaths.add(hit.path)
-              allHits.push(hit)
+          // 2. Search inside probeDir if there's a keyword
+          const searchRes = await searchNames(probeDir, searchKeyword, controller.signal)
+          if (searchRes.ok) {
+            for (const hit of searchRes.value) {
+              if (!seenPaths.has(hit.path)) {
+                seenPaths.add(hit.path)
+                allHits.push(hit)
+              }
             }
           }
         }
       } else {
         const cleanQ = rawQ.replace(/\\/g, '/').replace(/^\/+/, '')
+        const hasSlash = cleanQ.includes('/')
         const slashIdx = cleanQ.lastIndexOf('/')
-        const targetSubDir = slashIdx !== -1 ? cleanQ.slice(0, slashIdx) : cleanQ
+        const targetSubDir = hasSlash ? (slashIdx !== -1 ? cleanQ.slice(0, slashIdx) : cleanQ) : undefined
 
-        // 1. Direct subfolder probe in current workspace
+        // 1. Direct subfolder probe in current workspace (only if user explicitly typed a path with a slash)
         if (currentDir && targetSubDir) {
           const directSub = await listDir(`${currentDir}/${targetSubDir}`)
           if (directSub.ok) {

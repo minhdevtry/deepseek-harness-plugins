@@ -931,7 +931,9 @@ function apply(ctx) {
 				}
 				return sendJson(res, 404, { ok: false, error: "unknown vscode-files endpoint" });
 			} catch (error) {
-				return sendJson(res, 500, { ok: false, error: error instanceof Error ? error.message : String(error) });
+				const isNotFound = error && (error.code === "ENOENT" || error.code === "ENOTDIR");
+				const statusCode = isNotFound ? 404 : 500;
+				return sendJson(res, statusCode, { ok: false, error: error instanceof Error ? error.message : String(error) });
 			}
 		}
 	}), "dsh-host-files: /vscode-files routes");
