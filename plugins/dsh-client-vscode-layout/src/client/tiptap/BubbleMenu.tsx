@@ -13,6 +13,7 @@ import { getLineRangeForSelection } from '../utils/chatComposer.ts'
 import { appendToComposer, focusComposer } from '../composer.ts'
 import { clampBubblePosition } from '../utils/positioning.ts'
 import { basename } from '../utils/path.ts'
+import { Button, IconButton, Tooltip } from '../ui/primitives/index.ts'
 import css from './BubbleMenu.module.css'
 
 export interface BubbleMenuProps {
@@ -201,13 +202,13 @@ export function BubbleMenu({ editor, path, markdown }: BubbleMenuProps) {
             }}
             autoFocus
           />
-          <button type="button" className={css.linkApply} onClick={applyLink}>
+          <Button size="xs" variant="primary" onClick={applyLink}>
             Apply
-          </button>
+          </Button>
           {editor.isActive('link') && (
-            <button type="button" className={css.linkUnlink} onClick={unlink}>
+            <Button size="xs" variant="danger" onClick={unlink}>
               Unlink
-            </button>
+            </Button>
           )}
         </div>
       ) : (
@@ -230,148 +231,169 @@ export function BubbleMenu({ editor, path, markdown }: BubbleMenuProps) {
 
           <span className={css.divider} />
 
-          <button
-            type="button"
-            className={`${css.btn} ${css.btnBold}`}
-            data-active={editor.isActive('bold') || undefined}
-            onClick={() => { editor.chain().focus().toggleBold().run() }}
-            title="Bold (Ctrl+B)"
-          >
-            B
-          </button>
-          <button
-            type="button"
-            className={`${css.btn} ${css.btnItalic}`}
-            data-active={editor.isActive('italic') || undefined}
-            onClick={() => { editor.chain().focus().toggleItalic().run() }}
-            title="Italic (Ctrl+I)"
-          >
-            I
-          </button>
-          <button
-            type="button"
-            className={`${css.btn} ${css.btnUnderline}`}
-            data-active={editor.isActive('underline') || undefined}
-            onClick={() => { editor.chain().focus().toggleUnderline().run() }}
-            title="Underline (Ctrl+U)"
-          >
-            U
-          </button>
-          <button
-            type="button"
-            className={`${css.btn} ${css.btnStrike}`}
-            data-active={editor.isActive('strike') || undefined}
-            onClick={() => { editor.chain().focus().toggleStrike().run() }}
-            title="Strikethrough"
-          >
-            S
-          </button>
-          <button
-            type="button"
-            className={`${css.btn} ${css.btnCode}`}
-            data-active={editor.isActive('code') || undefined}
-            onClick={() => { editor.chain().focus().toggleCode().run() }}
-            title="Inline Code"
-          >
-            {'</>'}
-          </button>
-          <div style={{ position: 'relative', display: 'inline-flex' }}>
-            <button
-              type="button"
-              className={css.btn}
-              data-active={editor.isActive('highlight') || undefined}
-              onClick={() => setShowPalette((prev) => !prev)}
-              title="Highlight Color"
+          <Tooltip content="Bold" shortcut="Ctrl+B">
+            <IconButton
+              size="xs"
+              variant="ghost"
+              active={editor.isActive('bold')}
+              onClick={() => { editor.chain().focus().toggleBold().run() }}
+              style={{ fontWeight: 800 }}
             >
-              🎨
-            </button>
+              B
+            </IconButton>
+          </Tooltip>
+
+          <Tooltip content="Italic" shortcut="Ctrl+I">
+            <IconButton
+              size="xs"
+              variant="ghost"
+              active={editor.isActive('italic')}
+              onClick={() => { editor.chain().focus().toggleItalic().run() }}
+              style={{ fontStyle: 'italic' }}
+            >
+              I
+            </IconButton>
+          </Tooltip>
+
+          <Tooltip content="Underline" shortcut="Ctrl+U">
+            <IconButton
+              size="xs"
+              variant="ghost"
+              active={editor.isActive('underline')}
+              onClick={() => { editor.chain().focus().toggleUnderline().run() }}
+              style={{ textDecoration: 'underline' }}
+            >
+              U
+            </IconButton>
+          </Tooltip>
+
+          <Tooltip content="Strikethrough">
+            <IconButton
+              size="xs"
+              variant="ghost"
+              active={editor.isActive('strike')}
+              onClick={() => { editor.chain().focus().toggleStrike().run() }}
+              style={{ textDecoration: 'line-through' }}
+            >
+              S
+            </IconButton>
+          </Tooltip>
+
+          <Tooltip content="Inline Code">
+            <IconButton
+              size="xs"
+              variant="ghost"
+              active={editor.isActive('code')}
+              onClick={() => { editor.chain().focus().toggleCode().run() }}
+              style={{ fontFamily: 'monospace', fontSize: 11 }}
+            >
+              {'</>'}
+            </IconButton>
+          </Tooltip>
+
+          <div style={{ position: 'relative', display: 'inline-flex' }}>
+            <Tooltip content="Highlight Color">
+              <IconButton
+                size="xs"
+                variant="ghost"
+                active={editor.isActive('highlight')}
+                onClick={() => setShowPalette((prev) => !prev)}
+              >
+                🎨
+              </IconButton>
+            </Tooltip>
             {showPalette && (
               <div style={{ position: 'absolute', top: '100%', left: 0, marginTop: 4, zIndex: 100 }}>
                 <HighlightPalette editor={editor} onClose={() => setShowPalette(false)} />
               </div>
             )}
           </div>
-          <button
-            type="button"
-            className={css.btn}
-            data-active={editor.isActive('link') || undefined}
-            onClick={openLinkMode}
-            title="Link (Ctrl+K)"
-          >
-            🔗
-          </button>
+
+          <Tooltip content="Link" shortcut="Ctrl+K">
+            <IconButton
+              size="xs"
+              variant="ghost"
+              active={editor.isActive('link')}
+              onClick={openLinkMode}
+            >
+              🔗
+            </IconButton>
+          </Tooltip>
 
           <span className={css.divider} />
 
-          <button
-            type="button"
-            className={css.btn}
-            data-active={editor.isActive({ textAlign: 'left' }) || undefined}
-            onClick={() => { editor.chain().focus().setTextAlign('left').run() }}
-            title="Align Left"
-          >
-            ⇤
-          </button>
-          <button
-            type="button"
-            className={css.btn}
-            data-active={editor.isActive({ textAlign: 'center' }) || undefined}
-            onClick={() => { editor.chain().focus().setTextAlign('center').run() }}
-            title="Align Center"
-          >
-            ≡
-          </button>
-          <button
-            type="button"
-            className={css.btn}
-            data-active={editor.isActive({ textAlign: 'right' }) || undefined}
-            onClick={() => { editor.chain().focus().setTextAlign('right').run() }}
-            title="Align Right"
-          >
-            ⇥
-          </button>
-          <button
-            type="button"
-            className={css.btn}
-            data-active={editor.isActive({ textAlign: 'justify' }) || undefined}
-            onClick={() => { editor.chain().focus().setTextAlign('justify').run() }}
-            title="Align Justify"
-          >
-            ⇿
-          </button>
+          <Tooltip content="Align Left">
+            <IconButton
+              size="xs"
+              variant="ghost"
+              active={editor.isActive({ textAlign: 'left' })}
+              onClick={() => { editor.chain().focus().setTextAlign('left').run() }}
+            >
+              ⇤
+            </IconButton>
+          </Tooltip>
+
+          <Tooltip content="Align Center">
+            <IconButton
+              size="xs"
+              variant="ghost"
+              active={editor.isActive({ textAlign: 'center' })}
+              onClick={() => { editor.chain().focus().setTextAlign('center').run() }}
+            >
+              ≡
+            </IconButton>
+          </Tooltip>
+
+          <Tooltip content="Align Right">
+            <IconButton
+              size="xs"
+              variant="ghost"
+              active={editor.isActive({ textAlign: 'right' })}
+              onClick={() => { editor.chain().focus().setTextAlign('right').run() }}
+            >
+              ⇥
+            </IconButton>
+          </Tooltip>
+
+          <Tooltip content="Align Justify">
+            <IconButton
+              size="xs"
+              variant="ghost"
+              active={editor.isActive({ textAlign: 'justify' })}
+              onClick={() => { editor.chain().focus().setTextAlign('justify').run() }}
+            >
+              ⇿
+            </IconButton>
+          </Tooltip>
 
           {path && (
             <>
               <span className={css.divider} />
-              <button
-                type="button"
-                className={css.btn}
-                style={{
-                  color: 'var(--dsw-alias-state-business-primary, #2563eb)',
-                  fontWeight: 600,
-                  fontSize: 12,
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 4,
-                  padding: '2px 8px'
-                }}
-                onClick={() => {
-                  const { from, to } = editor.state.selection
-                  const selectedText = editor.state.doc.textBetween(from, to, '\n')
-                  const fullText = markdown ? markdown() : ''
-                  const textBefore = editor.state.doc.textBetween(0, from, '\n')
-                  const fromOffset = textBefore.length
-                  const { rangeString } = getLineRangeForSelection(fullText, selectedText, {
-                    from: fromOffset,
-                    to: fromOffset + selectedText.length,
-                  })
-                  const filename = basename(path) || path
-                  if (appendToComposer(`@${filename} ${rangeString}`)) focusComposer()
-                }}
-                title="Mention Selection in Chat (Ctrl+L)"
-              >
-                💬 Mention
-              </button>
+              <Tooltip content="Mention Selection in Chat" shortcut="Ctrl+L">
+                <Button
+                  size="xs"
+                  variant="ghost"
+                  style={{
+                    color: 'var(--dsw-alias-state-business-primary, #3b82f6)',
+                    fontWeight: 600,
+                  }}
+                  onClick={() => {
+                    const { from, to } = editor.state.selection
+                    const selectedText = editor.state.doc.textBetween(from, to, '\n')
+                    const fullText = markdown ? markdown() : ''
+                    const textBefore = editor.state.doc.textBetween(0, from, '\n')
+                    const fromOffset = textBefore.length
+                    const { rangeString } = getLineRangeForSelection(fullText, selectedText, {
+                      from: fromOffset,
+                      to: fromOffset + selectedText.length,
+                    })
+                    const filename = basename(path) || path
+                    if (appendToComposer(`@${filename} ${rangeString}`)) focusComposer()
+                  }}
+                >
+                  💬 Mention
+                </Button>
+              </Tooltip>
             </>
           )}
         </>

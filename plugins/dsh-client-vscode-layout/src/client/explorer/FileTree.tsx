@@ -25,6 +25,7 @@ import { dirIconId, fileIconId } from './icons/index.ts'
 import { FileIcon } from './FileIcon.tsx'
 import { ContextMenu, type MenuItem } from '../ui/ContextMenu.tsx'
 import { Dialog } from '../ui/Dialog.tsx'
+import { Spinner } from '../ui/primitives/index.ts'
 import css from './FileTree.module.css'
 
 /** Tree props: what to show, and where intent goes. */
@@ -257,7 +258,13 @@ export const FileTree = forwardRef<FileTreeHandle, FileTreeProps>(function FileT
     return items
   }, [copy, onOpenFile, root])
 
-  if (loading) return <div className={css.notice}>Loading files…</div>
+  if (loading) {
+    return (
+      <div className={css.notice} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <Spinner size="xs" /> Loading files…
+      </div>
+    )
+  }
   if (rootError !== undefined) return <div className={css.notice} data-error>Unable to read directory: {rootError}</div>
 
   const createRow = edit?.kind === 'create' ? edit : undefined

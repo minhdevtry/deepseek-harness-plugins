@@ -1,0 +1,14 @@
+.spinner {
+  display: inline-block;
+  vertical-align: middle;
+  animation: spin 0.75s linear infinite;
+  flex-shrink: 0;
+}
+
+.track {
+  opacity: 0.2;
+}
+
+.head {
+  opacity: 0.9;
+}

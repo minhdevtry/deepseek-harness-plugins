@@ -7,6 +7,7 @@
  */
 import { useEffect, useRef, useState } from 'react'
 import type { Editor } from '@tiptap/core'
+import { Button, IconButton } from '../ui/primitives/index.ts'
 import css from './MediaModal.module.css'
 
 export type MediaModalType = 'image' | 'youtube' | 'video' | 'table'
@@ -79,9 +80,9 @@ export function MediaModal({ type, editor, onClose }: MediaModalProps) {
       <div className={css.modal} role="dialog" aria-modal="true">
         <div className={css.header}>
           <span className={css.title}>{title}</span>
-          <button type="button" className={css.closeBtn} onClick={onClose} aria-label="Close">
+          <IconButton size="sm" variant="ghost" onClick={onClose} aria-label="Close">
             ✕
-          </button>
+          </IconButton>
         </div>
 
         <form onSubmit={handleSubmit}>
@@ -183,12 +184,12 @@ export function MediaModal({ type, editor, onClose }: MediaModalProps) {
           </div>
 
           <div className={css.footer}>
-            <button type="button" className={`${css.btn} ${css.btnCancel}`} onClick={onClose}>
+            <Button size="sm" variant="secondary" onClick={onClose}>
               Cancel
-            </button>
-            <button type="submit" className={`${css.btn} ${css.btnPrimary}`}>
+            </Button>
+            <Button size="sm" variant="primary" type="submit">
               {type === 'table' ? 'Insert Table' : 'Embed'}
-            </button>
+            </Button>
           </div>
         </form>
       </div>

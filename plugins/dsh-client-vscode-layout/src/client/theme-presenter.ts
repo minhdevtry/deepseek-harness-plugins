@@ -42,8 +42,12 @@ export class ThemePresenter {
    */
   apply(snapshot: ThemeSnapshot): void {
     const scheme = snapshot.active.colorScheme
-    document.documentElement.style.colorScheme = scheme
     const body = document.body
+
+    // Temporarily disable transitions during theme change to prevent color flicker
+    body.classList.add('theme-transition-disabled')
+
+    document.documentElement.style.colorScheme = scheme
     if (scheme === 'dark') body.setAttribute(DARK_ATTRIBUTE, '')
     else body.removeAttribute(DARK_ATTRIBUTE)
     for (const name of this.#appliedTokens) body.style.removeProperty(name)
@@ -54,6 +58,11 @@ export class ThemePresenter {
     }
     this.#themeColorMeta.content = getComputedStyle(body).backgroundColor
     if (!this.#themeColorMeta.isConnected) document.head.append(this.#themeColorMeta)
+
+    // Re-enable transitions after browser paint
+    setTimeout(() => {
+      body.classList.remove('theme-transition-disabled')
+    }, 60)
   }
 
   /** Retract root color-scheme, the palette attribute, token variables, and the owned metadata node. */

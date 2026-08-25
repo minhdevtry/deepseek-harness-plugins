@@ -125,34 +125,5 @@
   border-top: 1px solid var(--dsw-alias-border-l1, #e2e8f0);
   display: flex;
   justify-content: flex-end;
-  gap: 8px;
-}
-
-.btn {
-  padding: 6px 14px;
-  border-radius: 6px;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.15s;
-}
-
-.btnCancel {
-  background: transparent;
-  border: 1px solid var(--dsw-alias-border-l1, #cbd5e1);
-  color: var(--dsw-alias-label-secondary, #475569);
-}
-
-.btnCancel:hover {
-  background: rgba(0, 0, 0, 0.04);
-}
-
-.btnPrimary {
-  background: #3b82f6;
-  border: 1px solid #3b82f6;
-  color: #ffffff;
-}
-
-.btnPrimary:hover {
-  background: #2563eb;
+  gap: var(--space-2, 8px);
 }

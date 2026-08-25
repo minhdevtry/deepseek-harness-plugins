@@ -93,39 +93,7 @@
 .actions {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2, 8px);
   justify-content: flex-end;
 }
 
-.cancelBtn {
-  padding: 5px 12px;
-  border-radius: 6px;
-  border: 1px solid var(--dsw-alias-border-l2, #e2e8f0);
-  background: transparent;
-  color: var(--dsw-alias-label-secondary, #64748b);
-  font-size: 12px;
-  font-weight: 500;
-  cursor: pointer;
-}
-
-.cancelBtn:hover {
-  background: var(--dsw-alias-interactive-bg-hover, rgba(0, 0, 0, 0.05));
-}
-
-.submitBtn {
-  padding: 5px 14px;
-  border-radius: 6px;
-  border: none;
-  background: var(--dsw-alias-state-business-primary, #2563eb);
-  color: #ffffff;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.submitBtn:hover {
-  background: #1d4ed8;
-}

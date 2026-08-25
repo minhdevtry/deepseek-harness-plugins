@@ -834,20 +834,22 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 24px;
+  padding: var(--space-6, 24px);
+  animation: fadeIn var(--duration-normal, 150ms) var(--ease-in-out, ease);
 }
 
 .container :global(.tiptap-mermaid-zoom-modal) {
   background: var(--dsw-alias-bg-elevated, #ffffff);
   border: 1px solid var(--dsw-alias-border-l1, #cbd5e1);
-  border-radius: 12px;
+  border-radius: var(--radius-xl, 12px);
   width: 90vw;
   max-width: 1200px;
   height: 85vh;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.2);
+  box-shadow: var(--shadow-dialog, 0 25px 50px -12px rgba(0, 0, 0, 0.35));
   overflow: hidden;
+  animation: scaleIn var(--duration-normal, 150ms) var(--ease-spring, cubic-bezier(0.16, 1, 0.3, 1));
 }
 
 .container :global(.tiptap-mermaid-zoom-header) {
@@ -868,22 +870,24 @@
 .container :global(.tiptap-mermaid-zoom-actions) {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2, 8px);
 }
 
 .container :global(.tiptap-mermaid-zoom-btn) {
   background: var(--dsw-alias-bg-elevated, #ffffff);
   border: 1px solid var(--dsw-alias-border-l1, #cbd5e1);
-  border-radius: 6px;
+  border-radius: var(--radius-md, 6px);
   padding: 4px 10px;
   font-size: 12px;
   font-weight: 500;
   color: var(--dsw-alias-label-secondary, #475569);
   cursor: pointer;
+  transition: all var(--duration-fast, 100ms) var(--ease-in-out, ease);
 }
 
 .container :global(.tiptap-mermaid-zoom-btn:hover) {
-  background: var(--dsw-alias-bg-hover, #f1f5f9);
+  background: var(--dsw-alias-interactive-bg-hover, #f1f5f9);
+  border-color: var(--dsw-alias-border-l2, #94a3b8);
   color: var(--dsw-alias-state-business-primary, #2563eb);
 }
 
@@ -893,11 +897,14 @@
   font-size: 16px;
   cursor: pointer;
   padding: 4px 8px;
+  border-radius: var(--radius-md, 6px);
   color: var(--dsw-alias-label-secondary, #94a3b8);
+  transition: all var(--duration-fast, 100ms) var(--ease-in-out, ease);
 }
 
 .container :global(.tiptap-mermaid-zoom-close-btn:hover) {
-  color: #ef4444;
+  color: var(--dsw-alias-state-error-primary, #ef4444);
+  background: rgba(239, 68, 68, 0.1);
 }
 
 .container :global(.tiptap-mermaid-zoom-viewport) {
@@ -923,14 +930,16 @@
   position: absolute;
   bottom: 20px;
   right: 20px;
-  background: rgba(15, 23, 42, 0.8);
-  backdrop-filter: blur(4px);
-  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.85);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-lg, 8px);
   padding: 4px 8px;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2, 8px);
   color: #ffffff;
+  box-shadow: var(--shadow-md, 0 4px 12px rgba(0, 0, 0, 0.3));
 }
 
 .container :global(.tiptap-mermaid-zoom-control-btn) {
@@ -940,6 +949,12 @@
   font-size: 16px;
   cursor: pointer;
   padding: 2px 6px;
+  border-radius: var(--radius-sm, 4px);
+  transition: background var(--duration-fast, 100ms) ease;
+}
+
+.container :global(.tiptap-mermaid-zoom-control-btn:hover) {
+  background: rgba(255, 255, 255, 0.15);
 }
 
 .container :global(.tiptap-mermaid-zoom-scale-indicator) {

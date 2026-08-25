@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { Editor } from '@tiptap/core'
+import { IconButton, Tooltip } from '../../ui/primitives/index.ts'
 import css from './FindBar.module.css'
 
 declare class Highlight {
@@ -168,41 +169,46 @@ export function FindBar({ editor, isOpen, onClose }: FindBarProps) {
         {query.trim() ? (matchCount > 0 ? `${currentIndex + 1} / ${matchCount}` : '0 of 0') : ''}
       </span>
 
-      <button
-        type="button"
-        className={css.btn}
-        onClick={handlePrev}
-        disabled={matchCount === 0}
-        title="Previous match (Shift+Enter)"
-      >
-        ▲
-      </button>
+      <Tooltip content="Previous Match" shortcut="⇧↵">
+        <IconButton
+          size="xs"
+          variant="ghost"
+          onClick={handlePrev}
+          disabled={matchCount === 0}
+        >
+          ▲
+        </IconButton>
+      </Tooltip>
 
-      <button
-        type="button"
-        className={css.btn}
-        onClick={handleNext}
-        disabled={matchCount === 0}
-        title="Next match (Enter)"
-      >
-        ▼
-      </button>
+      <Tooltip content="Next Match" shortcut="↵">
+        <IconButton
+          size="xs"
+          variant="ghost"
+          onClick={handleNext}
+          disabled={matchCount === 0}
+        >
+          ▼
+        </IconButton>
+      </Tooltip>
 
       <span className={css.divider} />
 
-      <button
-        type="button"
-        className={css.btn}
-        data-active={matchCase || undefined}
-        onClick={() => setMatchCase((c) => !c)}
-        title="Match Case"
-      >
-        Aa
-      </button>
+      <Tooltip content="Match Case">
+        <IconButton
+          size="xs"
+          variant="ghost"
+          active={matchCase}
+          onClick={() => setMatchCase((c) => !c)}
+        >
+          Aa
+        </IconButton>
+      </Tooltip>
 
-      <button type="button" className={css.btn} onClick={onClose} title="Close (Esc)">
-        ✕
-      </button>
+      <Tooltip content="Close" shortcut="Esc">
+        <IconButton size="xs" variant="ghost" onClick={onClose}>
+          ✕
+        </IconButton>
+      </Tooltip>
     </div>
   )
 }

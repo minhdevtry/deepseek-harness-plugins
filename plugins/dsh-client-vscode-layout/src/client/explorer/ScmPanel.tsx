@@ -16,6 +16,7 @@ import {
   type GitStatus,
 } from '../api/files.ts'
 import { basename } from '../utils/path.ts'
+import { Button, IconButton, Tooltip, Spinner } from '../ui/primitives/index.ts'
 import css from './ScmPanel.module.css'
 
 export interface ScmPanelProps {
@@ -117,6 +118,43 @@ export function ScmPanel({ root, onOpenFile, onNotify }: ScmPanelProps) {
     )
   }
 
+  const handleGenerateCommitMessage = () => {
+    const list = staged.length > 0 ? staged : unstaged
+    if (list.length === 0) return
+
+    const paths = list.map(f => f.path)
+    let prefix = 'feat'
+    let scope = 'workspace'
+
+    if (paths.every(p => p.endsWith('.test.ts') || p.startsWith('tests/'))) {
+      prefix = 'test'
+      scope = 'unit'
+    } else if (paths.every(p => p.endsWith('.css'))) {
+      prefix = 'style'
+      scope = 'ui'
+    } else if (paths.every(p => p.endsWith('.md'))) {
+      prefix = 'docs'
+      scope = 'readme'
+    } else if (paths.some(p => p.includes('tiptap/'))) {
+      prefix = 'feat'
+      scope = 'tiptap'
+    } else if (paths.some(p => p.includes('explorer/'))) {
+      prefix = 'feat'
+      scope = 'explorer'
+    } else if (paths.some(p => p.includes('workbench/'))) {
+      prefix = 'feat'
+      scope = 'workbench'
+    } else if (paths.some(p => p.includes('utils/'))) {
+      prefix = 'refactor'
+      scope = 'utils'
+    }
+
+    const firstNames = paths.slice(0, 3).map(p => basename(p)).join(', ')
+    const extraCount = paths.length > 3 ? ` and ${paths.length - 3} more files` : ''
+    const generated = `${prefix}(${scope}): update ${firstNames}${extraCount}`
+    setCommitMessage(generated)
+  }
+
   const staged = status.staged || []
   const unstaged = status.unstaged || []
 
@@ -124,37 +162,61 @@ export function ScmPanel({ root, onOpenFile, onNotify }: ScmPanelProps) {
     <div className={css.wrap}>
       <div className={css.topBar}>
         <span className={css.branch}>🌿 {status.branch || 'main'}</span>
-        <button
-          type="button"
-          className={css.refreshBtn}
-          onClick={() => { void refresh() }}
-          title="Refresh Git status"
-        >
-          {loading ? '⏳' : '🔄'}
-        </button>
+        <Tooltip content="Refresh Git Status">
+          <IconButton
+            size="xs"
+            variant="ghost"
+            onClick={() => { void refresh() }}
+            disabled={loading}
+            className={css.refreshBtn}
+          >
+            {loading ? (
+              <Spinner size="xs" />
+            ) : (
+              <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <path d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9L14 6m0-4v4h-4" />
+              </svg>
+            )}
+          </IconButton>
+        </Tooltip>
       </div>
 
       <div className={css.commitBox}>
-        <textarea
-          className={css.commitInput}
-          placeholder="Commit message (Ctrl+Enter to commit)..."
-          value={commitMessage}
-          onChange={e => { setCommitMessage(e.target.value) }}
-          onKeyDown={e => {
-            if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
-              e.preventDefault()
-              void handleCommit()
-            }
-          }}
-        />
-        <button
-          type="button"
-          className={css.commitBtn}
+        <div style={{ position: 'relative' }}>
+          <textarea
+            className={css.commitInput}
+            placeholder="Commit message (Ctrl+Enter to commit)..."
+            value={commitMessage}
+            onChange={e => { setCommitMessage(e.target.value) }}
+            onKeyDown={e => {
+              if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                e.preventDefault()
+                void handleCommit()
+              }
+            }}
+          />
+          <div style={{ position: 'absolute', bottom: 8, right: 8 }}>
+            <Tooltip content="Generate Commit Message with AI" placement="left">
+              <IconButton
+                size="xs"
+                variant="ghost"
+                onClick={handleGenerateCommitMessage}
+                disabled={staged.length === 0 && unstaged.length === 0}
+              >
+                🪄
+              </IconButton>
+            </Tooltip>
+          </div>
+        </div>
+        <Button
+          size="sm"
+          variant="primary"
           onClick={() => { void handleCommit() }}
-          disabled={committing || commitMessage.trim().length === 0 || staged.length === 0}
+          loading={committing}
+          disabled={commitMessage.trim().length === 0 || staged.length === 0}
         >
-          {committing ? 'Committing…' : '✓ Commit'}
-        </button>
+          ✓ Commit
+        </Button>
       </div>
 
       <div className={css.lists}>
@@ -164,14 +226,15 @@ export function ScmPanel({ root, onOpenFile, onNotify }: ScmPanelProps) {
           <span className={css.badgeCount}>{staged.length}</span>
           <div className={css.sectionActions}>
             {staged.length > 0 && (
-              <button
-                type="button"
-                className={css.iconBtn}
-                onClick={() => { void handleUnstageAll() }}
-                title="Unstage All Changes"
-              >
-                −
-              </button>
+              <Tooltip content="Unstage All Changes">
+                <IconButton
+                  size="xs"
+                  variant="ghost"
+                  onClick={() => { void handleUnstageAll() }}
+                >
+                  −
+                </IconButton>
+              </Tooltip>
             )}
           </div>
         </div>
@@ -194,14 +257,15 @@ export function ScmPanel({ root, onOpenFile, onNotify }: ScmPanelProps) {
                 {dir && <span className={css.fileDir}>{dir}</span>}
                 <span className={`${css.fileBadge} ${statusClass}`}>{file.status}</span>
                 <div className={css.fileActions}>
-                  <button
-                    type="button"
-                    className={css.iconBtn}
-                    onClick={e => { void handleUnstage(file.path, e) }}
-                    title="Unstage"
-                  >
-                    −
-                  </button>
+                  <Tooltip content="Unstage">
+                    <IconButton
+                      size="xs"
+                      variant="ghost"
+                      onClick={e => { void handleUnstage(file.path, e) }}
+                    >
+                      −
+                    </IconButton>
+                  </Tooltip>
                 </div>
               </div>
             )
@@ -214,14 +278,15 @@ export function ScmPanel({ root, onOpenFile, onNotify }: ScmPanelProps) {
           <span className={css.badgeCount}>{unstaged.length}</span>
           <div className={css.sectionActions}>
             {unstaged.length > 0 && (
-              <button
-                type="button"
-                className={css.iconBtn}
-                onClick={() => { void handleStageAll() }}
-                title="Stage All Changes"
-              >
-                +
-              </button>
+              <Tooltip content="Stage All Changes">
+                <IconButton
+                  size="xs"
+                  variant="ghost"
+                  onClick={() => { void handleStageAll() }}
+                >
+                  +
+                </IconButton>
+              </Tooltip>
             )}
           </div>
         </div>
@@ -250,22 +315,24 @@ export function ScmPanel({ root, onOpenFile, onNotify }: ScmPanelProps) {
                 {dir && <span className={css.fileDir}>{dir}</span>}
                 <span className={`${css.fileBadge} ${statusClass}`}>{file.status}</span>
                 <div className={css.fileActions}>
-                  <button
-                    type="button"
-                    className={css.iconBtn}
-                    onClick={e => { void handleStage(file.path, e) }}
-                    title="Stage changes"
-                  >
-                    +
-                  </button>
-                  <button
-                    type="button"
-                    className={css.iconBtn}
-                    onClick={e => { void handleDiscard(file.path, e) }}
-                    title="Discard changes"
-                  >
-                    ↩
-                  </button>
+                  <Tooltip content="Stage changes">
+                    <IconButton
+                      size="xs"
+                      variant="ghost"
+                      onClick={e => { void handleStage(file.path, e) }}
+                    >
+                      +
+                    </IconButton>
+                  </Tooltip>
+                  <Tooltip content="Discard changes">
+                    <IconButton
+                      size="xs"
+                      variant="ghost"
+                      onClick={e => { void handleDiscard(file.path, e) }}
+                    >
+                      ↩
+                    </IconButton>
+                  </Tooltip>
                 </div>
               </div>
             )

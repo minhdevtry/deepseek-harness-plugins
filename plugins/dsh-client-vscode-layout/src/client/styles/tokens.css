@@ -1,0 +1,140 @@
+/**
+ * Design Tokens & Shared Visual Foundations (Orca-grade polish).
+ *
+ * Derived scales for border-radius, spacing, elevation shadows, transitions,
+ * and unified fallback definitions for DSH theme variables.
+ */
+
+:root {
+  /* Radius scale derived from a single base radius */
+  --radius: 8px;
+  --radius-xs: 2px;
+  --radius-sm: calc(var(--radius) * 0.5); /* 4px */
+  --radius-md: calc(var(--radius) * 0.75); /* 6px */
+  --radius-lg: var(--radius); /* 8px */
+  --radius-xl: calc(var(--radius) * 1.5); /* 12px */
+  --radius-2xl: calc(var(--radius) * 2); /* 16px */
+  --radius-full: 9999px;
+
+  /* Spacing scale */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+
+  /* Shadow & Elevation scale */
+  --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --shadow-popover: 0 12px 32px -4px rgb(0 0 0 / 0.22), 0 4px 12px -2px rgb(0 0 0 / 0.1);
+  --shadow-dialog: 0 25px 50px -12px rgb(0 0 0 / 0.35);
+
+  /* Animation & Easings */
+  --ease-spring: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --duration-instant: 50ms;
+  --duration-fast: 100ms;
+  --duration-normal: 150ms;
+  --duration-slow: 250ms;
+
+  /* Unified Light Fallbacks */
+  --dsw-alias-bg-base: #ffffff;
+  --dsw-alias-bg-elevated: #ffffff;
+  --dsw-alias-bg-hover: rgba(0, 0, 0, 0.05);
+  --dsw-alias-border-l1: #e2e8f0;
+  --dsw-alias-border-l2: #cbd5e1;
+  --dsw-alias-label-primary: #0f172a;
+  --dsw-alias-label-secondary: #64748b;
+  --dsw-alias-label-tertiary: #94a3b8;
+  --dsw-alias-interactive-bg-hover: rgba(59, 130, 246, 0.08);
+  --dsw-alias-interactive-bg-selected: rgba(59, 130, 246, 0.15);
+  --dsw-alias-state-business-primary: #2563eb;
+  --dsw-alias-state-error-primary: #ef4444;
+}
+
+body[data-ds-dark-theme] {
+  /* Unified Dark Fallbacks */
+  --dsw-alias-bg-base: #0f172a;
+  --dsw-alias-bg-elevated: #1e293b;
+  --dsw-alias-bg-hover: rgba(255, 255, 255, 0.06);
+  --dsw-alias-border-l1: #334155;
+  --dsw-alias-border-l2: #475569;
+  --dsw-alias-label-primary: #f8fafc;
+  --dsw-alias-label-secondary: #94a3b8;
+  --dsw-alias-label-tertiary: #64748b;
+  --dsw-alias-interactive-bg-hover: rgba(59, 130, 246, 0.18);
+  --dsw-alias-interactive-bg-selected: rgba(59, 130, 246, 0.28);
+}
+
+/* Global Keyframe Animations */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* Custom Scrollbar Utility */
+.customScrollbar,
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--dsw-alias-border-l1, #cbd5e1) transparent;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--dsw-alias-border-l1, #cbd5e1);
+  border-radius: var(--radius-full);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--dsw-alias-border-l2, #94a3b8);
+}
+
+/* Theme Switching Transition Guard (Orca smoothness) */
+.theme-transition-disabled,
+.theme-transition-disabled * {
+  transition: none !important;
+}

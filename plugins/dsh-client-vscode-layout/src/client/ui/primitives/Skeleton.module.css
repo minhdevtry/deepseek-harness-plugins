@@ -1,0 +1,30 @@
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--dsw-alias-bg-hover, rgba(0, 0, 0, 0.05)) 25%,
+    var(--dsw-alias-interactive-bg-hover, rgba(59, 130, 246, 0.08)) 37%,
+    var(--dsw-alias-bg-hover, rgba(0, 0, 0, 0.05)) 63%
+  );
+  background-size: 400% 100%;
+  animation: shimmer 1.4s ease infinite;
+}
+
+.xs {
+  border-radius: var(--radius-xs, 2px);
+}
+
+.sm {
+  border-radius: var(--radius-sm, 4px);
+}
+
+.md {
+  border-radius: var(--radius-md, 6px);
+}
+
+.lg {
+  border-radius: var(--radius-lg, 8px);
+}
+
+.full {
+  border-radius: var(--radius-full, 9999px);
+}

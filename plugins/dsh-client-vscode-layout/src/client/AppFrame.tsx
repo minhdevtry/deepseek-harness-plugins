@@ -205,6 +205,16 @@ export function AppFrame({
       if (mod && e.key.toLowerCase() === 'p' && !e.shiftKey) {
         e.preventDefault()
         setQuickOpen(prev => !prev)
+      } else if (mod && e.key === 'Tab') {
+        e.preventDefault()
+        const tabs = panels.tabs
+        if (tabs.length > 1) {
+          const currentIdx = panels.activePath ? tabs.indexOf(panels.activePath) : -1
+          const nextIdx = e.shiftKey
+            ? (currentIdx - 1 + tabs.length) % tabs.length
+            : (currentIdx + 1) % tabs.length
+          actions.openFile(tabs[nextIdx]!)
+        }
       } else if ((mod && e.key.toLowerCase() === 'p' && e.shiftKey) || e.key === 'F1') {
         e.preventDefault()
         setCmdPalette(prev => !prev)

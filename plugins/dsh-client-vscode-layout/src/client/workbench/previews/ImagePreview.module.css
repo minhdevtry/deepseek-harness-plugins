@@ -17,19 +17,6 @@
   color: var(--dsw-alias-label-secondary, #cccccc);
 }
 
-.btn {
-  background: transparent;
-  border: 1px solid var(--dsw-alias-border-l2, #444444);
-  color: inherit;
-  padding: 3px 8px;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 11px;
-}
-
-.btn:hover {
-  background: var(--dsw-alias-interactive-bg-hover, rgba(255, 255, 255, 0.08));
-}
 
 .info {
   margin-left: auto;

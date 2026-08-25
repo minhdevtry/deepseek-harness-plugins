@@ -11,6 +11,7 @@ import { ContextMenu, type MenuItem } from '../ui/ContextMenu.tsx'
 import { FileIcon } from '../explorer/FileIcon.tsx'
 import { fileIconId } from '../explorer/icons/index.ts'
 import { basename } from '../utils/path.ts'
+import { Tooltip } from '../ui/primitives/index.ts'
 import css from './TabStrip.module.css'
 
 /** Which tab the context menu is open on. */
@@ -59,6 +60,15 @@ export const TabStrip = memo(function TabStrip({
     { kind: 'item', label: 'Close All', onSelect: onCloseAll },
     { kind: 'separator' },
     { kind: 'item', label: 'Copy Path', onSelect: () => { onCopyPath(path) } },
+    {
+      kind: 'item',
+      label: 'Copy Relative Path',
+      onSelect: () => {
+        const parts = path.split('/')
+        const rel = parts.slice(Math.max(0, parts.length - 2)).join('/')
+        onCopyPath(rel)
+      },
+    },
   ]
 
   return (
@@ -67,22 +77,21 @@ export const TabStrip = memo(function TabStrip({
         const name = basename(path)
         const parent = ambiguous.has(name) ? path.split('/').slice(-2, -1)[0] : undefined
         return (
-          <div
-            key={path}
-            role="tab"
-            aria-selected={path === active}
-            className={css.tab}
-            data-active={path === active || undefined}
-            data-dirty={dirty.has(path) || undefined}
-            data-drop={dropTo === index && dragFrom !== index || undefined}
-            title={path}
-            draggable
-            onClick={() => { onSelect(path) }}
-            onAuxClick={(event) => {
-              // Middle click closes, as in every browser and VS Code.
-              if (event.button === 1) { event.preventDefault(); onClose(path) }
-            }}
-            onContextMenu={(event) => { event.preventDefault(); setMenu({ x: event.clientX, y: event.clientY, path }) }}
+          <Tooltip key={path} content={path} placement="bottom" delayDuration={400}>
+            <div
+              role="tab"
+              aria-selected={path === active}
+              className={css.tab}
+              data-active={path === active || undefined}
+              data-dirty={dirty.has(path) || undefined}
+              data-drop={dropTo === index && dragFrom !== index || undefined}
+              draggable
+              onClick={() => { onSelect(path) }}
+              onAuxClick={(event) => {
+                // Middle click closes, as in every browser and VS Code.
+                if (event.button === 1) { event.preventDefault(); onClose(path) }
+              }}
+              onContextMenu={(event) => { event.preventDefault(); setMenu({ x: event.clientX, y: event.clientY, path }) }}
             onDragStart={(event) => {
               setDragFrom(index)
               event.dataTransfer.effectAllowed = 'move'
@@ -118,8 +127,9 @@ export const TabStrip = memo(function TabStrip({
               <span className={css.cross} aria-hidden>✕</span>
             </button>
           </div>
-        )
-      })}
+        </Tooltip>
+      )
+    })}
 
       {menu !== undefined && (
         <ContextMenu x={menu.x} y={menu.y} items={items(menu.path)} onClose={() => { setMenu(undefined) }} />

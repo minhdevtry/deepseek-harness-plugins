@@ -9,6 +9,7 @@
  */
 import { useEffect, useState } from 'react'
 import { TOKEN_KEY } from '../api/files.ts'
+import { Button } from './primitives/index.ts'
 import css from './LoginModal.module.css'
 
 export interface UserProfile {
@@ -136,9 +137,15 @@ export function LoginModal({ open, onLoginSuccess }: LoginModalProps) {
 
         {error && <div className={css.error}>{error}</div>}
 
-        <button type="submit" className={css.loginBtn} disabled={loading}>
-          {loading ? 'Connecting…' : 'Enter Workspace 🚀'}
-        </button>
+        <Button
+          type="submit"
+          variant="primary"
+          size="md"
+          loading={loading}
+          style={{ width: '100%', marginTop: 8 }}
+        >
+          Enter Workspace 🚀
+        </Button>
       </form>
     </div>
   )

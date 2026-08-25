@@ -5,6 +5,7 @@
  */
 import { useState } from 'react'
 import { basename } from '../../utils/path.ts'
+import { Button, Tooltip } from '../../ui/primitives/index.ts'
 import css from './ImagePreview.module.css'
 
 export interface ImagePreviewProps {
@@ -25,15 +26,21 @@ export function ImagePreview({ path, size }: ImagePreviewProps) {
   return (
     <div className={css.wrap}>
       <div className={css.toolbar}>
-        <button type="button" className={css.btn} onClick={handleZoomIn} title="Zoom in">
-          🔍+
-        </button>
-        <button type="button" className={css.btn} onClick={handleZoomOut} title="Zoom out">
-          🔍−
-        </button>
-        <button type="button" className={css.btn} onClick={handleResetZoom} title="Reset zoom (100%)">
-          {Math.round(zoom * 100)}%
-        </button>
+        <Tooltip content="Zoom In">
+          <Button size="xs" variant="secondary" onClick={handleZoomIn}>
+            🔍+
+          </Button>
+        </Tooltip>
+        <Tooltip content="Zoom Out">
+          <Button size="xs" variant="secondary" onClick={handleZoomOut}>
+            🔍−
+          </Button>
+        </Tooltip>
+        <Tooltip content="Reset Zoom">
+          <Button size="xs" variant="secondary" onClick={handleResetZoom}>
+            {Math.round(zoom * 100)}%
+          </Button>
+        </Tooltip>
 
         <span className={css.info}>
           {dimensions && `${dimensions.width} × ${dimensions.height} px`}

@@ -1,13 +1,6 @@
-/**
- * Quick inline AI prompt palette (Ctrl+K).
- *
- * Attaches the current editor selection as context metadata so the model
- * receives the exact target code while keeping the prompt textarea clean.
- * Submits on plain Enter or Ctrl/Cmd+Enter while reserving Shift+Enter for
- * multi-line prompt drafting.
- */
 import { useEffect, useRef, useState } from 'react'
 import { basename } from '../utils/path.ts'
+import { Button } from './primitives/index.ts'
 import css from './InlineAI.module.css'
 
 export interface InlineAIProps {
@@ -79,12 +72,12 @@ export function InlineAI({ open, selectionText, path, onClose, onSubmit }: Inlin
           />
 
           <div className={css.actions}>
-            <button type="button" className={css.cancelBtn} onClick={onClose}>
+            <Button size="sm" variant="secondary" onClick={onClose}>
               Cancel (Esc)
-            </button>
-            <button type="button" className={css.submitBtn} onClick={handleSubmit}>
+            </Button>
+            <Button size="sm" variant="primary" onClick={handleSubmit}>
               ✨ Generate / Edit
-            </button>
+            </Button>
           </div>
         </div>
       </div>

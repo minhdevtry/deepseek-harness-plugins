@@ -47,6 +47,7 @@ import { ImagePreview } from './previews/ImagePreview.tsx'
 import { CsvPreview } from './previews/CsvPreview.tsx'
 import { HtmlPreview } from './previews/HtmlPreview.tsx'
 import * as tabModel from './model/tabs.ts'
+import { Spinner } from '../ui/primitives/index.ts'
 import css from './Workbench.module.css'
 
 /** Idle time before auto-save writes, in ms. */
@@ -435,7 +436,11 @@ export function Workbench({
             <p className={css.hint}>Pick one from the Explorer, or press Ctrl+P.</p>
           </div>
         )}
-        {status?.kind === 'loading' && <div className={css.notice}>Opening…</div>}
+        {status?.kind === 'loading' && (
+          <div className={css.notice} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <Spinner size="xs" /> Opening…
+          </div>
+        )}
         {status?.kind === 'error' && <div className={css.notice} data-error>Cannot open this file: {status.message}</div>}
         {isImage && activePath !== undefined && (
           // key={activePath}: without it, switching between two image tabs
@@ -473,7 +478,11 @@ export function Workbench({
                       }}
                     />
                   )
-                  : <div className={css.notice}>Opening…</div>}
+                  : (
+                    <div className={css.notice} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <Spinner size="xs" /> Opening…
+                    </div>
+                  )}
               </div>
             )
             : isCsv && !isRaw && !diffOpen
