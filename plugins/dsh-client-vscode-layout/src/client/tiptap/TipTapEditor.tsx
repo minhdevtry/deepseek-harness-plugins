@@ -32,6 +32,7 @@ import css from './TipTapEditor.module.css'
 
 export interface TipTapEditorProps {
   path: string
+  root?: string | undefined
   /** Owner of the document; this component only borrows it. */
   documents: DocumentRegistry
   onSave: (path: string) => void
@@ -53,6 +54,7 @@ interface SlashState {
 
 export function TipTapEditor({
   path,
+  root,
   documents,
   onSave,
   onViewRaw,
@@ -467,6 +469,7 @@ export function TipTapEditor({
           editor={editor}
           state={docLinkState}
           currentPath={path}
+          root={root}
           onClose={() => { setDocLinkState(null) }}
         />
       )}

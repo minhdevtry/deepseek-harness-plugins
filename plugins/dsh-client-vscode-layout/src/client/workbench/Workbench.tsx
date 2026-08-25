@@ -469,6 +469,7 @@ export function Workbench({
                     <TipTapEditor
                       key={activePath}
                       path={activePath}
+                      root={explorerRoot}
                       documents={documents}
                       onSave={(p) => { void save(p) }}
                       onViewRaw={() => {

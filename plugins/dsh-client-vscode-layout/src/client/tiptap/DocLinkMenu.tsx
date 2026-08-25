@@ -2,9 +2,10 @@
  * Intelligent double-bracket wiki-link completion menu (`[[query`).
  *
  * Features:
- * - Default state: prioritizes files in the current active directory AND 1-level subdirectories (A/, B/...).
+ * - Default state: prioritizes files in current directory AND 1-level subdirectories (A/, B/...).
  * - Multi-tier fuzzy search: exact name > prefix > path match > subsequence fuzzy.
- * - Supports searching deep subfolders (e.g. `[[A/`, `[[A/spec`, `[[ab`, `[[a/ab`).
+ * - Supports searching deep subfolders (e.g. `[[A/`, `[[backup/`, `[[backup/demo_sc`, `[[ab`).
+ * - Double search layer: instant local subdirectory listing + workspace recursive search.
  * - Clean title insertion: no ugly `../../../` in the display badge.
  * - Clean relative href: accurate 1-click opening in Workbench tabs.
  */
@@ -26,8 +27,8 @@ export interface DocLinkState {
 export interface DocLinkMenuProps {
   editor: Editor
   state: DocLinkState
-  currentPath?: string
-  root?: string
+  currentPath?: string | undefined
+  root?: string | undefined
   onClose: () => void
 }
 
@@ -50,7 +51,7 @@ function scoreHit(
 ): number {
   const normHit = hitPath.replace(/\\/g, '/')
   const name = basename(normHit)
-  const q = query.trim().toLowerCase()
+  const q = query.trim().toLowerCase().replace(/\/+$/, '')
   const n = name.toLowerCase()
   const lowerPath = normHit.toLowerCase()
 
@@ -58,7 +59,6 @@ function scoreHit(
     let score = 100
     if (currentDir && normHit.startsWith(currentDir + '/')) {
       score += 1000
-      // In immediate current directory gets extra boost over subfolder
       if (!normHit.slice(currentDir.length + 1).includes('/')) score += 300
     }
     if (/\.(md|markdown|mdx)$/i.test(name)) score += 200
@@ -67,7 +67,7 @@ function scoreHit(
 
   let score = 0
 
-  // 1. Locality boost (same folder gets +500)
+  // 1. Locality boost
   if (currentDir && normHit.startsWith(currentDir + '/')) {
     score += 500
     if (!normHit.slice(currentDir.length + 1).includes('/')) score += 200
@@ -83,7 +83,6 @@ function scoreHit(
   } else if (lowerPath.endsWith('/' + q) || lowerPath.includes('/' + q)) {
     score += 400
   } else if (lowerPath.includes(q)) {
-    // Direct path match (e.g. "A/docs", "spec/abcd", "A/ab")
     score += 350
   } else {
     // 3. Subsequence fuzzy match (e.g. "ficon" in "FileIcon.tsx")
@@ -102,7 +101,7 @@ function scoreHit(
     if (qIdx === q.length) {
       score += 200
     } else {
-      // Try subsequence fuzzy match on the full normalized path (e.g. "a/ab" matching "A/.../ab.md")
+      // Try subsequence fuzzy match on the full normalized path
       let pIdx = 0
       for (let i = 0; i < lowerPath.length && pIdx < q.length; i++) {
         if (lowerPath[i] === q[pIdx]) {
@@ -150,7 +149,7 @@ export function DocLinkMenu({ editor, state, currentPath, root, onClose }: DocLi
             rel: f.name,
           }))
 
-          // Also fetch 1-level subdirectories (e.g. A/, B/)
+          // Also fetch 1-level subdirectories (e.g. A/, B/, backup/)
           if (local.value.dirs && local.value.dirs.length > 0) {
             const subDirPromises = local.value.dirs.slice(0, 8).map(d => listDir(d.path))
             const subDirResults = await Promise.all(subDirPromises)
@@ -181,27 +180,69 @@ export function DocLinkMenu({ editor, state, currentPath, root, onClose }: DocLi
         }
       }
 
-      // Step 2: Query active -> search workspace (empty root defaults to SANDBOX_ROOT on host)
+      // Step 2: Query active -> search via direct subdirectory list + host search
+      const allHits: NameHit[] = []
+      const seenPaths = new Set<string>()
+
+      // 2a. Direct subfolder probe if query contains folder name or slash
+      const cleanQ = state.query.replace(/\\/g, '/').replace(/^\/+/, '')
+      const slashIdx = cleanQ.lastIndexOf('/')
+      const targetSubDir = slashIdx !== -1 ? cleanQ.slice(0, slashIdx) : cleanQ
+
+      if (currentDir && targetSubDir) {
+        const directSub = await listDir(`${currentDir}/${targetSubDir}`)
+        if (directSub.ok) {
+          for (const f of directSub.value.files) {
+            if (!seenPaths.has(f.path)) {
+              seenPaths.add(f.path)
+              allHits.push({ name: f.name, path: f.path, rel: f.path.slice(currentDir.length + 1) })
+            }
+          }
+          if (directSub.value.dirs && directSub.value.dirs.length > 0) {
+            const deeperPromises = directSub.value.dirs.slice(0, 6).map(d => listDir(d.path))
+            const deeperResults = await Promise.all(deeperPromises)
+            for (const dRes of deeperResults) {
+              if (dRes.ok) {
+                for (const df of dRes.value.files) {
+                  if (!seenPaths.has(df.path)) {
+                    seenPaths.add(df.path)
+                    allHits.push({ name: df.name, path: df.path, rel: df.path.slice(currentDir.length + 1) })
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+
+      // 2b. Search workspace via searchNames
       const searchRoot = root || ''
       const res = await searchNames(searchRoot, state.query, controller.signal)
       if (!active) return
 
       if (res.ok) {
-        const scoredList: ScoredHit[] = []
         for (const hit of res.value) {
-          const score = scoreHit(hit.path, state.query, currentDir)
-          if (score > 0) {
-            scoredList.push({
-              hit,
-              score,
-              info: getDocLinkInfo(currentPath, hit.path, root),
-            })
+          if (!seenPaths.has(hit.path)) {
+            seenPaths.add(hit.path)
+            allHits.push(hit)
           }
         }
-        scoredList.sort((a, b) => b.score - a.score)
-        setHits(scoredList.slice(0, 15))
-        setSelectedIndex(0)
       }
+
+      const scoredList: ScoredHit[] = []
+      for (const hit of allHits) {
+        const score = scoreHit(hit.path, state.query, currentDir)
+        if (score > 0) {
+          scoredList.push({
+            hit,
+            score,
+            info: getDocLinkInfo(currentPath, hit.path, root),
+          })
+        }
+      }
+      scoredList.sort((a, b) => b.score - a.score)
+      setHits(scoredList.slice(0, 15))
+      setSelectedIndex(0)
     }
 
     void runSearch()
