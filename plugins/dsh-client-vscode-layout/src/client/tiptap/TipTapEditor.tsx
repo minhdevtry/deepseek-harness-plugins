@@ -460,8 +460,37 @@ export function TipTapEditor({
       <div
         className={css.canvas}
         onClick={(e) => {
-          if (e.target === e.currentTarget && editor) {
+          if (!editor || editor.isDestroyed) return
+          if (e.target !== e.currentTarget) return
+
+          // 1. If user just selected text via mouse drag, do NOT alter the selection!
+          const winSel = window.getSelection()
+          if (winSel && !winSel.isCollapsed && winSel.toString().trim().length > 0) {
+            return
+          }
+
+          const containerEl = containerRef.current
+          if (!containerEl) return
+          const containerRect = containerEl.getBoundingClientRect()
+
+          // 2. If clicked in empty space BELOW the document container -> focus end of document
+          if (e.clientY > containerRect.bottom) {
             editor.commands.focus('end')
+            return
+          }
+
+          // 3. If clicked in left/right gutters next to a line -> focus nearest text position at that Y height
+          try {
+            const targetLeft = e.clientX < containerRect.left
+              ? containerRect.left + 15
+              : containerRect.right - 15
+            const coordsPos = editor.view.posAtCoords({ left: targetLeft, top: e.clientY })
+            if (coordsPos && typeof coordsPos.pos === 'number') {
+              editor.commands.setTextSelection(coordsPos.pos)
+              editor.commands.focus()
+            }
+          } catch {
+            // fallback: do nothing rather than jumping blindly to end
           }
         }}
       >
