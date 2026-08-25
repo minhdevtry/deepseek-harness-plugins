@@ -4,6 +4,7 @@
  * Supports PNG, JPG, GIF, WebP, SVG, and ICO with zoom controls and dimension readouts.
  */
 import { useState } from 'react'
+import { basename } from '../../utils/path.ts'
 import css from './ImagePreview.module.css'
 
 export interface ImagePreviewProps {
@@ -43,7 +44,7 @@ export function ImagePreview({ path, size }: ImagePreviewProps) {
       <div className={css.viewport}>
         <img
           src={src}
-          alt={path.split('/').pop() || 'Preview'}
+          alt={basename(path) || 'Preview'}
           className={css.image}
           style={{ transform: `scale(${zoom})` }}
           onLoad={(e) => {

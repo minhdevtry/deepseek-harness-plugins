@@ -1,12 +1,10 @@
 /**
- * TipTap Callout / Alert block node extension.
+ * Notion-style alert callout extension with GitHub-flavored markdown round-tripping.
  *
- * Provides Notion-style callout blocks with customizable types:
- * - 'info' / 'note' (blue)
- * - 'tip' (green/emerald)
- * - 'warning' (amber/yellow)
- * - 'danger' / 'caution' (red/rose)
- * - 'success' (teal/green)
+ * Registers a dedicated `calloutAlert` tokenizer to prevent hijacking the standard
+ * blockquote parser, and assigns an explicit synthetic `SUCCESS` marker so green
+ * callouts preserve their distinct semantic color across save/reload cycles without
+ * collapsing onto `TIP` (while degrading to standard blockquotes in external markdown readers).
  */
 import { Node, mergeAttributes } from '@tiptap/core'
 

@@ -53,4 +53,48 @@ describe('getLineRangeForSelection', () => {
     const res2 = getLineRangeForSelection('', 'something')
     assert.equal(res2.rangeString, '')
   })
+
+  test('correctly matches second occurrence of identical lines using character offsets', () => {
+    const codeDoc = [
+      'function foo() {', // Line 1
+      '  return 1',        // Line 2
+      '}',                // Line 3
+      '',                 // Line 4
+      'function bar() {', // Line 5
+      '  return 1',        // Line 6
+      '}',                // Line 7
+    ].join('\n')
+
+    const firstIndex = codeDoc.indexOf('  return 1')
+    const secondIndex = codeDoc.indexOf('  return 1', firstIndex + 1)
+
+    // Selecting first occurrence (line 2)
+    const res1 = getLineRangeForSelection(codeDoc, '  return 1', {
+      from: firstIndex,
+      to: firstIndex + '  return 1'.length,
+    })
+    assert.equal(res1.startLine, 2)
+    assert.equal(res1.endLine, 2)
+    assert.equal(res1.rangeString, '#L2')
+
+    // Selecting second occurrence (line 6) - with offset must be #L6, not #L2
+    const res2 = getLineRangeForSelection(codeDoc, '  return 1', {
+      from: secondIndex,
+      to: secondIndex + '  return 1'.length,
+    })
+    assert.equal(res2.startLine, 6)
+    assert.equal(res2.endLine, 6)
+    assert.equal(res2.rangeString, '#L6')
+
+    // Selecting the second closing brace '}' (line 7)
+    const firstBrace = codeDoc.indexOf('}')
+    const secondBrace = codeDoc.indexOf('}', firstBrace + 1)
+    const resBrace = getLineRangeForSelection(codeDoc, '}', {
+      from: secondBrace,
+      to: secondBrace + 1,
+    })
+    assert.equal(resBrace.startLine, 7)
+    assert.equal(resBrace.endLine, 7)
+    assert.equal(resBrace.rangeString, '#L7')
+  })
 })

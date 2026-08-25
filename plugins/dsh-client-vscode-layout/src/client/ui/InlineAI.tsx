@@ -1,9 +1,13 @@
 /**
- * Inline AI Assist Modal (Ctrl+K).
+ * Quick inline AI prompt palette (Ctrl+K).
  *
- * Provides inline code generation, transformation, and refactoring on the active buffer.
+ * Attaches the current editor selection as context metadata so the model
+ * receives the exact target code while keeping the prompt textarea clean.
+ * Submits on plain Enter or Ctrl/Cmd+Enter while reserving Shift+Enter for
+ * multi-line prompt drafting.
  */
 import { useEffect, useRef, useState } from 'react'
+import { basename } from '../utils/path.ts'
 import css from './InlineAI.module.css'
 
 export interface InlineAIProps {
@@ -55,7 +59,7 @@ export function InlineAI({ open, selectionText, path, onClose, onSubmit }: Inlin
       <div className={`${css.widget} vk_inline_ai_widget`} data-vk-inline-ai="true">
         <div className={css.header}>
           <span>🤖 Inline AI Assist</span>
-          {path && <span style={{ opacity: 0.7, marginLeft: 'auto', fontSize: 11 }}>{path.split('/').pop()}</span>}
+          {path && <span style={{ opacity: 0.7, marginLeft: 'auto', fontSize: 11 }}>{basename(path)}</span>}
         </div>
 
         {selectionText && selectionText.length > 0 && (

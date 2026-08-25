@@ -10,6 +10,7 @@ import { memo, useState } from 'react'
 import { ContextMenu, type MenuItem } from '../ui/ContextMenu.tsx'
 import { FileIcon } from '../explorer/FileIcon.tsx'
 import { fileIconId } from '../explorer/icons/index.ts'
+import { basename } from '../utils/path.ts'
 import css from './TabStrip.module.css'
 
 /** Which tab the context menu is open on. */
@@ -31,11 +32,6 @@ export interface TabStripProps {
   onCopyPath: (path: string) => void
 }
 
-/** Last path segment. */
-function baseName(path: string): string {
-  return path.split('/').pop() ?? path
-}
-
 /** The open-tab strip (see module doc). */
 export const TabStrip = memo(function TabStrip({
   tabs, active, dirty, onSelect, onClose, onCloseOthers,
@@ -50,7 +46,7 @@ export const TabStrip = memo(function TabStrip({
   const ambiguous = new Set<string>()
   const seen = new Set<string>()
   for (const path of tabs) {
-    const name = baseName(path)
+    const name = basename(path)
     if (seen.has(name)) ambiguous.add(name)
     seen.add(name)
   }
@@ -68,7 +64,7 @@ export const TabStrip = memo(function TabStrip({
   return (
     <div className={css.strip} role="tablist" aria-label="Open editors">
       {tabs.map((path, index) => {
-        const name = baseName(path)
+        const name = basename(path)
         const parent = ambiguous.has(name) ? path.split('/').slice(-2, -1)[0] : undefined
         return (
           <div

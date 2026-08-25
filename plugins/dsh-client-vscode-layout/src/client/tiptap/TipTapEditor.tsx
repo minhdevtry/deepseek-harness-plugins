@@ -86,14 +86,23 @@ export function TipTapEditor({
         ;(window as any).__dsh_active_selection = null
         return
       }
-      // Selected text only. The line range used to be computed here, on every
-      // cursor move, which meant serialising the document to search it — and
-      // now that markdown is a save-time projection it would cost even more.
-      // The two consumers (Ctrl+L and the bubble menu's Mention button) resolve
-      // the range when they act, which is a click rather than a keystroke.
+      const textBefore = instance.state.doc.textBetween(0, from, '\n')
+      const selectedText = instance.state.doc.textBetween(from, to, '\n')
+      const startLine = (textBefore.match(/\n/g)?.length ?? 0) + 1
+      const newlineCount = selectedText.match(/\n/g)?.length ?? 0
+      const endLine = startLine + newlineCount
+      const rangeString = startLine === endLine ? `#L${startLine}` : `#L${startLine}-L${endLine}`
+
       ;(window as any).__dsh_active_selection = {
         path,
-        selectedText: instance.state.doc.textBetween(from, to, '\n'),
+        from,
+        to,
+        fromOffset: textBefore.length,
+        toOffset: textBefore.length + selectedText.length,
+        startLine,
+        endLine,
+        rangeString,
+        selectedText,
       }
     }
     instance.on('update', onUpdate)

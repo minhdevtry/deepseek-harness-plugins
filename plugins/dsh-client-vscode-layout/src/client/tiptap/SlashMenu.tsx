@@ -6,6 +6,8 @@
  */
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { Editor } from '@tiptap/core'
+import { clampCaretPosition } from '../utils/positioning.ts'
+import { usePickerNavigation } from '../utils/usePickerNavigation.ts'
 import { matchCommands, groupMatches, type CommandId, type SlashCommand } from './commands.ts'
 import css from './SlashMenu.module.css'
 
@@ -54,48 +56,10 @@ export function SlashMenu({
   onOpenMediaModal,
 }: SlashMenuProps) {
   const menuRef = useRef<HTMLDivElement | null>(null)
-  const [selectedIndex, setSelectedIndex] = useState(0)
 
   const matches = useMemo(() => matchCommands(query), [query])
   const flatCommands = useMemo(() => matches.map(m => m.command), [matches])
   const groups = useMemo(() => groupMatches(matches), [matches])
-
-  // Reset selected index when query changes
-  useEffect(() => {
-    setSelectedIndex(0)
-  }, [query])
-
-  // Calculate clamped viewport position
-  const [coords, setCoords] = useState({ top: position.bottom + 6, left: position.left })
-
-  useLayoutEffect(() => {
-    const el = menuRef.current
-    if (el === null) return
-    const rect = el.getBoundingClientRect()
-    const viewportHeight = window.innerHeight
-    const viewportWidth = window.innerWidth
-
-    let top = position.bottom + 6
-    let left = Math.min(position.left, viewportWidth - rect.width - 16)
-    if (left < 16) left = 16
-
-    // Flip up if near bottom edge
-    if (top + rect.height > viewportHeight - 16) {
-      top = Math.max(16, position.top - rect.height - 6)
-    }
-
-    setCoords({ top, left })
-  }, [position, matches.length])
-
-  // Scroll active item into view
-  useEffect(() => {
-    const el = menuRef.current
-    if (el === null) return
-    const activeBtn = el.querySelector<HTMLButtonElement>(`[data-index="${selectedIndex}"]`)
-    if (activeBtn) {
-      activeBtn.scrollIntoView({ block: 'nearest' })
-    }
-  }, [selectedIndex])
 
   const execute = (command: SlashCommand) => {
     // Delete the trigger text ("/query")
@@ -157,36 +121,59 @@ export function SlashMenu({
     onClose()
   }
 
-  // Keyboard navigation attached to window / container
+  const { selectedIndex, setSelectedIndex, handleKeyDown } = usePickerNavigation({
+    itemCount: flatCommands.length,
+    onSelect: idx => {
+      const selected = flatCommands[idx]
+      if (selected) execute(selected)
+    },
+    onClose,
+    autoFocusDelay: -1,
+  })
+
+  // Reset selected index when query changes
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (flatCommands.length === 0) return
+    setSelectedIndex(0)
+  }, [query, setSelectedIndex])
 
-      if (e.key === 'ArrowDown') {
-        e.preventDefault()
-        e.stopPropagation()
-        setSelectedIndex(prev => (prev + 1) % flatCommands.length)
-      } else if (e.key === 'ArrowUp') {
-        e.preventDefault()
-        e.stopPropagation()
-        setSelectedIndex(prev => (prev - 1 + flatCommands.length) % flatCommands.length)
-      } else if (e.key === 'Enter') {
-        e.preventDefault()
-        e.stopPropagation()
-        const selected = flatCommands[selectedIndex]
-        if (selected) execute(selected)
-      } else if (e.key === 'Escape') {
-        e.preventDefault()
-        e.stopPropagation()
-        onClose()
-      }
+  // Calculate clamped viewport position
+  const [coords, setCoords] = useState({ top: position.bottom + 6, left: position.left })
+
+  useLayoutEffect(() => {
+    const el = menuRef.current
+    if (el === null) return
+    const rect = el.getBoundingClientRect()
+
+    setCoords(
+      clampCaretPosition({
+        top: position.top,
+        left: position.left,
+        bottom: position.bottom,
+        width: rect.width,
+        height: rect.height,
+        margin: 16,
+        gap: 6,
+      })
+    )
+  }, [position, matches.length])
+
+  // Scroll active item into view
+  useEffect(() => {
+    const el = menuRef.current
+    if (el === null) return
+    const activeBtn = el.querySelector<HTMLButtonElement>(`[data-index="${selectedIndex}"]`)
+    if (activeBtn) {
+      activeBtn.scrollIntoView({ block: 'nearest' })
     }
+  }, [selectedIndex])
 
+  // Keyboard navigation attached to window
+  useEffect(() => {
     window.addEventListener('keydown', handleKeyDown, true)
     return () => {
       window.removeEventListener('keydown', handleKeyDown, true)
     }
-  }, [flatCommands, selectedIndex, editor, range])
+  }, [handleKeyDown])
 
   if (flatCommands.length === 0) {
     return (

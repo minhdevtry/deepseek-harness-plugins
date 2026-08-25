@@ -31,8 +31,7 @@ export interface ContextMenuProps {
   onClose: () => void
 }
 
-/** Gap kept between the menu and the viewport edge when flipping. */
-const EDGE_MARGIN = 8
+import { clampPointPosition } from '../utils/positioning.ts'
 
 /** An anchored context menu (see module doc). */
 export function ContextMenu({ x, y, items, onClose }: ContextMenuProps) {
@@ -45,13 +44,7 @@ export function ContextMenu({ x, y, items, onClose }: ContextMenuProps) {
     const el = ref.current
     if (el === null) return
     const { width, height } = el.getBoundingClientRect()
-    const left = x + width + EDGE_MARGIN > window.innerWidth
-      ? Math.max(EDGE_MARGIN, x - width)
-      : x
-    const top = y + height + EDGE_MARGIN > window.innerHeight
-      ? Math.max(EDGE_MARGIN, y - height)
-      : y
-    setPosition({ left, top })
+    setPosition(clampPointPosition({ x, y, width, height, margin: 8 }))
   }, [x, y])
 
   useEffect(() => {

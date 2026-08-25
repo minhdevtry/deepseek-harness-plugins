@@ -4,35 +4,15 @@
  * Renders structured table grid with sticky headers and search filter.
  */
 import { useMemo, useState } from 'react'
+import { parseCsv } from './csv.ts'
 import css from './CsvPreview.module.css'
+
+export { parseCsv }
 
 export interface CsvPreviewProps {
   content: string
   isTsv?: boolean
   onToggleRaw: () => void
-}
-
-function parseCsv(text: string, delimiter: string = ','): string[][] {
-  const lines = text.split(/\r?\n/).filter(line => line.trim().length > 0)
-  return lines.map(line => {
-    // Simple robust CSV parser handling quoted cells
-    const cells: string[] = []
-    let current = ''
-    let insideQuote = false
-    for (let i = 0; i < line.length; i++) {
-      const char = line[i]
-      if (char === '"') {
-        insideQuote = !insideQuote
-      } else if (char === delimiter && !insideQuote) {
-        cells.push(current)
-        current = ''
-      } else {
-        current += char
-      }
-    }
-    cells.push(current)
-    return cells
-  })
 }
 
 export function CsvPreview({ content, isTsv = false, onToggleRaw }: CsvPreviewProps) {

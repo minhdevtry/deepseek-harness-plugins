@@ -1,14 +1,18 @@
 /**
- * Floating Bubble Menu on text selection for TipTap.
+ * Contextual inline formatting toolbar for TipTap selections.
  *
- * Provides instant formatting controls: Bold, Italic, Underline, Strike, Code,
- * Highlight, Link, Alignment, and Block-type selection.
+ * Automatically suppresses itself inside code blocks where rich marks are
+ * invalid syntax, and debounces editor blur events with a short delay so
+ * clicks on toolbar actions (link mode, color palette, mention) execute
+ * before the menu unmounts.
  */
 import { useLayoutEffect, useRef, useState } from 'react'
 import type { Editor } from '@tiptap/core'
 import { HighlightPalette } from './highlight/HighlightPalette.tsx'
 import { getLineRangeForSelection } from '../utils/chatComposer.ts'
 import { appendToComposer, focusComposer } from '../composer.ts'
+import { clampBubblePosition } from '../utils/positioning.ts'
+import { basename } from '../utils/path.ts'
 import css from './BubbleMenu.module.css'
 
 export interface BubbleMenuProps {
@@ -57,18 +61,17 @@ export function BubbleMenu({ editor, path, markdown }: BubbleMenuProps) {
         const menuWidth = menuEl ? menuEl.offsetWidth : 300
         const menuHeight = menuEl ? menuEl.offsetHeight : 36
 
-        const top = Math.max(10, start.top - menuHeight - 8)
-        let left = (start.left + end.left) / 2
+        const pos = clampBubblePosition({
+          startTop: start.top,
+          startLeft: start.left,
+          endLeft: end.left,
+          width: menuWidth,
+          height: menuHeight,
+          margin: 12,
+          gap: 8,
+        })
 
-        // Keep inside viewport bounds
-        const viewportWidth = window.innerWidth
-        if (left - menuWidth / 2 < 12) {
-          left = 12 + menuWidth / 2
-        } else if (left + menuWidth / 2 > viewportWidth - 12) {
-          left = viewportWidth - 12 - menuWidth / 2
-        }
-
-        setCoords({ top, left })
+        setCoords(pos)
         setVisible(true)
       } catch {
         setVisible(false)
@@ -356,8 +359,13 @@ export function BubbleMenu({ editor, path, markdown }: BubbleMenuProps) {
                   const { from, to } = editor.state.selection
                   const selectedText = editor.state.doc.textBetween(from, to, '\n')
                   const fullText = markdown ? markdown() : ''
-                  const { rangeString } = getLineRangeForSelection(fullText, selectedText)
-                  const filename = path.split('/').pop() || path
+                  const textBefore = editor.state.doc.textBetween(0, from, '\n')
+                  const fromOffset = textBefore.length
+                  const { rangeString } = getLineRangeForSelection(fullText, selectedText, {
+                    from: fromOffset,
+                    to: fromOffset + selectedText.length,
+                  })
+                  const filename = basename(path) || path
                   if (appendToComposer(`@${filename} ${rangeString}`)) focusComposer()
                 }}
                 title="Mention Selection in Chat (Ctrl+L)"

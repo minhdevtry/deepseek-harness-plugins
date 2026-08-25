@@ -1,8 +1,9 @@
 /**
- * Source Control Management (SCM) Panel.
+ * Git source control workspace panel.
  *
- * Provides branch status, commit box, and lists for Staged and Unstaged changes
- * with 1-click stage, unstage, discard, and diff navigation.
+ * Segregates working tree modifications into Staged and Unstaged change-lists
+ * for granular commit building, and gates file discard behind an explicit
+ * confirmation dialog because uncommitted working-tree deletions cannot be undone.
  */
 import { useCallback, useEffect, useState } from 'react'
 import {
@@ -14,6 +15,7 @@ import {
   type GitFileChange,
   type GitStatus,
 } from '../api/files.ts'
+import { basename } from '../utils/path.ts'
 import css from './ScmPanel.module.css'
 
 export interface ScmPanelProps {
@@ -178,7 +180,7 @@ export function ScmPanel({ root, onOpenFile, onNotify }: ScmPanelProps) {
           <div className={css.emptyState}>No staged changes</div>
         ) : (
           staged.map((file: GitFileChange) => {
-            const name = file.path.split('/').pop() || file.path
+            const name = basename(file.path) || file.path
             const dir = file.path.includes('/') ? file.path.slice(0, file.path.lastIndexOf('/')) : ''
             const statusClass =
               file.status === 'M' ? css.statusM : file.status === 'A' ? css.statusA : css.statusD
@@ -228,7 +230,7 @@ export function ScmPanel({ root, onOpenFile, onNotify }: ScmPanelProps) {
           <div className={css.emptyState}>No working changes</div>
         ) : (
           unstaged.map((file: GitFileChange) => {
-            const name = file.path.split('/').pop() || file.path
+            const name = basename(file.path) || file.path
             const dir = file.path.includes('/') ? file.path.slice(0, file.path.lastIndexOf('/')) : ''
             const statusClass =
               file.status === 'M'

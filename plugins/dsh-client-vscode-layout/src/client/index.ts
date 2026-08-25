@@ -28,6 +28,7 @@ import { LayoutController } from './service.ts'
 import { ThemePresenter } from './theme-presenter.ts'
 import { mountSprite } from './explorer/icons/index.ts'
 import { createViewState, type ExplorerView } from './explorer/views.ts'
+import { basename } from './utils/path.ts'
 import { RailViews, type RailViewsInjected } from './explorer/RailViews.tsx'
 import { createFileSource } from './inputTriggers/fileSource.ts'
 import { installComposerWriter } from './composer.ts'
@@ -192,7 +193,7 @@ export function apply(ctx: ClientContext): void {
       return items.map(w => ({
         workspaceId: String(w.workspaceId),
         path: w.path,
-        name: w.title || w.path.split('/').pop() || w.path,
+        name: w.title || basename(w.path) || w.path,
       }))
     } catch {
       return []

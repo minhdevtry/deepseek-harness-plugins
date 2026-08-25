@@ -1,7 +1,10 @@
 /**
- * Sandboxed HTML Live Preview component.
+ * Isolated live HTML preview pane.
  *
- * Provides a responsive preview pane for HTML files with reload and raw source toggle.
+ * Runs inside a sandboxed iframe (`sandbox="allow-scripts allow-modals"`) to
+ * prevent preview scripts from accessing the host workbench DOM, cookies, or
+ * local storage. Manual reloads increment an explicit React key to force the
+ * browser to destroy and recreate the frame instance, wiping in-memory JS state.
  */
 import { useState } from 'react'
 import css from './HtmlPreview.module.css'

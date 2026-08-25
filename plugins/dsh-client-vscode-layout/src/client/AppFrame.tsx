@@ -27,6 +27,7 @@ import { CommandPalette, type CommandItem } from './ui/CommandPalette.tsx'
 import { InlineAI } from './ui/InlineAI.tsx'
 import { Toast, type ToastItem, type ToastType } from './ui/Toast.tsx'
 import { getLineRangeForSelection } from './utils/chatComposer.ts'
+import { basename } from './utils/path.ts'
 import { appendToComposer, focusComposer } from './composer.ts'
 import { installWorkbenchOpener } from './fileOpener.ts'
 import css from './AppFrame.module.css'
@@ -209,7 +210,11 @@ export function AppFrame({
         setCmdPalette(prev => !prev)
       } else if (mod && e.key.toLowerCase() === 'k') {
         e.preventDefault()
-        const sel = window.getSelection()?.toString() || ''
+        const activeSel = (window as any).__dsh_active_selection
+        const reported = activeSel?.path === panels.activePath
+          ? (activeSel.selectedText as string | undefined)
+          : undefined
+        const sel = reported ?? window.getSelection()?.toString() ?? ''
         setInlineSelection(sel.slice(0, 500))
         setInlineAIOpen(prev => !prev)
       } else if (mod && e.key.toLowerCase() === 'b') {
@@ -227,7 +232,7 @@ export function AppFrame({
         if (panels.activePath) {
           actions.openRight()
           actions.setRightTab('chat')
-          const filename = panels.activePath.split('/').pop() || panels.activePath
+          const filename = basename(panels.activePath) || panels.activePath
           const activeSel = (window as any).__dsh_active_selection
           let lineTag = ''
           if (activeSel && activeSel.path === panels.activePath && activeSel.rangeString) {
@@ -244,7 +249,10 @@ export function AppFrame({
             if (sel.trim().length > 0) {
               const docText = (window as any).__dsh_get_active_text?.(panels.activePath) || ''
               if (docText) {
-                const { rangeString } = getLineRangeForSelection(docText, sel)
+                const offsets = activeSel?.path === panels.activePath
+                  ? { from: activeSel.fromOffset ?? activeSel.from, to: activeSel.toOffset ?? activeSel.to }
+                  : undefined
+                const { rangeString } = getLineRangeForSelection(docText, sel, offsets)
                 if (rangeString) lineTag = ` ${rangeString}`
               }
             }
@@ -340,7 +348,7 @@ export function AppFrame({
         if (panels.activePath) {
           actions.openRight()
           actions.setRightTab('chat')
-          const filename = panels.activePath.split('/').pop() || panels.activePath
+          const filename = basename(panels.activePath) || panels.activePath
           if (appendToComposer(`@${filename}`)) focusComposer()
           else handleNotify('Open a session first', 'warning')
         } else {
@@ -353,13 +361,27 @@ export function AppFrame({
   const handleInlineAISubmit = useCallback((prompt: string, contextSnippet?: string) => {
     actions.openRight()
     actions.setRightTab('chat')
-    const filename = panels.activePath ? (panels.activePath.split('/').pop() || panels.activePath) : ''
+    const filename = panels.activePath ? (basename(panels.activePath) || panels.activePath) : ''
     let mentionTag = filename ? `@${filename}` : ''
     if (filename && contextSnippet && contextSnippet.trim().length > 0) {
-      const docText = (window as any).__dsh_get_active_text?.(panels.activePath!) || ''
-      if (docText) {
-        const { rangeString } = getLineRangeForSelection(docText, contextSnippet)
-        if (rangeString) mentionTag = `@${filename} ${rangeString}`
+      const activeSel = (window as any).__dsh_active_selection
+      if (
+        activeSel &&
+        activeSel.path === panels.activePath &&
+        activeSel.rangeString &&
+        typeof activeSel.selectedText === 'string' &&
+        activeSel.selectedText.trim() === contextSnippet.trim()
+      ) {
+        mentionTag = `@${filename} ${activeSel.rangeString}`
+      } else {
+        const docText = (window as any).__dsh_get_active_text?.(panels.activePath!) || ''
+        if (docText) {
+          const offsets = activeSel?.path === panels.activePath
+            ? { from: activeSel.fromOffset ?? activeSel.from, to: activeSel.toOffset ?? activeSel.to }
+            : undefined
+          const { rangeString } = getLineRangeForSelection(docText, contextSnippet, offsets)
+          if (rangeString) mentionTag = `@${filename} ${rangeString}`
+        }
       }
     }
     const fullMention = mentionTag ? `${mentionTag} ${prompt}` : prompt

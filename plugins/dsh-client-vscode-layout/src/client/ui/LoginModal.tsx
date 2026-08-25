@@ -1,8 +1,11 @@
 /**
- * Collaboration & Workspace Access Modal.
+ * Workspace authentication and collaborator profile selection.
  *
- * Provides profile selection (Lucas / Lona) and workspace authentication
- * for Cloudflare tunnel & remote collaboration.
+ * Catches all localStorage read/write failures on the assumption that privacy-mode
+ * browsers (e.g. Safari Private Browsing, restricted iframe sandboxes) can throw
+ * on storage access; an initial auth check failure simply presents the login form,
+ * and a successful login proceeds in-memory for the current session even if token
+ * persistence to disk fails.
  */
 import { useEffect, useState } from 'react'
 import { TOKEN_KEY } from '../api/files.ts'

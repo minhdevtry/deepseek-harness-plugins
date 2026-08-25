@@ -23,6 +23,7 @@ import type { ExplorerView } from './views.ts'
 import { FileTree, type FileTreeHandle } from './FileTree.tsx'
 import { SearchPanel } from './SearchPanel.tsx'
 import { ScmPanel } from './ScmPanel.tsx'
+import { useAutoClear } from '../utils/useAutoClear.ts'
 import css from './ExplorerPanel.module.css'
 
 /** Explorer panel props. */
@@ -96,11 +97,7 @@ export function ExplorerPanel({
   }, [])
 
   // Auto-clear the footer: a stale "Path copied" three minutes later is noise.
-  useEffect(() => {
-    if (notice === undefined) return
-    const timer = setTimeout(() => { setNotice(undefined) }, NOTICE_MS)
-    return () => { clearTimeout(timer) }
-  }, [notice])
+  useAutoClear(notice, () => { setNotice(undefined) }, NOTICE_MS)
 
   return (
     <div className={css.panel}>

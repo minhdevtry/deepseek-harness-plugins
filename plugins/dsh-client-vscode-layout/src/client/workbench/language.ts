@@ -43,18 +43,7 @@ const DISPLAY_BY_NAME: Readonly<Record<string, string>> = {
   '.env': 'Properties',
 }
 
-/** Last extension of a path, lowercased; empty when there is none. */
-function extensionOf(path: string): string {
-  const name = path.replace(/\\/g, '/').split('/').pop() ?? ''
-  const dot = name.lastIndexOf('.')
-  // A leading dot is part of the name (`.gitignore`), not an extension marker.
-  return dot > 0 ? name.slice(dot + 1).toLowerCase() : ''
-}
-
-/** Base name of a path, lowercased. */
-function baseNameOf(path: string): string {
-  return (path.replace(/\\/g, '/').split('/').pop() ?? '').toLowerCase()
-}
+import { basename, extensionOf } from '../utils/path.ts'
 
 /**
  * Whether a path is markdown — the one extension that gets a WYSIWYG document
@@ -72,7 +61,7 @@ export function isMarkdown(path: string): boolean {
  * @returns a human name; 'Plain Text' when nothing is recognised.
  */
 export function languageName(path: string): string {
-  return DISPLAY_BY_NAME[baseNameOf(path)] ?? DISPLAY_BY_EXT[extensionOf(path)] ?? 'Plain Text'
+  return DISPLAY_BY_NAME[basename(path).toLowerCase()] ?? DISPLAY_BY_EXT[extensionOf(path)] ?? 'Plain Text'
 }
 
 /**

@@ -1,10 +1,12 @@
 /**
- * Toast Notification System.
+ * Transient status notifications.
  *
- * Provides non-intrusive, transient feedback messages for operations like
- * file saves, copy path, git actions, and errors.
+ * Renders in a dedicated `aria-live="polite"` container so assistive tech
+ * announces notifications without interrupting ongoing interaction. Each row
+ * manages its own auto-clear lifecycle so rapid successive toasts dismiss
+ * independently without timer collisions or queue starvation.
  */
-import { useEffect } from 'react'
+import { useAutoClear } from '../utils/useAutoClear.ts'
 import css from './Toast.module.css'
 
 export type ToastType = 'info' | 'success' | 'warning' | 'error'
@@ -40,12 +42,7 @@ export function Toast({ toasts, onDismiss }: ToastProps) {
 }
 
 function ToastRow({ toast, onDismiss }: { toast: ToastItem; onDismiss: (id: string) => void }) {
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      onDismiss(toast.id)
-    }, 3200)
-    return () => { clearTimeout(timer) }
-  }, [toast.id, onDismiss])
+  useAutoClear(toast.id, () => { onDismiss(toast.id) }, 3200)
 
   const typeClass =
     toast.type === 'success'

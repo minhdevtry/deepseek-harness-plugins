@@ -1,13 +1,16 @@
 /**
- * Quick Open Palette Modal (Ctrl+P).
+ * Fast fuzzy file switcher and line-jump modal.
  *
- * Fast file switcher searching open tabs and workspace files with fuzzy ranking.
- * Supports line jumps via `:line` syntax (e.g. `AppFrame.tsx:42`).
+ * Populates from open tabs when the query is empty to avoid round-tripping to
+ * the host filesystem search, and aborts previous in-flight searches on every
+ * keystroke via AbortController so fast typing never surfaces stale results.
  */
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { searchNames, type NameHit } from '../api/files.ts'
 import { fileIconId } from '../explorer/icons/index.ts'
 import { FileIcon } from '../explorer/FileIcon.tsx'
+import { basename } from '../utils/path.ts'
+import { usePickerNavigation } from '../utils/usePickerNavigation.ts'
 import css from './QuickOpen.module.css'
 
 export interface QuickOpenProps {
@@ -21,15 +24,10 @@ export interface QuickOpenProps {
 export function QuickOpen({ open, root, tabs, onOpenFile, onClose }: QuickOpenProps) {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<NameHit[]>([])
-  const [selectedIndex, setSelectedIndex] = useState(0)
-  const inputRef = useRef<HTMLInputElement | null>(null)
 
-  // Focus input when opened
   useEffect(() => {
     if (open) {
       setQuery('')
-      setSelectedIndex(0)
-      setTimeout(() => { inputRef.current?.focus() }, 30)
     }
   }, [open])
 
@@ -45,6 +43,21 @@ export function QuickOpen({ open, root, tabs, onOpenFile, onClose }: QuickOpenPr
     return { cleanQuery: query.trim(), jumpLine: undefined }
   }, [query])
 
+  const executeSelection = (hit: NameHit) => {
+    onOpenFile(hit.path, jumpLine)
+    onClose()
+  }
+
+  const { selectedIndex, setSelectedIndex, inputRef, handleKeyDown } = usePickerNavigation({
+    open,
+    itemCount: results.length,
+    onSelect: idx => {
+      const selected = results[idx]
+      if (selected) executeSelection(selected)
+    },
+    onClose,
+  })
+
   // Fetch search results from host
   useEffect(() => {
     if (!open) return
@@ -53,7 +66,7 @@ export function QuickOpen({ open, root, tabs, onOpenFile, onClose }: QuickOpenPr
     if (cleanQuery.length === 0) {
       // Empty query shows currently open tabs
       const tabHits: NameHit[] = tabs.map(path => {
-        const name = path.split('/').pop() ?? path
+        const name = basename(path) || path
         const rel = root !== undefined && path.startsWith(root) ? path.slice(root.length + 1) : path
         return { name, path, rel }
       })
@@ -76,34 +89,7 @@ export function QuickOpen({ open, root, tabs, onOpenFile, onClose }: QuickOpenPr
     return () => {
       controller.abort()
     }
-  }, [cleanQuery, open, root, tabs])
-
-  const executeSelection = (hit: NameHit) => {
-    onOpenFile(hit.path, jumpLine)
-    onClose()
-  }
-
-  // Keyboard navigation
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'ArrowDown') {
-      e.preventDefault()
-      if (results.length > 0) {
-        setSelectedIndex(prev => (prev + 1) % results.length)
-      }
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault()
-      if (results.length > 0) {
-        setSelectedIndex(prev => (prev - 1 + results.length) % results.length)
-      }
-    } else if (e.key === 'Enter') {
-      e.preventDefault()
-      const selected = results[selectedIndex]
-      if (selected) executeSelection(selected)
-    } else if (e.key === 'Escape') {
-      e.preventDefault()
-      onClose()
-    }
-  }
+  }, [cleanQuery, open, root, tabs, setSelectedIndex])
 
   if (!open) return null
 

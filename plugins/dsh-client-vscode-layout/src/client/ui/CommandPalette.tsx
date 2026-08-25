@@ -1,9 +1,13 @@
 /**
- * Command Palette Modal (Ctrl+Shift+P / F1).
+ * Keyboard-driven command launcher.
  *
- * Provides quick keyboard access to all IDE and editor actions.
+ * Actions dismiss the modal *before* invoking their callbacks so focus returns
+ * to the underlying surface rather than trapping key events inside an unmounted
+ * input. Delayed focus on mount ensures the browser finishes transitioning the
+ * backdrop before assigning caret focus.
  */
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { usePickerNavigation } from '../utils/usePickerNavigation.ts'
 import css from './CommandPalette.module.css'
 
 export interface CommandItem {
@@ -22,14 +26,10 @@ export interface CommandPaletteProps {
 
 export function CommandPalette({ open, commands, onClose }: CommandPaletteProps) {
   const [query, setQuery] = useState('')
-  const [selectedIndex, setSelectedIndex] = useState(0)
-  const inputRef = useRef<HTMLInputElement | null>(null)
 
   useEffect(() => {
     if (open) {
       setQuery('')
-      setSelectedIndex(0)
-      setTimeout(() => { inputRef.current?.focus() }, 30)
     }
   }, [open])
 
@@ -49,26 +49,20 @@ export function CommandPalette({ open, commands, onClose }: CommandPaletteProps)
     cmd.action()
   }
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'ArrowDown') {
-      e.preventDefault()
-      if (filteredCommands.length > 0) {
-        setSelectedIndex(prev => (prev + 1) % filteredCommands.length)
-      }
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault()
-      if (filteredCommands.length > 0) {
-        setSelectedIndex(prev => (prev - 1 + filteredCommands.length) % filteredCommands.length)
-      }
-    } else if (e.key === 'Enter') {
-      e.preventDefault()
-      const selected = filteredCommands[selectedIndex]
+  const { selectedIndex, setSelectedIndex, inputRef, handleKeyDown } = usePickerNavigation({
+    open,
+    itemCount: filteredCommands.length,
+    onSelect: idx => {
+      const selected = filteredCommands[idx]
       if (selected) executeSelection(selected)
-    } else if (e.key === 'Escape') {
-      e.preventDefault()
-      onClose()
-    }
-  }
+    },
+    onClose,
+  })
+
+  // Reset selected index when query changes
+  useEffect(() => {
+    setSelectedIndex(0)
+  }, [query, setSelectedIndex])
 
   if (!open) return null
 

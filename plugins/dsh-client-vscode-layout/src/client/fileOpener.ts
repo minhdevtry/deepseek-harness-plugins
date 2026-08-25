@@ -70,13 +70,7 @@ const OS_EXTENSIONS: ReadonlySet<string> = new Set([
  */
 const KNOWN_FILE = /\.(md|markdown|mdx|txt|log|json|jsonc|ya?ml|toml|ini|env|csv|tsv|html?|xml|svg|css|scss|less|[cm]?[jt]sx?|py|pyi|rs|go|java|kt|swift|c|h|cpp|cc|hpp|cs|rb|php|lua|sql|graphql|gql|sh|bash|zsh|fish|png|jpe?g|gif|webp|ico|bmp|patch|diff|lock)$/i
 
-/** Last extension of a path, lowercased; empty when there is none. */
-function extensionOf(path: string): string {
-  const name = path.replace(/\\/g, '/').split('/').pop() ?? ''
-  const dot = name.lastIndexOf('.')
-  // A leading dot is part of the name (`.gitignore`), not an extension marker.
-  return dot > 0 ? name.slice(dot + 1).toLowerCase() : ''
-}
+import { extensionOf } from './utils/path.ts'
 
 /** How a clicked path should be routed. */
 export type Route =

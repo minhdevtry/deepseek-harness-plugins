@@ -38,6 +38,8 @@ import { editorTheme } from './theme.ts'
 import { CodeEditor, type CodeEditorHandle, type CursorInfo } from './CodeEditor.tsx'
 import { TabStrip } from './TabStrip.tsx'
 import { Breadcrumb } from './Breadcrumb.tsx'
+import { useAutoClear } from '../utils/useAutoClear.ts'
+import { basename } from '../utils/path.ts'
 import { StatusBar } from './StatusBar.tsx'
 import { DiffView } from './DiffView.tsx'
 import { TipTapEditor } from '../tiptap/TipTapEditor.tsx'
@@ -233,11 +235,7 @@ export function Workbench({
   saveRef.current = (path) => { void save(path) }
 
   // Clear the transient "Saved ✓" mark; a failure stays until the next attempt.
-  useEffect(() => {
-    if (saveState !== 'saved') return
-    const timer = setTimeout(() => { setSaveState('idle') }, SAVED_MS)
-    return () => { clearTimeout(timer) }
-  }, [saveState])
+  useAutoClear(saveState === 'saved', () => { setSaveState('idle') }, SAVED_MS)
 
   /**
    * Everything with unsaved edits, from whichever registry owns it.
@@ -495,7 +493,7 @@ export function Workbench({
                   <div className={css.editor}>
                     <HtmlPreview
                       content={status.state.doc.toString()}
-                      title={activePath.split('/').pop()}
+                      title={basename(activePath)}
                       onToggleRaw={() => {
                         setRawModes(prev => ({ ...prev, [activePath]: true }))
                       }}
@@ -573,7 +571,7 @@ export function Workbench({
       {pendingClose !== undefined && (
         <Dialog
           title="Unsaved changes"
-          message={`"${pendingClose.path.split('/').pop() ?? pendingClose.path}" has changes that are not written to disk.`}
+          message={`"${basename(pendingClose.path) || pendingClose.path}" has changes that are not written to disk.`}
           busy={pendingClose.busy}
           error={pendingClose.error}
           actions={[
