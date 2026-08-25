@@ -10,7 +10,7 @@ import type { Editor } from '@tiptap/core'
 import { Button, IconButton } from '../ui/primitives/index.ts'
 import css from './MediaModal.module.css'
 
-export type MediaModalType = 'image' | 'youtube' | 'video' | 'table'
+export type MediaModalType = 'image' | 'youtube' | 'table'
 
 export interface MediaModalProps {
   type: MediaModalType
@@ -50,11 +50,6 @@ export function MediaModal({ type, editor, onClose }: MediaModalProps) {
       if (trimmed !== '') {
         editor.chain().focus().setYoutubeVideo({ src: trimmed }).run()
       }
-    } else if (type === 'video') {
-      const trimmed = url.trim()
-      if (trimmed !== '') {
-        editor.chain().focus().setVideoEmbed({ src: trimmed }).run()
-      }
     } else if (type === 'table') {
       const r = Math.max(1, Math.min(20, rows))
       const c = Math.max(1, Math.min(20, cols))
@@ -67,7 +62,6 @@ export function MediaModal({ type, editor, onClose }: MediaModalProps) {
   const title =
     type === 'image' ? 'Insert Image'
     : type === 'youtube' ? 'Embed YouTube Video'
-    : type === 'video' ? 'Embed Video'
     : 'Insert Table'
 
   return (
@@ -121,22 +115,7 @@ export function MediaModal({ type, editor, onClose }: MediaModalProps) {
                   ref={inputRef}
                   type="url"
                   className={css.input}
-                  placeholder="https://www.youtube.com/watch?v=..."
-                  value={url}
-                  onChange={e => { setUrl(e.target.value) }}
-                  required
-                />
-              </div>
-            )}
-
-            {type === 'video' && (
-              <div className={css.field}>
-                <label className={css.label}>Video URL</label>
-                <input
-                  ref={inputRef}
-                  type="url"
-                  className={css.input}
-                  placeholder="YouTube, Bilibili, or a direct .mp4 URL"
+                  placeholder="https://www.youtube.com/watch?v=... or https://youtu.be/..."
                   value={url}
                   onChange={e => { setUrl(e.target.value) }}
                   required

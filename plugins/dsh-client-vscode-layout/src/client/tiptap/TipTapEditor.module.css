@@ -1145,3 +1145,35 @@
   pointer-events: none;
   transition: all 0.06s ease-out;
 }
+
+/* ── TipTap Official YouTube Video Embed ── */
+.container :global(div[data-youtube-video]) {
+  display: flex;
+  justify-content: center;
+  margin: 20px 0;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.container :global(div[data-youtube-video] iframe) {
+  width: 100%;
+  max-width: 720px;
+  aspect-ratio: 16 / 9;
+  height: auto;
+  border: 1px solid var(--dsw-alias-border-l1, rgba(0, 0, 0, 0.08));
+  border-radius: var(--radius-md, 8px);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.09);
+  background: #000000;
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.container :global(div[data-youtube-video] iframe:hover) {
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.14);
+}
+
+.container :global(div[data-youtube-video].ProseMirror-selectednode iframe),
+.container :global(.ProseMirror-selectednode div[data-youtube-video] iframe) {
+  outline: 2px solid var(--dsw-alias-state-business-primary, #3b82f6);
+  outline-offset: 2px;
+}

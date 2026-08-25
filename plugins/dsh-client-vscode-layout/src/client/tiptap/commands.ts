@@ -32,7 +32,7 @@ export type Group = (typeof GROUPS)[number]
 export type CommandId =
   | 'paragraph' | 'heading1' | 'heading2' | 'heading3'
   | 'bulletList' | 'orderedList' | 'taskList' | 'blockquote'
-  | 'codeBlock' | 'table' | 'image' | 'youtube' | 'video'
+  | 'codeBlock' | 'table' | 'image' | 'youtube'
   | 'callout' | 'details' | 'divider' | 'mermaid' | 'mathBlock'
   | 'toc'
 
@@ -73,8 +73,7 @@ export const SLASH_COMMANDS: readonly SlashCommand[] = [
   { id: 'taskList', group: 'lists', title: 'To-do list', hint: 'Checkboxes you can tick', aliases: ['todo', 'task', 'checkbox', 'check'], shortcut: '[]' },
 
   { id: 'image', group: 'media', title: 'Image', hint: 'Embed a picture by URL', aliases: ['picture', 'photo', 'img'] },
-  { id: 'youtube', group: 'media', title: 'YouTube', hint: 'Embed a YouTube video', aliases: ['video', 'yt', 'embed'] },
-  { id: 'video', group: 'media', title: 'Video Player', hint: 'Embed YouTube, Bilibili or MP4 video', aliases: ['bilibili', 'movie', 'media', 'mp4', 'clip'] },
+  { id: 'youtube', group: 'media', title: 'YouTube Video', hint: 'Embed a YouTube video player', aliases: ['yt', 'embed', 'player', 'clip', 'media'] },
   { id: 'table', group: 'media', title: 'Table', hint: 'Insert a table with header row', aliases: ['grid', 'spreadsheet'] },
 
   { id: 'codeBlock', group: 'advanced', title: 'Code block', hint: 'Syntax-highlighted code', aliases: ['snippet', 'fence', 'pre'], shortcut: '```' },

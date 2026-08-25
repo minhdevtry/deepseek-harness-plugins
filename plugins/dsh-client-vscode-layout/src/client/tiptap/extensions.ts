@@ -37,7 +37,6 @@ import { RichCodeBlockLowlight } from './codeblock/CodeBlockExtension.ts'
 import { MermaidExtension } from './mermaid/MermaidExtension.tsx'
 import { MathBlockExtension } from './math/MathExtension.tsx'
 import { HeadingFoldExtension } from './headingFold/HeadingFoldPlugin.ts'
-import { VideoEmbedExtension } from './video/VideoExtension.tsx'
 import { RichImageExtension } from './image/ImageViewExtension.tsx'
 import { RawHtmlLineExtension } from './html/rawHtmlLine.ts'
 
@@ -134,10 +133,21 @@ export function documentExtensions(): Extensions {
     HeadingFoldExtension,
     MermaidExtension,
     MathBlockExtension,
-    VideoEmbedExtension,
     RichImageExtension,
     Image,
-    Youtube.configure({ controls: true, nocookie: true }),
+    Youtube.configure({
+      inline: false,
+      nocookie: false,
+      allowFullscreen: true,
+      autoplay: false,
+      controls: true,
+      HTMLAttributes: {
+        class: 'tiptap-youtube-video',
+        allow: 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share',
+        allowfullscreen: 'true',
+        referrerpolicy: 'no-referrer-when-downgrade',
+      },
+    }),
     CompactTable.configure({ resizable: true }),
     TableRow,
     TableHeader,
