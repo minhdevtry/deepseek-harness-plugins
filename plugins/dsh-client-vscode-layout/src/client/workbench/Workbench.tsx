@@ -245,8 +245,13 @@ export function Workbench({
    * the buffer cannot know any more: it only hears about the tree at save time.
    */
   const dirty = useMemo(() => {
-    const all = new Set(buffers.dirty)
-    for (const path of docs.dirty) all.add(path)
+    const all = new Set<string>()
+    for (const path of buffers.dirty) {
+      if (!isMarkdown(path)) all.add(path)
+    }
+    for (const path of docs.dirty) {
+      all.add(path)
+    }
     return all
   }, [buffers.dirty, docs.dirty])
 

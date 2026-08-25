@@ -112,7 +112,7 @@ export function roundTrip(text: string): string {
   const editor = new Editor({
     // Detached element: never attached to the document, so it lays out nothing
     // and is discarded with the editor.
-    element: document.createElement('div'),
+    element: typeof document !== 'undefined' ? document.createElement('div') : null,
     extensions: documentExtensions(),
     // `text` here is markdown that already regenerated raw HTML lines back to
     // their real bytes (see rawHtmlLine.ts), same as any file loaded from

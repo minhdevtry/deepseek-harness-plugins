@@ -125,7 +125,7 @@ export class DocumentRegistry {
   /** True when a path's tree differs from what was parsed at open. */
   isDirty(path: string): boolean {
     const doc = this.#docs.get(path)
-    return doc !== undefined && !doc.editor.state.doc.eq(doc.diskDoc)
+    return doc !== undefined && isDocDirty(doc.editor.state.doc, doc.diskDoc)
   }
 
   /**
@@ -175,6 +175,15 @@ export class DocumentRegistry {
       content: encodeRawHtmlLines(markdown),
       contentType: 'markdown',
     })
+
+    // If the parsed document ends with a non-paragraph block (e.g. table, code),
+    // append an empty trailing paragraph so the in-memory tree matches
+    // ProseMirror DOM schema normalization from the start.
+    const lastNode = editor.state.doc.lastChild
+    if (lastNode && lastNode.type.name !== 'paragraph') {
+      editor.commands.insertContentAt(editor.state.doc.content.size, { type: 'paragraph' })
+    }
+
     this.#docs.set(path, {
       editor,
       diskDoc: editor.state.doc,
@@ -183,10 +192,6 @@ export class DocumentRegistry {
       pendingCanonical: undefined,
       host: null,
     })
-    // Dirtiness is derived, so the only listener this registry needs is one
-    // that fires when the tree changes. Serialisation is not in this path, and
-    // `structural: false` keeps a keystroke from re-rendering the workbench
-    // unless it actually flipped the dirty flag.
     editor.on('update', () => { this.#bump(false) })
     this.#bump(true)
     return editor
@@ -223,15 +228,21 @@ export class DocumentRegistry {
   attach(path: string, el: HTMLElement): Editor | undefined {
     const doc = this.#docs.get(path)
     if (doc === undefined) return undefined
+    const isFirstMount = doc.host === null
+    const wasClean = isFirstMount || !isDocDirty(doc.editor.state.doc, doc.diskDoc)
     // Guard against a double mount: React can run an effect twice in
     // development, and mounting a live editor again would build a second view
     // over the same state.
     if (doc.host !== null) doc.editor.unmount()
     doc.editor.mount(el)
     doc.host = el
-    // No bump: mounting changes nothing anybody observes through the snapshot,
-    // and notifying from inside a view's mount effect would re-render the tree
-    // that is still committing.
+    // On mount, ProseMirror's DOM view normalization (e.g. trailing paragraph
+    // after a final table or block node) may reconcile the schema in DOM.
+    // If the document was clean before mounting, rebase diskDoc to this clean
+    // post-mount state so initial view layout is never mistaken for user edits.
+    if (wasClean) {
+      doc.diskDoc = doc.editor.state.doc
+    }
     return doc.editor
   }
 
@@ -365,7 +376,9 @@ export class DocumentRegistry {
   #bump(structural: boolean): void {
     const dirty = new Set<string>()
     for (const [path, doc] of this.#docs) {
-      if (!doc.editor.state.doc.eq(doc.diskDoc)) dirty.add(path)
+      if (isDocDirty(doc.editor.state.doc, doc.diskDoc)) {
+        dirty.add(path)
+      }
     }
     if (!structural && sameSet(dirty, this.#snapshot.dirty)) return
     this.#snapshot = { version: this.#snapshot.version + 1, dirty }
@@ -374,6 +387,52 @@ export class DocumentRegistry {
       try { listener() } catch { /* a broken listener is not the registry's problem */ }
     }
   }
+}
+
+/**
+ * Compare two ProseMirror documents for user-made semantic changes.
+ *
+ * Reconciles ProseMirror's mandatory DOM view normalization (e.g. inserting an
+ * empty trailing paragraph after a table or code block) so DOM schema repair
+ * is never mistaken for user document edits.
+ */
+export function isDocDirty(liveDoc: ProseMirrorNode, diskDoc: ProseMirrorNode): boolean {
+  if (liveDoc.eq(diskDoc)) return false
+
+  const liveCount = liveDoc.childCount
+  const diskCount = diskDoc.childCount
+
+  // Case 1: liveDoc has an extra empty paragraph at the end
+  if (liveCount === diskCount + 1) {
+    const lastLive = liveDoc.lastChild
+    if (lastLive && lastLive.type.name === 'paragraph' && lastLive.content.size === 0) {
+      let allMatch = true
+      for (let i = 0; i < diskCount; i++) {
+        if (!liveDoc.child(i).eq(diskDoc.child(i))) {
+          allMatch = false
+          break
+        }
+      }
+      if (allMatch) return false
+    }
+  }
+
+  // Case 2: diskDoc has an extra empty paragraph at the end
+  if (diskCount === liveCount + 1) {
+    const lastDisk = diskDoc.lastChild
+    if (lastDisk && lastDisk.type.name === 'paragraph' && lastDisk.content.size === 0) {
+      let allMatch = true
+      for (let i = 0; i < liveCount; i++) {
+        if (!liveDoc.child(i).eq(diskDoc.child(i))) {
+          allMatch = false
+          break
+        }
+      }
+      if (allMatch) return false
+    }
+  }
+
+  return true
 }
 
 /**

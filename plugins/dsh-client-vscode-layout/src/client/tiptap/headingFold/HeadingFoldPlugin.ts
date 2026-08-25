@@ -99,9 +99,10 @@ export const HeadingFoldExtension = Extension.create({
               btn.setAttribute('data-heading-fold-btn', 'true')
               btn.setAttribute('data-pos', String(h.pos))
               btn.setAttribute('title', isCollapsed ? 'Expand section' : 'Collapse section')
+              btn.contentEditable = 'false'
               btn.innerHTML = isCollapsed ? CHEVRON_RIGHT : CHEVRON_DOWN
 
-              decos.push(Decoration.widget(h.pos + 1, btn, { side: -1 }))
+              decos.push(Decoration.widget(h.pos + 1, btn, { side: -1, stopEvent: () => true, ignoreSelection: true }))
 
               if (isCollapsed) {
                 // Find where this folded section ends (next heading with level <= current level)
@@ -122,7 +123,8 @@ export const HeadingFoldExtension = Extension.create({
                   indicator.setAttribute('data-heading-indicator', 'true')
                   indicator.setAttribute('data-pos', String(h.pos))
                   indicator.textContent = '… (folded)'
-                  decos.push(Decoration.widget(h.pos + h.nodeSize - 1, indicator, { side: 1 }))
+                  indicator.contentEditable = 'false'
+                  decos.push(Decoration.widget(h.pos + h.nodeSize - 1, indicator, { side: 1, stopEvent: () => true, ignoreSelection: true }))
 
                   // Hide nodes in the folded range
                   doc.nodesBetween(foldStart, foldEnd, (childNode, childPos) => {
