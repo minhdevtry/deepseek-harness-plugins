@@ -26,6 +26,8 @@ import { TableOfContents } from './toc/TableOfContents.tsx'
 import { FindBar } from './findBar/FindBar.tsx'
 import { FrontmatterWidget } from './frontmatter/FrontmatterWidget.tsx'
 import { DragHandleMenu } from './dragHandle/DragHandleMenu.tsx'
+import { InlineAIPopover } from './ai/InlineAIPopover.tsx'
+import type { AIState } from './ai/types.ts'
 import { Button, IconButton, Tooltip } from '../ui/primitives/index.ts'
 import { resolveRelativePath } from '../utils/path.ts'
 import { openInWorkbench } from '../fileOpener.ts'
@@ -76,8 +78,38 @@ export function TipTapEditor({
   })
   const [findBarOpen, setFindBarOpen] = useState(false)
   const [copiedMd, setCopiedMd] = useState(false)
+  const [aiState, setAiState] = useState<AIState | null>(null)
 
   const isDirty = documents.isDirty(path)
+
+  const openAI = (customInitialPrompt?: string) => {
+    if (!editor) return
+    const { selection } = editor.state
+    const { from, to, empty } = selection
+    const originalText = empty ? '' : editor.state.doc.textBetween(from, to, ' ')
+    const promptStr = typeof customInitialPrompt === 'string' ? customInitialPrompt : ''
+
+    try {
+      const coords = editor.view.coordsAtPos(from)
+      setAiState({
+        status: 'prompting',
+        pos: { top: coords.bottom + 4, left: coords.left },
+        range: { from, to },
+        originalText,
+        generatedText: '',
+        customPrompt: promptStr || undefined,
+      })
+    } catch {
+      setAiState({
+        status: 'prompting',
+        pos: { top: 120, left: 240 },
+        range: { from, to },
+        originalText,
+        generatedText: '',
+        customPrompt: promptStr || undefined,
+      })
+    }
+  }
 
   const toggleOutline = () => {
     setOutlineOpen(prev => {
@@ -311,6 +343,9 @@ export function TipTapEditor({
       } else if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
         e.preventDefault()
         setFindBarOpen((prev) => !prev)
+      } else if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'K')) {
+        e.preventDefault()
+        openAI()
       }
     }
 
@@ -318,12 +353,36 @@ export function TipTapEditor({
     return () => {
       window.removeEventListener('keydown', handleKeyDown)
     }
-  }, [onSave, path])
+  }, [onSave, path, editor])
 
   return (
     <div className={css.wrapper}>
       {/* Top action bar */}
       <div className={css.topBar}>
+        <Tooltip content="Ask AI / In-line AI Assistant (Ctrl+K)">
+          <Button
+            size="xs"
+            variant="ghost"
+            onClick={() => openAI()}
+            style={{
+              color: '#c084fc',
+              fontWeight: 600,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '4px',
+              padding: '2px 8px',
+              background: 'rgba(168, 85, 247, 0.12)',
+              border: '1px solid rgba(168, 85, 247, 0.25)',
+              borderRadius: '6px',
+            }}
+          >
+            <span>✨</span>
+            <span>Ask AI</span>
+          </Button>
+        </Tooltip>
+
+        <span style={{ width: 1, height: 16, background: 'var(--dsw-alias-border-l2, #cbd5e1)', margin: '0 4px' }} />
+
         <Tooltip content="Document Outline / Table of Contents">
           <IconButton
             size="xs"
@@ -505,7 +564,7 @@ export function TipTapEditor({
       {editor && <LinkBubble editor={editor} currentPath={path} />}
 
       {/* Floating Bubble Menu on Selection */}
-      {editor && <BubbleMenu editor={editor} path={path} markdown={() => documents.preview(path) ?? ''} />}
+      {editor && <BubbleMenu editor={editor} path={path} markdown={() => documents.preview(path) ?? ''} onOpenAI={openAI} />}
 
       {/* In-Editor FindBar */}
       {editor && (
@@ -513,6 +572,15 @@ export function TipTapEditor({
           editor={editor}
           isOpen={findBarOpen}
           onClose={() => setFindBarOpen(false)}
+        />
+      )}
+
+      {/* In-Line AI Assistant Popover & Review Bar */}
+      {editor && aiState && (
+        <InlineAIPopover
+          editor={editor}
+          aiState={aiState}
+          onClose={() => setAiState(null)}
         />
       )}
 
@@ -538,6 +606,7 @@ export function TipTapEditor({
           onClose={() => { setSlashState(null) }}
           onOpenMediaModal={type => { setMediaModal(type) }}
           onToggleToc={() => { setOutlineOpen(true) }}
+          onOpenAI={openAI}
         />
       )}
 

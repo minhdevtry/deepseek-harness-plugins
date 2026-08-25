@@ -19,17 +19,11 @@ import css from './BubbleMenu.module.css'
 export interface BubbleMenuProps {
   editor: Editor
   path?: string
-  /**
-   * The document's markdown, resolved on demand.
-   *
-   * A thunk rather than a string: it is needed only when Mention is clicked,
-   * and serialising the document on every render of a menu that follows the
-   * caret would be exactly the cost this editor was restructured to avoid.
-   */
   markdown?: () => string
+  onOpenAI?: () => void
 }
 
-export function BubbleMenu({ editor, path, markdown }: BubbleMenuProps) {
+export function BubbleMenu({ editor, path, markdown, onOpenAI }: BubbleMenuProps) {
   const menuRef = useRef<HTMLDivElement | null>(null)
   const [visible, setVisible] = useState(false)
   const [coords, setCoords] = useState<{ top: number; left: number }>({ top: 0, left: 0 })
@@ -217,6 +211,32 @@ export function BubbleMenu({ editor, path, markdown }: BubbleMenuProps) {
         </div>
       ) : (
         <>
+          {onOpenAI && (
+            <>
+              <button
+                type="button"
+                className={css.button}
+                onClick={() => onOpenAI?.()}
+                style={{
+                  color: '#c084fc',
+                  fontWeight: 600,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  padding: '3px 8px',
+                  background: 'rgba(168, 85, 247, 0.15)',
+                  border: '1px solid rgba(168, 85, 247, 0.35)',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                }}
+              >
+                <span>✨</span>
+                <span>Ask AI</span>
+              </button>
+              <span className={css.divider} />
+            </>
+          )}
+
           <select
             className={css.select}
             value={currentBlockType()}

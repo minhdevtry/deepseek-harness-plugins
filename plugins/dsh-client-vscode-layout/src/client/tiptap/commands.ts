@@ -30,10 +30,24 @@ export type Group = (typeof GROUPS)[number]
 
 /** Stable identifier of a command; the editor maps these to transactions. */
 export type CommandId =
-  | 'paragraph' | 'heading1' | 'heading2' | 'heading3'
-  | 'bulletList' | 'orderedList' | 'taskList' | 'blockquote'
-  | 'codeBlock' | 'table' | 'image' | 'youtube'
-  | 'callout' | 'details' | 'divider' | 'mermaid' | 'mathBlock'
+  | 'ai'
+  | 'paragraph'
+  | 'heading1'
+  | 'heading2'
+  | 'heading3'
+  | 'bulletList'
+  | 'orderedList'
+  | 'taskList'
+  | 'blockquote'
+  | 'codeBlock'
+  | 'table'
+  | 'image'
+  | 'youtube'
+  | 'callout'
+  | 'details'
+  | 'divider'
+  | 'mermaid'
+  | 'mathBlock'
   | 'toc'
 
 /** One entry in the slash menu. */
@@ -62,6 +76,7 @@ export interface SlashCommand {
  * would offer a writer an "insert alignment" that inserts nothing.
  */
 export const SLASH_COMMANDS: readonly SlashCommand[] = [
+  { id: 'ai', group: 'basic', title: 'Ask AI', hint: 'Generate, edit or rewrite with AI', aliases: ['assistant', 'prompt', 'generate', 'gpt', 'smart'], shortcut: 'Ctrl+K' },
   { id: 'paragraph', group: 'basic', title: 'Text', hint: 'Plain paragraph', aliases: ['paragraph', 'plain', 'body', 'p'] },
   { id: 'heading1', group: 'basic', title: 'Heading 1', hint: 'Top-level section title', aliases: ['h1', 'title', 'big'], shortcut: '#' },
   { id: 'heading2', group: 'basic', title: 'Heading 2', hint: 'Section title', aliases: ['h2', 'subtitle'], shortcut: '##' },

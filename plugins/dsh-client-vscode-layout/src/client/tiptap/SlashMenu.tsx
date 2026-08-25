@@ -19,9 +19,11 @@ export interface SlashMenuProps {
   onClose: () => void
   onOpenMediaModal: (type: 'image' | 'youtube' | 'table') => void
   onToggleToc?: () => void
+  onOpenAI?: () => void
 }
 
 const ICONS: Record<CommandId, string> = {
+  ai: '✨',
   paragraph: 'T',
   heading1: 'H1',
   heading2: 'H2',
@@ -57,6 +59,7 @@ export function SlashMenu({
   onClose,
   onOpenMediaModal,
   onToggleToc,
+  onOpenAI,
 }: SlashMenuProps) {
   const menuRef = useRef<HTMLDivElement | null>(null)
 
@@ -69,6 +72,9 @@ export function SlashMenu({
     editor.chain().focus().deleteRange(range).run()
 
     switch (command.id) {
+      case 'ai':
+        onOpenAI?.()
+        break
       case 'paragraph':
         editor.chain().focus().setParagraph().run()
         break
