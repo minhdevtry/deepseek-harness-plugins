@@ -135,34 +135,6 @@ export function TipTapEditor({
 
     setEditor(instance)
 
-    // Global click handler to attach copy buttons to code blocks
-    const handlePreClicks = (e: MouseEvent) => {
-      const target = e.target as HTMLElement
-      if (target.classList.contains('copy-code-btn')) {
-        const pre = target.closest('pre')
-        const code = pre?.querySelector('code')?.innerText ?? pre?.innerText ?? ''
-        navigator.clipboard.writeText(code).then(() => {
-          const original = target.innerText
-          target.innerText = '✓ Copied'
-          setTimeout(() => { target.innerText = original }, 1500)
-        })
-      }
-    }
-
-    // Attach copy buttons dynamically to <pre> blocks
-    const addCopyButtons = () => {
-      const pres = el.querySelectorAll('pre')
-      pres.forEach(pre => {
-        if (!pre.querySelector('.copy-code-btn')) {
-          const btn = document.createElement('button')
-          btn.type = 'button'
-          btn.className = 'copy-code-btn'
-          btn.innerText = 'Copy'
-          pre.appendChild(btn)
-        }
-      })
-    }
-
     // Global click handler to intercept doc links and open them in workbench tabs
     const handleLinkClicks = (e: MouseEvent) => {
       const target = e.target as HTMLElement
@@ -185,17 +157,12 @@ export function TipTapEditor({
       }
     }
 
-    addCopyButtons()
-    instance.on('update', addCopyButtons)
-    el.addEventListener('click', handlePreClicks)
     el.addEventListener('click', handleLinkClicks)
 
     return () => {
-      el.removeEventListener('click', handlePreClicks)
       el.removeEventListener('click', handleLinkClicks)
       instance.off('update', onUpdate)
       instance.off('selectionUpdate', onSelection)
-      instance.off('update', addCopyButtons)
       // `detach`, never `destroy`: the document — and with it the undo history —
       // belongs to the registry and has to survive this view going away.
       documents.detach(path)

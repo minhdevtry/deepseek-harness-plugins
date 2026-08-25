@@ -23,13 +23,13 @@ import { Underline } from '@tiptap/extension-underline'
 import { Youtube } from '@tiptap/extension-youtube'
 import { TextAlign } from '@tiptap/extension-text-align'
 import { Typography } from '@tiptap/extension-typography'
-import { CodeBlockLowlight } from '@tiptap/extension-code-block-lowlight'
 import { createLowlight, common } from 'lowlight'
 import { Markdown } from '@tiptap/markdown'
 import { renderCompactTableMarkdown } from './table/compactTableMarkdown.ts'
 import { Callout } from './Callout.ts'
 import { CalloutDecorations } from './callouts/CalloutDecorations.ts'
 import { Details, DetailsSummary, DetailsContent } from './details/Details.ts'
+import { RichCodeBlockLowlight } from './codeblock/CodeBlockExtension.ts'
 import { MermaidExtension } from './mermaid/MermaidExtension.tsx'
 import { MathBlockExtension } from './math/MathExtension.tsx'
 import { HeadingFoldExtension } from './headingFold/HeadingFoldPlugin.ts'
@@ -81,7 +81,7 @@ export function documentExtensions(): Extensions {
       code: false,
     }),
     RichCode,
-    CodeBlockLowlight.configure({ lowlight }),
+    RichCodeBlockLowlight.configure({ lowlight }),
     Link.configure({ openOnClick: false, autolink: true }),
     Underline,
     Highlight.configure({ multicolor: true }),
