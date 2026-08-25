@@ -132,6 +132,7 @@ export function BubbleMenu({ editor, path, markdown }: BubbleMenuProps) {
     if (editor.isActive('taskList')) return 'taskList'
     if (editor.isActive('blockquote')) return 'blockquote'
     if (editor.isActive('callout')) return 'callout'
+    if (editor.isActive('details')) return 'details'
     return 'paragraph'
   }
 
@@ -163,6 +164,9 @@ export function BubbleMenu({ editor, path, markdown }: BubbleMenuProps) {
         break
       case 'callout':
         editor.chain().focus().toggleCallout({ type: 'info' }).run()
+        break
+      case 'details':
+        editor.chain().focus().setDetails().run()
         break
     }
   }
@@ -227,6 +231,7 @@ export function BubbleMenu({ editor, path, markdown }: BubbleMenuProps) {
             <option value="taskList">To-do List</option>
             <option value="blockquote">Quote</option>
             <option value="callout">Callout</option>
+            <option value="details">Toggle List</option>
           </select>
 
           <span className={css.divider} />

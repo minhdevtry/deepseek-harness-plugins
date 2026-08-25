@@ -245,6 +245,81 @@
   background: rgba(239, 68, 68, 0.06);
 }
 
+/* ── Notion Independent Toggle / Details Block ── */
+.container :global(.tiptap-details) {
+  display: block;
+  margin: 12px 0;
+  border-radius: var(--radius-md, 6px);
+  background: var(--dsw-alias-bg-hover, rgba(0, 0, 0, 0.02));
+  border: 1px solid var(--dsw-alias-border-l1, #e2e8f0);
+  transition: border-color var(--duration-fast, 100ms) ease;
+  overflow: hidden;
+}
+
+.container :global(.tiptap-details:focus-within) {
+  border-color: var(--dsw-alias-state-business-primary, #3b82f6);
+}
+
+.container :global(.tiptap-details-summary) {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--dsw-alias-label-primary, #0f172a);
+  cursor: pointer;
+  user-select: none;
+  list-style: none;
+  border-radius: var(--radius-md, 6px);
+}
+
+.container :global(.tiptap-details-summary::-webkit-details-marker) {
+  display: none;
+}
+
+.container :global(.tiptap-details-summary::before) {
+  content: '▶';
+  font-size: 9px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  color: var(--dsw-alias-label-secondary, #64748b);
+  transition: transform var(--duration-fast, 150ms) cubic-bezier(0.4, 0, 0.2, 1);
+  flex-shrink: 0;
+}
+
+.container :global(.tiptap-details-summary:hover::before) {
+  background: var(--dsw-alias-interactive-bg-hover, rgba(0, 0, 0, 0.06));
+  color: var(--dsw-alias-label-primary, #0f172a);
+}
+
+.container :global(.tiptap-details[open] > .tiptap-details-summary::before),
+.container :global(.tiptap-details[data-open="true"] > .tiptap-details-summary::before) {
+  transform: rotate(90deg);
+}
+
+.container :global(.tiptap-details-content) {
+  padding: 6px 14px 12px 28px;
+  margin-left: 12px;
+  border-left: 2px solid var(--dsw-alias-state-business-primary, #3b82f6);
+}
+
+.container :global(.tiptap-details:not([open]):not([data-open="true"]) > .tiptap-details-content) {
+  display: none;
+}
+
+.container :global(.tiptap-details-content > p:first-child) {
+  margin-top: 0 !important;
+}
+
+.container :global(.tiptap-details-content > p:last-child) {
+  margin-bottom: 0 !important;
+}
+
 /* ── Notion Task Lists ── */
 .container :global(.ProseMirror ul[data-type="taskList"]) {
   list-style: none !important;

@@ -37,6 +37,7 @@ const ICONS: Record<CommandId, string> = {
   mermaid: '📊',
   mathBlock: '∑',
   callout: '💡',
+  details: '▶',
   divider: '―',
 }
 
@@ -101,6 +102,9 @@ export function SlashMenu({
         break
       case 'callout':
         editor.chain().focus().toggleCallout({ type: 'info' }).run()
+        break
+      case 'details':
+        editor.chain().focus().insertDetails().run()
         break
       case 'divider':
         editor.chain().focus().setHorizontalRule().run()

@@ -71,6 +71,8 @@ describe('vocabulary from other tools lands', () => {
     ['admonition', 'callout'],
     ['grid', 'table'],
     ['cite', 'blockquote'],
+    ['toggle', 'details'],      // Notion toggle
+    ['accordion', 'details'],
   ]
   for (const [query, expected] of expectations) {
     it(`/${query} → ${expected}`, () => { assert.equal(top(query), expected) })

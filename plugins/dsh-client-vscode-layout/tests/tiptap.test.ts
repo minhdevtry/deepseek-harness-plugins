@@ -50,6 +50,8 @@ describe('stabilize fixed-point algorithm', () => {
   })
 })
 
+import { Details, DetailsSummary, DetailsContent } from '../src/client/tiptap/details/Details.ts'
+
 describe('TipTap extensions and Callout node', () => {
   it('creates document extensions list with all required Notion suite elements', () => {
     const exts = documentExtensions()
@@ -64,6 +66,9 @@ describe('TipTap extensions and Callout node', () => {
     assert.ok(names.includes('taskList'), 'should contain taskList')
     assert.ok(names.includes('taskItem'), 'should contain taskItem')
     assert.ok(names.includes('callout'), 'should contain custom callout node')
+    assert.ok(names.includes('details'), 'should contain custom details node')
+    assert.ok(names.includes('detailsSummary'), 'should contain detailsSummary node')
+    assert.ok(names.includes('detailsContent'), 'should contain detailsContent node')
     assert.ok(names.includes('image'), 'should contain image')
     assert.ok(names.includes('youtube'), 'should contain youtube')
     assert.ok(names.includes('markdown'), 'should contain markdown')
@@ -74,5 +79,21 @@ describe('TipTap extensions and Callout node', () => {
     assert.equal(Callout.config.group, 'block')
     assert.equal(Callout.config.content, 'block+')
     assert.equal(Callout.config.defining, true)
+  })
+
+  it('Details toggle block has correct schema attributes and markdown tokenizers', () => {
+    assert.equal(Details.name, 'details')
+    assert.equal(Details.config.group, 'block')
+    assert.equal(Details.config.content, 'detailsSummary detailsContent')
+    assert.equal(Details.config.defining, true)
+    assert.equal(Details.config.isolating, true)
+
+    assert.equal(DetailsSummary.name, 'detailsSummary')
+    assert.equal(DetailsSummary.config.group, 'block')
+    assert.equal(DetailsSummary.config.content, 'inline*')
+
+    assert.equal(DetailsContent.name, 'detailsContent')
+    assert.equal(DetailsContent.config.group, 'block')
+    assert.equal(DetailsContent.config.content, 'block+')
   })
 })

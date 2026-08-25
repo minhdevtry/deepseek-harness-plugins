@@ -29,6 +29,7 @@ import { Markdown } from '@tiptap/markdown'
 import { renderCompactTableMarkdown } from './table/compactTableMarkdown.ts'
 import { Callout } from './Callout.ts'
 import { CalloutDecorations } from './callouts/CalloutDecorations.ts'
+import { Details, DetailsSummary, DetailsContent } from './details/Details.ts'
 import { MermaidExtension } from './mermaid/MermaidExtension.tsx'
 import { MathBlockExtension } from './math/MathExtension.tsx'
 import { HeadingFoldExtension } from './headingFold/HeadingFoldPlugin.ts'
@@ -86,6 +87,9 @@ export function documentExtensions(): Extensions {
     Highlight.configure({ multicolor: true }),
     Callout,
     CalloutDecorations,
+    Details,
+    DetailsSummary,
+    DetailsContent,
     RawHtmlLineExtension,
     HeadingFoldExtension,
     MermaidExtension,

@@ -33,7 +33,7 @@ export type CommandId =
   | 'paragraph' | 'heading1' | 'heading2' | 'heading3'
   | 'bulletList' | 'orderedList' | 'taskList' | 'blockquote'
   | 'codeBlock' | 'table' | 'image' | 'youtube' | 'video'
-  | 'callout' | 'divider' | 'mermaid' | 'mathBlock'
+  | 'callout' | 'details' | 'divider' | 'mermaid' | 'mathBlock'
 
 /** One entry in the slash menu. */
 export interface SlashCommand {
@@ -80,6 +80,7 @@ export const SLASH_COMMANDS: readonly SlashCommand[] = [
   { id: 'mermaid', group: 'advanced', title: 'Mermaid Diagram', hint: 'Interactive flowcharts, sequence & state diagrams', aliases: ['chart', 'flowchart', 'graph', 'sequence', 'architecture', 'state'] },
   { id: 'mathBlock', group: 'advanced', title: 'LaTeX Math Formula', hint: 'Mathematical equations with KaTeX', aliases: ['katex', 'equation', 'calc', 'symbol'], shortcut: '$$' },
   { id: 'callout', group: 'advanced', title: 'Callout', hint: 'Highlight a note, tip or warning', aliases: ['note', 'info', 'tip', 'warning', 'admonition', 'alert'] },
+  { id: 'details', group: 'advanced', title: 'Toggle list', hint: 'Toggles can show and hide content', aliases: ['details', 'accordion', 'collapse', 'fold', 'summary'] },
   { id: 'divider', group: 'advanced', title: 'Divider', hint: 'Horizontal rule', aliases: ['hr', 'rule', 'separator', 'line'], shortcut: '---' },
 ]
 

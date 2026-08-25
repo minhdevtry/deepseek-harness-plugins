@@ -397,6 +397,16 @@ export function TipTapEditor({
           </IconButton>
         </Tooltip>
 
+        <Tooltip content="Insert Toggle / Details Block">
+          <IconButton
+            size="xs"
+            variant="ghost"
+            onClick={() => { (editor?.commands as any).insertDetails?.() }}
+          >
+            ▶
+          </IconButton>
+        </Tooltip>
+
         <span className={css.spacer} />
 
         <Tooltip content="Copy clean Markdown to clipboard">
