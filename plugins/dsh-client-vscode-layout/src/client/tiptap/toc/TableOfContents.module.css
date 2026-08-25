@@ -1,32 +1,34 @@
 /* ─── Apple / Linear Studio Grade Design System for TOC ────────── */
 :root {
-  --toc-surface: #ffffff;
-  --toc-surface-header: #f8fafc;
-  --toc-surface-hover: rgba(0, 0, 0, 0.04);
-  --toc-surface-active: rgba(15, 23, 42, 0.07);
-  --toc-border: #e2e8f0;
-  --toc-border-subtle: #f1f5f9;
-  --toc-text-primary: #0f172a;
-  --toc-text-secondary: #334155;
-  --toc-text-tertiary: #64748b;
-  --toc-accent: #0f172a;
-  --toc-accent-subtle: rgba(15, 23, 42, 0.05);
-  --toc-shadow: -4px 0 24px rgba(0, 0, 0, 0.08);
+  --toc-surface: var(--dsw-alias-bg-base, #ffffff);
+  --toc-surface-header: var(--dsw-alias-bg-elevated, #f8fafc);
+  --toc-surface-hover: var(--dsw-alias-bg-hover, rgba(0, 0, 0, 0.05));
+  --toc-surface-active: var(--dsw-alias-interactive-bg-selected, rgba(59, 130, 246, 0.15));
+  --toc-border: var(--dsw-alias-border-l1, #e2e8f0);
+  --toc-border-subtle: var(--dsw-alias-border-l2, #f1f5f9);
+  --toc-text-primary: var(--dsw-alias-label-primary, #0f172a);
+  --toc-text-secondary: var(--dsw-alias-label-secondary, #334155);
+  --toc-text-tertiary: var(--dsw-alias-label-tertiary, #64748b);
+  --toc-accent: var(--dsw-alias-state-business-primary, #2563eb);
+  --toc-accent-subtle: var(--dsw-alias-interactive-bg-hover, rgba(59, 130, 246, 0.08));
+  --toc-shadow: -4px 0 24px rgba(0, 0, 0, 0.15);
 }
 
-:global([data-theme="dark"]) {
-  --toc-surface: #18181b;
-  --toc-surface-header: #121214;
-  --toc-surface-hover: rgba(255, 255, 255, 0.06);
-  --toc-surface-active: rgba(255, 255, 255, 0.1);
-  --toc-border: rgba(255, 255, 255, 0.1);
-  --toc-border-subtle: rgba(255, 255, 255, 0.05);
-  --toc-text-primary: #f8fafc;
-  --toc-text-secondary: #cbd5e1;
-  --toc-text-tertiary: #64748b;
-  --toc-accent: #f8fafc;
-  --toc-accent-subtle: rgba(255, 255, 255, 0.08);
-  --toc-shadow: -4px 0 24px rgba(0, 0, 0, 0.35);
+body[data-ds-dark-theme],
+body.dark,
+body[data-theme="dark"] {
+  --toc-surface: var(--dsw-alias-bg-base, #151517);
+  --toc-surface-header: var(--dsw-alias-bg-elevated, #1e1e20);
+  --toc-surface-hover: var(--dsw-alias-bg-hover, rgba(255, 255, 255, 0.08));
+  --toc-surface-active: var(--dsw-alias-interactive-bg-selected, rgba(59, 130, 246, 0.25));
+  --toc-border: var(--dsw-alias-border-l1, rgba(255, 255, 255, 0.12));
+  --toc-border-subtle: var(--dsw-alias-border-l2, rgba(255, 255, 255, 0.08));
+  --toc-text-primary: var(--dsw-alias-label-primary, #f9fafb);
+  --toc-text-secondary: var(--dsw-alias-label-secondary, #cbd5e1);
+  --toc-text-tertiary: var(--dsw-alias-label-tertiary, #94a3b8);
+  --toc-accent: var(--dsw-alias-state-business-primary, #3b82f6);
+  --toc-accent-subtle: var(--dsw-alias-interactive-bg-hover, rgba(59, 130, 246, 0.18));
+  --toc-shadow: -4px 0 28px rgba(0, 0, 0, 0.45);
 }
 
 /* ─── TOC Main Panel (Acrylic Glass Overlay Drawer) ────────── */
@@ -328,15 +330,15 @@
   transform: translateY(-50%);
   width: 28px;
   height: 52px;
-  background: rgba(255, 255, 255, 0.95);
+  background: var(--dsw-alias-bg-elevated, rgba(255, 255, 255, 0.95));
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(0, 0, 0, 0.08);
+  border: 1px solid var(--dsw-alias-border-l1, rgba(0, 0, 0, 0.08));
   border-radius: 14px;
   cursor: pointer;
   user-select: none;
   z-index: 35;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15), 0 1px 3px rgba(0, 0, 0, 0.08);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -344,16 +346,16 @@
   gap: 3px;
   transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
   padding: 0;
-  color: #475569;
+  color: var(--dsw-alias-label-secondary, #94a3b8);
 }
 
 .pillBtn:hover {
   width: 32px;
   height: 56px;
-  background: #ffffff;
-  color: #0f172a;
-  border-color: rgba(0, 0, 0, 0.15);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12), 0 2px 6px rgba(0, 0, 0, 0.06);
+  background: var(--dsw-alias-bg-hover, #ffffff);
+  color: var(--dsw-alias-label-primary, #0f172a);
+  border-color: var(--dsw-alias-border-l2, rgba(0, 0, 0, 0.15));
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2), 0 2px 6px rgba(0, 0, 0, 0.1);
   transform: translateY(-50%) scale(1.04);
 }
 
@@ -364,11 +366,11 @@
 .pillGrip {
   width: 3px;
   height: 18px;
-  background: #94a3b8;
+  background: var(--dsw-alias-label-tertiary, #94a3b8);
   border-radius: 2px;
   transition: background 0.15s ease;
 }
 
 .pillBtn:hover .pillGrip {
-  background: #0f172a;
+  background: var(--dsw-alias-state-business-primary, #2563eb);
 }

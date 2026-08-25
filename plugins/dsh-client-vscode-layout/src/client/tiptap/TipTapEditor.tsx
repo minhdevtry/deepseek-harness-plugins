@@ -25,6 +25,7 @@ import { MediaModal, type MediaModalType } from './MediaModal.tsx'
 import { TableOfContents } from './toc/TableOfContents.tsx'
 import { FindBar } from './findBar/FindBar.tsx'
 import { FrontmatterWidget } from './frontmatter/FrontmatterWidget.tsx'
+import { DragHandleMenu } from './dragHandle/DragHandleMenu.tsx'
 import { Button, IconButton, Tooltip } from '../ui/primitives/index.ts'
 import { resolveRelativePath } from '../utils/path.ts'
 import { openInWorkbench } from '../fileOpener.ts'
@@ -88,6 +89,103 @@ export function TipTapEditor({
     })
   }
 
+  /** Detect if the cursor is directly after a "/" trigger for slash menu */
+  const detectSlashCommand = (ed: Editor) => {
+    const { selection } = ed.state
+    const { $from, empty } = selection
+    if (!empty) {
+      setSlashState(null)
+      return
+    }
+
+    // Look at text in current node before caret
+    const textBefore = $from.parent.textBetween(0, $from.parentOffset, undefined, '\ufffc')
+    const slashMatch = textBefore.match(/(?:^|\s)\/([a-zA-Z0-9_-]*)$/)
+
+    if (slashMatch && slashMatch.index !== undefined) {
+      const matchStartInParent = slashMatch.index + (slashMatch[0].startsWith(' ') ? 1 : 0)
+      const from = $from.start() + matchStartInParent
+      const to = $from.pos
+      const query = slashMatch[1] ?? ''
+
+      try {
+        const coords = ed.view.coordsAtPos(from)
+        setSlashState({
+          query,
+          range: { from, to },
+          position: {
+            top: coords.top,
+            left: coords.left,
+            bottom: coords.bottom,
+          },
+        })
+      } catch {
+        setSlashState(null)
+      }
+    } else {
+      setSlashState(null)
+    }
+  }
+
+  /** Detect if the cursor is directly after "@" or "[[" for document/section mention completion */
+  const detectDocLinkCommand = (ed: Editor) => {
+    const { selection } = ed.state
+    const { $from, empty } = selection
+    if (!empty) {
+      setDocLinkState(null)
+      return
+    }
+
+    const textBefore = $from.parent.textBetween(0, $from.parentOffset, undefined, '\ufffc')
+
+    // Match [[query or @query
+    const bracketMatch = textBefore.match(/\[\[([^\]]*)$/)
+    const atMatch = textBefore.match(/(?:^|\s)@([a-zA-Z0-9_./#-]*)$/)
+
+    if (bracketMatch && bracketMatch.index !== undefined) {
+      const from = $from.start() + bracketMatch.index
+      const to = $from.pos
+      const query = bracketMatch[1] ?? ''
+
+      try {
+        const coords = ed.view.coordsAtPos(from)
+        setDocLinkState({
+          query,
+          range: { from, to },
+          position: {
+            top: coords.top,
+            left: coords.left,
+            bottom: coords.bottom,
+          },
+        })
+      } catch {
+        setDocLinkState(null)
+      }
+    } else if (atMatch && atMatch.index !== undefined) {
+      const matchStartInParent = atMatch.index + (atMatch[0].startsWith(' ') ? 1 : 0)
+      const from = $from.start() + matchStartInParent
+      const to = $from.pos
+      const query = atMatch[1] ?? ''
+
+      try {
+        const coords = ed.view.coordsAtPos(from)
+        setDocLinkState({
+          query,
+          range: { from, to },
+          position: {
+            top: coords.top,
+            left: coords.left,
+            bottom: coords.bottom,
+          },
+        })
+      } catch {
+        setDocLinkState(null)
+      }
+    } else {
+      setDocLinkState(null)
+    }
+  }
+
   // Borrow the document for as long as this view is on screen.
   useEffect(() => {
     const el = containerRef.current
@@ -135,9 +233,22 @@ export function TipTapEditor({
 
     setEditor(instance)
 
-    // Global click handler to intercept doc links and open them in workbench tabs
+    // Global click handler to intercept doc links and mentions
     const handleLinkClicks = (e: MouseEvent) => {
       const target = e.target as HTMLElement
+      const mention = target.closest('.tiptap-mention') as HTMLElement | null
+      if (mention) {
+        const id = mention.getAttribute('data-id')
+        if (id && (id.startsWith('/') || id.startsWith('./') || id.startsWith('../'))) {
+          e.preventDefault()
+          e.stopPropagation()
+          const resolved = resolveRelativePath(path, id)
+          const opened = openInWorkbench(resolved)
+          if (!opened) openInWorkbench(id)
+          return
+        }
+      }
+
       const link = target.closest('a')
       if (!link) return
 
@@ -169,79 +280,6 @@ export function TipTapEditor({
       setEditor(null)
     }
   }, [documents, path])
-
-  /** Detect if the cursor is directly after a "/" trigger for slash menu */
-  const detectSlashCommand = (ed: Editor) => {
-    const { selection } = ed.state
-    const { $from, empty } = selection
-    if (!empty) {
-      setSlashState(null)
-      return
-    }
-
-    // Look at text in current node before caret
-    const textBefore = $from.parent.textBetween(0, $from.parentOffset, undefined, '\ufffc')
-    const slashMatch = textBefore.match(/(?:^|\s)\/([a-zA-Z0-9_-]*)$/)
-
-    if (slashMatch && slashMatch.index !== undefined) {
-      const matchStartInParent = slashMatch.index + (slashMatch[0].startsWith(' ') ? 1 : 0)
-      const from = $from.start() + matchStartInParent
-      const to = $from.pos
-      const query = slashMatch[1] ?? ''
-
-      try {
-        const coords = ed.view.coordsAtPos(from)
-        setSlashState({
-          query,
-          range: { from, to },
-          position: {
-            top: coords.top,
-            left: coords.left,
-            bottom: coords.bottom,
-          },
-        })
-      } catch {
-        setSlashState(null)
-      }
-    } else {
-      setSlashState(null)
-    }
-  }
-
-  /** Detect if the cursor is directly after "[[" for wiki-link completion */
-  const detectDocLinkCommand = (ed: Editor) => {
-    const { selection } = ed.state
-    const { $from, empty } = selection
-    if (!empty) {
-      setDocLinkState(null)
-      return
-    }
-
-    const textBefore = $from.parent.textBetween(0, $from.parentOffset, undefined, '\ufffc')
-    const match = textBefore.match(/\[\[([^\]]*)$/)
-
-    if (match && match.index !== undefined) {
-      const from = $from.start() + match.index
-      const to = $from.pos
-      const query = match[1] ?? ''
-
-      try {
-        const coords = ed.view.coordsAtPos(from)
-        setDocLinkState({
-          query,
-          range: { from, to },
-          position: {
-            top: coords.bottom + 4,
-            left: coords.left,
-          },
-        })
-      } catch {
-        setDocLinkState(null)
-      }
-    } else {
-      setDocLinkState(null)
-    }
-  }
 
   /**
    * Document-scoped shortcuts that are not already bound inside the editor.
@@ -419,7 +457,14 @@ export function TipTapEditor({
       {editor && <TableControls editor={editor} />}
 
       {/* Main Document Canvas with Frontmatter Widget */}
-      <div className={css.canvas} onClick={() => { editor?.commands.focus() }}>
+      <div
+        className={css.canvas}
+        onClick={(e) => {
+          if (e.target === e.currentTarget && editor) {
+            editor.commands.focus('end')
+          }
+        }}
+      >
         {/* The file's own text, not a re-serialisation: frontmatter is a
             file-level header this surface renders as a card rather than as
             editable nodes, so the tree is not where it lives. */}
@@ -463,6 +508,7 @@ export function TipTapEditor({
           position={slashState.position}
           onClose={() => { setSlashState(null) }}
           onOpenMediaModal={type => { setMediaModal(type) }}
+          onToggleToc={() => { setOutlineOpen(true) }}
         />
       )}
 
@@ -474,6 +520,9 @@ export function TipTapEditor({
           onClose={() => { setMediaModal(null) }}
         />
       )}
+
+      {/* Block Drag Handle & Action Menu */}
+      {editor && <DragHandleMenu editor={editor} />}
 
       {/* Upgraded Table of Contents / Outline Panel */}
       {editor && (

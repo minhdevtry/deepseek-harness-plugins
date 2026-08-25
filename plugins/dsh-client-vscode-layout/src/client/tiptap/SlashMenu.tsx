@@ -18,6 +18,7 @@ export interface SlashMenuProps {
   position: { top: number; left: number; bottom: number }
   onClose: () => void
   onOpenMediaModal: (type: 'image' | 'youtube' | 'video' | 'table') => void
+  onToggleToc?: () => void
 }
 
 const ICONS: Record<CommandId, string> = {
@@ -38,6 +39,7 @@ const ICONS: Record<CommandId, string> = {
   mathBlock: '∑',
   callout: '💡',
   details: '▶',
+  toc: '📑',
   divider: '―',
 }
 
@@ -55,6 +57,7 @@ export function SlashMenu({
   position,
   onClose,
   onOpenMediaModal,
+  onToggleToc,
 }: SlashMenuProps) {
   const menuRef = useRef<HTMLDivElement | null>(null)
 
@@ -105,6 +108,9 @@ export function SlashMenu({
         break
       case 'details':
         editor.chain().focus().insertDetails().run()
+        break
+      case 'toc':
+        onToggleToc?.()
         break
       case 'divider':
         editor.chain().focus().setHorizontalRule().run()

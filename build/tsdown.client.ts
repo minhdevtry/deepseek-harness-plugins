@@ -121,13 +121,42 @@ function browserHalf(id: string): UserConfig {
       'import.meta.env.MODE': JSON.stringify(process.env.NODE_ENV ?? 'production'),
       'import.meta.env': JSON.stringify({ MODE: process.env.NODE_ENV ?? 'production' }),
     },
-    plugins: [purityGate(), cssModules(id)],
+    plugins: [nodePolyfills(), purityGate(), cssModules(id)],
     outputOptions: {
       inlineDynamicImports: true,
       entryFileNames: 'client.js',
       banner: `window.__ModuleLoader__.load({ id: ${JSON.stringify(id)}, factory: (require) => {`,
       footer: 'return module.exports; } });',
       intro: 'var module = { exports: {} }; var exports = module.exports;',
+    },
+  }
+}
+
+/** Virtual browser polyfill for node built-ins that leak from transitive dependencies */
+function nodePolyfills() {
+  return {
+    name: 'dsh-node-polyfills',
+    resolveId(source: string) {
+      if (source === 'node:crypto' || source === 'crypto') {
+        return '\0virtual:node-crypto'
+      }
+      return null
+    },
+    load(id: string) {
+      if (id === '\0virtual:node-crypto') {
+        return `
+          export const getRandomValues = (arr) => (typeof globalThis !== 'undefined' && globalThis.crypto) ? globalThis.crypto.getRandomValues(arr) : arr;
+          export const randomUUID = () => (typeof globalThis !== 'undefined' && globalThis.crypto && globalThis.crypto.randomUUID) ? globalThis.crypto.randomUUID() : Math.random().toString(36).slice(2);
+          export const randomBytes = (size) => getRandomValues(new Uint8Array(size));
+          export const webcrypto = typeof globalThis !== 'undefined' ? globalThis.crypto : null;
+          export const createHash = () => ({
+            update: function() { return this; },
+            digest: function() { return ''; }
+          });
+          export default { getRandomValues, randomUUID, randomBytes, webcrypto, createHash };
+        `
+      }
+      return null
     },
   }
 }
@@ -154,12 +183,12 @@ function purityGate() {
   }
 }
 
-/** Compile `*.module.css` to a hashed class map plus a self-injecting style tag. */
+/** Compile `*.module.css` and `*.css` to a hashed class map or global CSS plus a self-injecting style tag. */
 function cssModules(id: string) {
   return {
     name: 'dsh-css-modules-inline',
     resolveId(source: string, importer: string | undefined) {
-      if (!source.endsWith('.module.css')) return null
+      if (!source.endsWith('.module.css') && !source.endsWith('.css')) return null
       const abs = importer !== undefined ? resolvePath(dirname(importer), source) : source
       return CSS_VIRTUAL_PREFIX + abs + CSS_VIRTUAL_SUFFIX
     },
@@ -169,10 +198,11 @@ function cssModules(id: string) {
       // The virtual id otherwise hides the physical stylesheet from the watch graph.
       this.addWatchFile(fileId)
       const source = await readFile(fileId)
+      const isModule = fileId.endsWith('.module.css')
       const { code, exports: cssExports } = transform({
         filename: fileId,
         code: source,
-        cssModules: { pattern: '[hash]_[local]' },
+        cssModules: isModule ? { pattern: '[hash]_[local]' } : false,
         minify: true,
       })
       const classMap: Record<string, string> = {}

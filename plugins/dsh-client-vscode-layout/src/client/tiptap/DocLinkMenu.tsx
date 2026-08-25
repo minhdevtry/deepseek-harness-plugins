@@ -467,13 +467,15 @@ export function DocLinkMenu({ editor, state, currentPath, root, openTabs, onClos
         folderPath = `${item.hit.path}/`
       }
 
-      const fromAfterBracket = state.range.from + 2
+      const triggerChar = editor.state.doc.textBetween(state.range.from, Math.min(state.range.from + 1, editor.state.doc.content.size))
+      const triggerLen = triggerChar === '@' ? 1 : 2
+      const fromAfterTrigger = state.range.from + triggerLen
       editor
         .chain()
         .focus()
-        .deleteRange({ from: fromAfterBracket, to: state.range.to })
+        .deleteRange({ from: fromAfterTrigger, to: state.range.to })
         .insertContent(folderPath)
-        .setTextSelection(fromAfterBracket + folderPath.length)
+        .setTextSelection(fromAfterTrigger + folderPath.length)
         .run()
       return
     }
@@ -537,13 +539,15 @@ export function DocLinkMenu({ editor, state, currentPath, root, openTabs, onClos
       }
 
       if (completedPath && completedPath.toLowerCase() !== currentQ) {
-        const fromAfterBracket = state.range.from + 2
+        const triggerChar = editor.state.doc.textBetween(state.range.from, Math.min(state.range.from + 1, editor.state.doc.content.size))
+        const triggerLen = triggerChar === '@' ? 1 : 2
+        const fromAfterTrigger = state.range.from + triggerLen
         editor
           .chain()
           .focus()
-          .deleteRange({ from: fromAfterBracket, to: state.range.to })
+          .deleteRange({ from: fromAfterTrigger, to: state.range.to })
           .insertContent(completedPath)
-          .setTextSelection(fromAfterBracket + completedPath.length)
+          .setTextSelection(fromAfterTrigger + completedPath.length)
           .run()
         return
       }

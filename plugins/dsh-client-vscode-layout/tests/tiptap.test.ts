@@ -71,6 +71,10 @@ describe('TipTap extensions and Callout node', () => {
     assert.ok(names.includes('detailsContent'), 'should contain detailsContent node')
     assert.ok(names.includes('image'), 'should contain image')
     assert.ok(names.includes('youtube'), 'should contain youtube')
+    assert.ok(names.includes('textStyle'), 'should contain textStyle')
+    assert.ok(names.includes('color'), 'should contain color')
+    assert.ok(names.includes('characterCount'), 'should contain characterCount')
+    assert.ok(names.includes('dropCursor'), 'should contain dropCursor')
     assert.ok(names.includes('markdown'), 'should contain markdown')
   })
 

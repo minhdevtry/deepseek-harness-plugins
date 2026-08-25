@@ -23,6 +23,10 @@ import { Underline } from '@tiptap/extension-underline'
 import { Youtube } from '@tiptap/extension-youtube'
 import { TextAlign } from '@tiptap/extension-text-align'
 import { Typography } from '@tiptap/extension-typography'
+import { TextStyle } from '@tiptap/extension-text-style'
+import { Color } from '@tiptap/extension-color'
+import { CharacterCount } from '@tiptap/extension-character-count'
+import { Dropcursor } from '@tiptap/extension-dropcursor'
 import { createLowlight, common } from 'lowlight'
 import { Markdown } from '@tiptap/markdown'
 import { renderCompactTableMarkdown } from './table/compactTableMarkdown.ts'
@@ -63,6 +67,37 @@ const CompactTable = Table.extend({
 })
 
 /**
+ * The stock TextStyle mark has no Markdown serializer.
+ * This preserves text color on Markdown roundtrip via `<span style="color: ...">`.
+ */
+const RichTextStyle = TextStyle.extend({
+  renderMarkdown: (mark, helpers) => {
+    const styleAttrs: string[] = []
+    if (mark.attrs?.color) {
+      styleAttrs.push(`color: ${mark.attrs.color}`)
+    }
+    if (styleAttrs.length === 0) {
+      return helpers.renderChildren(mark)
+    }
+    return `<span style="${styleAttrs.join('; ')}">${helpers.renderChildren(mark)}</span>`
+  },
+})
+
+/**
+ * The stock Highlight mark renders `==text==` but loses custom color attributes.
+ * This renders standard `==text==` for default highlight and `<mark style="...">` for custom colors.
+ */
+const RichHighlight = Highlight.extend({
+  renderMarkdown: (mark, helpers) => {
+    const color = mark.attrs?.color
+    if (color) {
+      return `<mark style="background-color: ${color}">${helpers.renderChildren(mark)}</mark>`
+    }
+    return `==${helpers.renderChildren(mark)}==`
+  },
+})
+
+/**
  * Build the extension list.
  * @returns the extensions, in a fixed order.
  */
@@ -76,6 +111,7 @@ export function documentExtensions(): Extensions {
       // instead keeps one registration per name.
       link: false,
       underline: false,
+      dropcursor: false,
       // Replaced below by RichCode, which relaxes `excludes` to keep code
       // labels linkable; leaving both registers the name twice.
       code: false,
@@ -84,7 +120,11 @@ export function documentExtensions(): Extensions {
     RichCodeBlockLowlight.configure({ lowlight }),
     Link.configure({ openOnClick: false, autolink: true }),
     Underline,
-    Highlight.configure({ multicolor: true }),
+    RichTextStyle,
+    Color,
+    RichHighlight.configure({ multicolor: true }),
+    CharacterCount,
+    Dropcursor.configure({ color: 'var(--dsw-alias-state-business-primary, #3b82f6)', width: 2 }),
     Callout,
     CalloutDecorations,
     Details,

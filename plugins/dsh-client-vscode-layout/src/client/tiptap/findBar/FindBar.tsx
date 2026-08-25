@@ -49,7 +49,15 @@ export function FindBar({ editor, isOpen, onClose }: FindBarProps) {
 
   // Search and update highlights across editor DOM
   const performSearch = (text: string, caseSensitive: boolean, activeIdx: number) => {
-    const editorDom = editor.view.dom
+    let editorDom: HTMLElement | null = null
+    try {
+      if (editor && !editor.isDestroyed && editor.view) {
+        editorDom = editor.view.dom
+      }
+    } catch {
+      return
+    }
+
     if (!editorDom || !text.trim()) {
       clearHighlights()
       setMatchCount(0)

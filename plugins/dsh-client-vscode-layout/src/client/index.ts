@@ -22,6 +22,7 @@ import type { InputTriggerServiceContract } from '@deepseek-ai/dsh-client-ui-inp
 import type { IConversation } from '@deepseek-ai/dsh-client-ui-conversation/client'
 import type { PanelActions } from './service.ts'
 import type { FrameInjected } from './contract/slots.ts'
+import './styles/tokens.css'
 import { AppFrame } from './AppFrame.tsx'
 import { createLayoutStore } from './stores.ts'
 import { LayoutController } from './service.ts'

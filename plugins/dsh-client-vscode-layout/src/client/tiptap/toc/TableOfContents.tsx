@@ -72,12 +72,14 @@ const IconToc = (
 /** Find the heading DOM element by pos in the TipTap editor */
 function findHeadingElement(editor: Editor, pos: number): HTMLElement | null {
   try {
-    const dom = editor.view.nodeDOM(pos) as HTMLElement | null
+    if (!editor || editor.isDestroyed) return null
+    const dom = editor.view?.nodeDOM(pos) as HTMLElement | null
     if (dom && dom.matches && dom.matches('h1,h2,h3,h4,h5,h6')) return dom
     const { node } = editor.view.domAtPos(pos + 1)
     let el: HTMLElement | null =
       node.nodeType === Node.TEXT_NODE ? node.parentElement : (node as HTMLElement)
-    while (el && !el.matches('h1,h2,h3,h4,h5,h6') && el !== editor.view.dom) {
+    const rootDom = editor.view.dom
+    while (el && !el.matches('h1,h2,h3,h4,h5,h6') && el !== rootDom) {
       el = el.parentElement
     }
     return el && el.matches('h1,h2,h3,h4,h5,h6') ? el : null
@@ -105,17 +107,24 @@ export function TableOfContents({ editor, isOpen, onOpen, onClose }: TableOfCont
     }
   })
   const [panelWidth, setPanelWidth] = useState<number>(() => {
-    const saved = localStorage.getItem('dsh_toc_width')
-    return saved ? Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, Number(saved))) : DEFAULT_WIDTH
+    try {
+      const saved = localStorage.getItem('dsh_toc_width')
+      return saved ? Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, Number(saved))) : DEFAULT_WIDTH
+    } catch {
+      return DEFAULT_WIDTH
+    }
   })
   const [searchQuery, setSearchQuery] = useState('')
   const [isDragging, setIsDragging] = useState(false)
   const dragStartX = useRef(0)
   const dragStartWidth = useRef(panelWidth)
 
-  // Scan headings from editor
+  // Parse Headings from Document AST
   useEffect(() => {
+    if (!editor || editor.isDestroyed) return
+
     const updateHeadings = () => {
+      if (!editor || editor.isDestroyed) return
       const list: HeadingEntry[] = []
       editor.state.doc.descendants((node, pos) => {
         if (node.type.name === 'heading') {
@@ -144,7 +153,14 @@ export function TableOfContents({ editor, isOpen, onOpen, onClose }: TableOfCont
   // Direction A (Document Canvas -> TOC ScrollSpy):
   // When scrolling the document, highlight active heading and keep it visible in TOC
   useEffect(() => {
-    const canvas = editor.view.dom.closest('[class*="canvas"]') as HTMLElement | null
+    let canvas: HTMLElement | null = null
+    try {
+      if (editor && !editor.isDestroyed && editor.view && editor.view.dom) {
+        canvas = editor.view.dom.closest('[class*="canvas"]') as HTMLElement | null
+      }
+    } catch {
+      return
+    }
     if (!canvas || headings.length === 0) return
 
     let rafId: number | null = null

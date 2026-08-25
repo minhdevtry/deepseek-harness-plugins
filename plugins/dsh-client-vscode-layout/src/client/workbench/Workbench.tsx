@@ -255,6 +255,17 @@ export function Workbench({
     return all
   }, [buffers.dirty, docs.dirty])
 
+  /** Live word and character stats for the active markdown document. */
+  const markdownStats = useMemo(() => {
+    if (activePath === undefined || !isMarkdown(activePath)) return undefined
+    const ed = documents.editor(activePath)
+    if (ed === undefined) return undefined
+    const words = ed.storage.characterCount?.words?.() ?? 0
+    const characters = ed.storage.characterCount?.characters?.() ?? 0
+    const readingTime = Math.max(1, Math.ceil(words / 200))
+    return { words, characters, readingTime }
+  }, [activePath, documents, docs.version])
+
   // Auto-save: one timer per dirty path (see saveQueue.ts) — editing file B
   // does not push back file A's already-pending save. Nothing here reads the
   // document; save() (queued, see above) projects and writes.
@@ -572,7 +583,9 @@ export function Workbench({
         branch={branch}
         cursor={status?.kind === 'text' ? cursor : undefined}
         lines={status?.kind === 'text' ? status.state.doc.lines : undefined}
-        characters={status?.kind === 'text' ? status.state.doc.length : undefined}
+        characters={markdownStats ? markdownStats.characters : status?.kind === 'text' ? status.state.doc.length : undefined}
+        words={markdownStats?.words}
+        readingTime={markdownStats?.readingTime}
         language={language}
         readOnly={status?.kind === 'text' && status.truncated}
         autoSave={autoSave}

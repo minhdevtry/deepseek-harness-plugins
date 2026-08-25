@@ -169,6 +169,16 @@ export class DocumentRegistry {
     const editor = new Editor({
       element: null,
       extensions: documentExtensions(),
+      editorProps: {
+        attributes: {
+          spellcheck: 'false',
+          autocorrect: 'off',
+          autocapitalize: 'off',
+          'data-gramm': 'false',
+          'data-gramm_editor': 'false',
+          'data-enable-grammarly': 'false',
+        },
+      },
       // Encoded only for the parser's benefit — `source` below keeps the
       // real bytes, since frontmatter and the raw view read the file's own
       // text, not this editor-internal encoding.
@@ -230,12 +240,23 @@ export class DocumentRegistry {
     if (doc === undefined) return undefined
     const isFirstMount = doc.host === null
     const wasClean = isFirstMount || !isDocDirty(doc.editor.state.doc, doc.diskDoc)
-    // Guard against a double mount: React can run an effect twice in
-    // development, and mounting a live editor again would build a second view
-    // over the same state.
-    if (doc.host !== null) doc.editor.unmount()
-    doc.editor.mount(el)
+
+    if (doc.host === null) {
+      // First mount: initialize ProseMirror EditorView into el
+      doc.editor.mount(el)
+    } else if (doc.host !== el) {
+      // Re-attaching across tab switches: move the live view DOM node into the
+      // new container element without destroying the EditorView instance.
+      // This guarantees that plugins, drag handles, TOC, event listeners,
+      // and undo history are never interrupted or destroyed during tab switches.
+      try {
+        el.appendChild(doc.editor.view.dom)
+      } catch {
+        doc.editor.mount(el)
+      }
+    }
     doc.host = el
+
     // On mount, ProseMirror's DOM view normalization (e.g. trailing paragraph
     // after a final table or block node) may reconcile the schema in DOM.
     // If the document was clean before mounting, rebase diskDoc to this clean
@@ -249,15 +270,14 @@ export class DocumentRegistry {
   /**
    * Detach a path's editor from the DOM, keeping the document alive.
    *
-   * This is the whole point of the registry: `unmount` rather than `destroy`,
-   * so the undo history survives whatever made the view go away.
+   * This is the whole point of the registry: detach rather than destroy,
+   * so the view, plugins, and undo history survive whatever made the view go away.
    * @param path - absolute file path.
    */
   detach(path: string): void {
     const doc = this.#docs.get(path)
     if (doc === undefined || doc.host === null) return
-    doc.editor.unmount()
-    doc.host = null
+    // Keep doc.host reference and EditorView alive across tab switches.
   }
 
   /** Destroy a path's document — the tab was closed. */

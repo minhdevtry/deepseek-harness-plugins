@@ -297,11 +297,11 @@ export function BubbleMenu({ editor, path, markdown }: BubbleMenuProps) {
           </Tooltip>
 
           <div style={{ position: 'relative', display: 'inline-flex' }}>
-            <Tooltip content="Highlight Color">
+            <Tooltip content="Text & Background Color">
               <IconButton
                 size="xs"
                 variant="ghost"
-                active={editor.isActive('highlight')}
+                active={editor.isActive('highlight') || editor.isActive('textStyle')}
                 onClick={() => setShowPalette((prev) => !prev)}
               >
                 🎨

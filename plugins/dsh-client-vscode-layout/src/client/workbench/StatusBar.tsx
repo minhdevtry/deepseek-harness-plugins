@@ -15,10 +15,14 @@ export interface StatusBarProps {
   /** Current git branch, or undefined outside a repository. */
   branch: string | undefined
   cursor: CursorInfo | undefined
-  /** Total lines in the open document. */
+  /** Total lines in the open document (text mode). */
   lines: number | undefined
   /** Total characters in the open document. */
   characters: number | undefined
+  /** Total words in the open document (markdown mode). */
+  words?: number | undefined
+  /** Estimated reading time in minutes. */
+  readingTime?: number | undefined
   language: string | undefined
   /** True when the buffer opened read-only (host truncated it). */
   readOnly: boolean
@@ -33,7 +37,7 @@ export interface StatusBarProps {
 
 /** The editor status bar (see module doc). */
 export function StatusBar({
-  branch, cursor, lines, characters, language, readOnly,
+  branch, cursor, lines, characters, words, readingTime, language, readOnly,
   autoSave, onToggleAutoSave, diffOpen, onToggleDiff, saveState,
 }: StatusBarProps) {
   return (
@@ -53,9 +57,16 @@ export function StatusBar({
         </Tooltip>
       )}
 
-      {lines !== undefined && characters !== undefined && (
+      {words !== undefined && characters !== undefined ? (
+        <Tooltip content="Document statistics" placement="top">
+          <span className={css.item}>
+            {words} {words === 1 ? 'word' : 'words'} · {characters} chars
+            {readingTime !== undefined && ` · ~${readingTime} min read`}
+          </span>
+        </Tooltip>
+      ) : lines !== undefined && characters !== undefined ? (
         <span className={css.item}>{lines} lines · {characters} chars</span>
-      )}
+      ) : null}
 
       <span className={css.spacer} />
 

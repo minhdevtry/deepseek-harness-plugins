@@ -56,14 +56,16 @@
   --dsw-alias-state-error-primary: #ef4444;
 }
 
-body[data-ds-dark-theme] {
-  /* Unified Dark Fallbacks */
-  --dsw-alias-bg-base: #0f172a;
-  --dsw-alias-bg-elevated: #1e293b;
-  --dsw-alias-bg-hover: rgba(255, 255, 255, 0.06);
-  --dsw-alias-border-l1: #334155;
-  --dsw-alias-border-l2: #475569;
-  --dsw-alias-label-primary: #f8fafc;
+body[data-ds-dark-theme],
+body.dark,
+body[data-theme="dark"] {
+  /* Unified Dark Theme matching host DeepSeek Harness (#151517 / #1e1e20) */
+  --dsw-alias-bg-base: #151517;
+  --dsw-alias-bg-elevated: #1e1e20;
+  --dsw-alias-bg-hover: rgba(255, 255, 255, 0.08);
+  --dsw-alias-border-l1: rgba(255, 255, 255, 0.12);
+  --dsw-alias-border-l2: rgba(255, 255, 255, 0.2);
+  --dsw-alias-label-primary: #f9fafb;
   --dsw-alias-label-secondary: #94a3b8;
   --dsw-alias-label-tertiary: #64748b;
   --dsw-alias-interactive-bg-hover: rgba(59, 130, 246, 0.18);
