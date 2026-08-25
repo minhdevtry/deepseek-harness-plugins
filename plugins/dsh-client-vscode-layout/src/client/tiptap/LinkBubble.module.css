@@ -1,0 +1,44 @@
+.bubble {
+  position: fixed;
+  z-index: 1000;
+  background: var(--dsw-alias-bg-elevated, #ffffff);
+  border: 1px solid var(--dsw-alias-border-l1, #cbd5e1);
+  border-radius: var(--radius-md, 6px);
+  box-shadow: var(--shadow-popover);
+  padding: 4px 6px;
+  animation: scaleIn var(--duration-fast, 100ms) var(--ease-spring);
+  user-select: none;
+}
+
+.viewBar,
+.editForm {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.urlText {
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  color: var(--dsw-alias-state-business-primary, #2563eb);
+  padding: 0 4px;
+}
+
+.input {
+  width: 220px;
+  height: 24px;
+  padding: 2px 6px;
+  font-size: 12px;
+  border: 1px solid var(--dsw-alias-border-l2, #cbd5e1);
+  border-radius: var(--radius-sm, 4px);
+  background: var(--dsw-alias-bg-base, #ffffff);
+  color: var(--dsw-alias-label-primary, #0f172a);
+  outline: none;
+}
+
+.input:focus {
+  border-color: var(--dsw-alias-state-business-primary, #2563eb);
+}

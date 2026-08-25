@@ -18,11 +18,16 @@ import type { Editor } from '@tiptap/core'
 import type { DocumentRegistry } from './documents.ts'
 import { SlashMenu } from './SlashMenu.tsx'
 import { BubbleMenu } from './BubbleMenu.tsx'
+import { LinkBubble } from './LinkBubble.tsx'
+import { DocLinkMenu, type DocLinkState } from './DocLinkMenu.tsx'
 import { TableControls } from './TableControls.tsx'
 import { MediaModal, type MediaModalType } from './MediaModal.tsx'
 import { TableOfContents } from './toc/TableOfContents.tsx'
 import { FindBar } from './findBar/FindBar.tsx'
 import { FrontmatterWidget } from './frontmatter/FrontmatterWidget.tsx'
+import { Button, IconButton, Tooltip } from '../ui/primitives/index.ts'
+import { resolveRelativePath } from '../utils/path.ts'
+import { openInWorkbench } from '../fileOpener.ts'
 import css from './TipTapEditor.module.css'
 
 export interface TipTapEditorProps {
@@ -55,17 +60,29 @@ export function TipTapEditor({
   const containerRef = useRef<HTMLDivElement | null>(null)
   const [editor, setEditor] = useState<Editor | null>(null)
   const [slashState, setSlashState] = useState<SlashState | null>(null)
+  const [docLinkState, setDocLinkState] = useState<DocLinkState | null>(null)
   const [mediaModal, setMediaModal] = useState<MediaModalType | null>(null)
-  const [outlineOpen, setOutlineOpen] = useState(false)
+  const [outlineOpen, setOutlineOpen] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('dsh_toc_open') === 'true'
+    } catch {
+      return false
+    }
+  })
   const [findBarOpen, setFindBarOpen] = useState(false)
+  const [copiedMd, setCopiedMd] = useState(false)
 
   const isDirty = documents.isDirty(path)
 
-  useEffect(() => {
-    try {
-      localStorage.removeItem('dsh_toc_pinned')
-    } catch {}
-  }, [])
+  const toggleOutline = () => {
+    setOutlineOpen(prev => {
+      const next = !prev
+      try {
+        localStorage.setItem('dsh_toc_open', String(next))
+      } catch {}
+      return next
+    })
+  }
 
   // Borrow the document for as long as this view is on screen.
   useEffect(() => {
@@ -78,9 +95,13 @@ export function TipTapEditor({
     // Listeners are added per mount and removed on the way out. The editor
     // outlives this component, so leaving them attached would stack a fresh
     // pair on every tab switch.
-    const onUpdate = (): void => { detectSlashCommand(instance) }
+    const onUpdate = (): void => {
+      detectSlashCommand(instance)
+      detectDocLinkCommand(instance)
+    }
     const onSelection = (): void => {
       detectSlashCommand(instance)
+      detectDocLinkCommand(instance)
       const { from, to, empty } = instance.state.selection
       if (empty) {
         ;(window as any).__dsh_active_selection = null
@@ -138,12 +159,36 @@ export function TipTapEditor({
       })
     }
 
+    // Global click handler to intercept doc links and open them in workbench tabs
+    const handleLinkClicks = (e: MouseEvent) => {
+      const target = e.target as HTMLElement
+      const link = target.closest('a')
+      if (!link) return
+
+      const href = link.getAttribute('href')
+      if (!href) return
+
+      // Ignore external web links (http, https, mailto)
+      if (/^(https?:|mailto:|ftp:)/i.test(href)) return
+
+      // Internal doc link: open in workbench tab
+      e.preventDefault()
+      e.stopPropagation()
+      const resolved = resolveRelativePath(path, href)
+      const opened = openInWorkbench(resolved)
+      if (!opened) {
+        openInWorkbench(href)
+      }
+    }
+
     addCopyButtons()
     instance.on('update', addCopyButtons)
     el.addEventListener('click', handlePreClicks)
+    el.addEventListener('click', handleLinkClicks)
 
     return () => {
       el.removeEventListener('click', handlePreClicks)
+      el.removeEventListener('click', handleLinkClicks)
       instance.off('update', onUpdate)
       instance.off('selectionUpdate', onSelection)
       instance.off('update', addCopyButtons)
@@ -192,6 +237,41 @@ export function TipTapEditor({
     }
   }
 
+  /** Detect if the cursor is directly after "[[" for wiki-link completion */
+  const detectDocLinkCommand = (ed: Editor) => {
+    const { selection } = ed.state
+    const { $from, empty } = selection
+    if (!empty) {
+      setDocLinkState(null)
+      return
+    }
+
+    const textBefore = $from.parent.textBetween(0, $from.parentOffset, undefined, '\ufffc')
+    const match = textBefore.match(/\[\[([^\]]*)$/)
+
+    if (match && match.index !== undefined) {
+      const from = $from.start() + match.index
+      const to = $from.pos
+      const query = match[1] ?? ''
+
+      try {
+        const coords = ed.view.coordsAtPos(from)
+        setDocLinkState({
+          query,
+          range: { from, to },
+          position: {
+            top: coords.bottom + 4,
+            left: coords.left,
+          },
+        })
+      } catch {
+        setDocLinkState(null)
+      }
+    } else {
+      setDocLinkState(null)
+    }
+  }
+
   /**
    * Document-scoped shortcuts that are not already bound inside the editor.
    *
@@ -235,117 +315,123 @@ export function TipTapEditor({
     <div className={css.wrapper}>
       {/* Top action bar */}
       <div className={css.topBar}>
-        <button
-          type="button"
-          className={`${css.actionBtn} ${outlineOpen ? css.actionBtnActive : ''}`}
-          onClick={() => { setOutlineOpen((open) => !open) }}
-          title="Document Outline / Table of Contents"
-        >
-          📑 Outline
-        </button>
+        <Tooltip content="Document Outline / Table of Contents">
+          <IconButton
+            size="xs"
+            variant="ghost"
+            active={outlineOpen}
+            onClick={toggleOutline}
+          >
+            📑
+          </IconButton>
+        </Tooltip>
 
-        <button
-          type="button"
-          className={`${css.actionBtn} ${findBarOpen ? css.actionBtnActive : ''}`}
-          onClick={() => { setFindBarOpen((open) => !open) }}
-          title="Find in document (Ctrl+F)"
-        >
-          🔍 Find
-        </button>
-
-        <span style={{ width: 1, height: 16, background: 'var(--dsw-alias-border-l2, #cbd5e1)', margin: '0 4px' }} />
-
-        <button
-          type="button"
-          className={css.actionBtn}
-          onClick={() => { editor?.commands.undo() }}
-          disabled={!editor?.can().undo()}
-          title="Undo (Ctrl+Z)"
-        >
-          ↩ Undo
-        </button>
-
-        <button
-          type="button"
-          className={css.actionBtn}
-          onClick={() => { editor?.commands.redo() }}
-          disabled={!editor?.can().redo()}
-          title="Redo (Ctrl+Y)"
-        >
-          ↪ Redo
-        </button>
+        <Tooltip content="Find in document (Ctrl+F)">
+          <IconButton
+            size="xs"
+            variant="ghost"
+            active={findBarOpen}
+            onClick={() => { setFindBarOpen((open) => !open) }}
+          >
+            🔍
+          </IconButton>
+        </Tooltip>
 
         <span style={{ width: 1, height: 16, background: 'var(--dsw-alias-border-l2, #cbd5e1)', margin: '0 4px' }} />
 
-        <button
-          type="button"
-          className={css.actionBtn}
-          onClick={() => { (editor?.commands as any).setMermaid?.() }}
-          title="Insert Mermaid Diagram"
-        >
-          📊 Mermaid
-        </button>
+        <Tooltip content="Undo (Ctrl+Z)">
+          <IconButton
+            size="xs"
+            variant="ghost"
+            disabled={!editor?.can().undo()}
+            onClick={() => { editor?.commands.undo() }}
+          >
+            ↩
+          </IconButton>
+        </Tooltip>
 
-        <button
-          type="button"
-          className={css.actionBtn}
-          onClick={() => { (editor?.commands as any).setMathBlock?.() }}
-          title="Insert LaTeX Math"
-        >
-          ∑ Math
-        </button>
+        <Tooltip content="Redo (Ctrl+Y)">
+          <IconButton
+            size="xs"
+            variant="ghost"
+            disabled={!editor?.can().redo()}
+            onClick={() => { editor?.commands.redo() }}
+          >
+            ↪
+          </IconButton>
+        </Tooltip>
 
-        <button
-          type="button"
-          className={css.actionBtn}
-          onClick={() => { editor?.chain().focus().toggleCallout({ type: 'info' }).run() }}
-          title="Insert Callout"
-        >
-          💡 Callout
-        </button>
+        <span style={{ width: 1, height: 16, background: 'var(--dsw-alias-border-l2, #cbd5e1)', margin: '0 4px' }} />
+
+        <Tooltip content="Insert Mermaid Diagram">
+          <IconButton
+            size="xs"
+            variant="ghost"
+            onClick={() => { (editor?.commands as any).setMermaid?.() }}
+          >
+            📊
+          </IconButton>
+        </Tooltip>
+
+        <Tooltip content="Insert LaTeX Math">
+          <IconButton
+            size="xs"
+            variant="ghost"
+            onClick={() => { (editor?.commands as any).setMathBlock?.() }}
+          >
+            ∑
+          </IconButton>
+        </Tooltip>
+
+        <Tooltip content="Insert Callout Alert">
+          <IconButton
+            size="xs"
+            variant="ghost"
+            onClick={() => { editor?.chain().focus().toggleCallout({ type: 'info' }).run() }}
+          >
+            💡
+          </IconButton>
+        </Tooltip>
 
         <span className={css.spacer} />
 
-        <button
-          type="button"
-          className={css.actionBtn}
-          onClick={() => {
-            const md = documents.preview(path)
-            if (md === undefined) return
-            navigator.clipboard.writeText(md).then(() => alert('Markdown copied to clipboard!'))
-          }}
-          title="Copy Clean Markdown"
-        >
-          📋 Copy MD
-        </button>
+        <Tooltip content="Copy clean Markdown to clipboard">
+          <Button
+            size="xs"
+            variant="ghost"
+            onClick={() => {
+              const md = documents.preview(path)
+              if (md === undefined) return
+              void navigator.clipboard.writeText(md).then(() => {
+                setCopiedMd(true)
+                setTimeout(() => { setCopiedMd(false) }, 1500)
+              })
+            }}
+          >
+            {copiedMd ? '✓ Copied' : '📋 Copy MD'}
+          </Button>
+        </Tooltip>
 
-        <button
-          type="button"
-          className={css.actionBtn}
-          onClick={onViewRaw}
-          title="View the markdown source (read-only)"
-        >
-          {'</> Raw'}
-        </button>
+        <Tooltip content="View the markdown source (read-only)">
+          <Button size="xs" variant="ghost" onClick={onViewRaw}>
+            {'</> Raw'}
+          </Button>
+        </Tooltip>
 
-        <button
-          type="button"
-          className={css.actionBtn}
-          onClick={() => { window.print() }}
-          title="Print / Export PDF"
-        >
-          📄 Print
-        </button>
+        <Tooltip content="Print / Export PDF">
+          <IconButton size="xs" variant="ghost" onClick={() => { window.print() }}>
+            📄
+          </IconButton>
+        </Tooltip>
 
-        <button
-          type="button"
-          className={css.actionBtn}
+        <Button
+          size="xs"
+          variant={isDirty ? 'primary' : 'secondary'}
           onClick={() => { onSave(path) }}
-          title="Save (Ctrl+S)"
         >
           <span className={`${css.saveDot} ${!isDirty ? css.saveDotSaved : ''}`} />
           {isDirty ? 'Save' : 'Saved ✓'}
-        </button>
+        </Button>
       </div>
 
       {/* Contextual Table Controls */}
@@ -360,6 +446,9 @@ export function TipTapEditor({
         <div ref={containerRef} className={css.container} />
       </div>
 
+      {/* Floating Link Bubble when resting caret inside a link */}
+      {editor && <LinkBubble editor={editor} currentPath={path} />}
+
       {/* Floating Bubble Menu on Selection */}
       {editor && <BubbleMenu editor={editor} path={path} markdown={() => documents.preview(path) ?? ''} />}
 
@@ -369,6 +458,16 @@ export function TipTapEditor({
           editor={editor}
           isOpen={findBarOpen}
           onClose={() => setFindBarOpen(false)}
+        />
+      )}
+
+      {/* Double-Bracket Wiki-Links Autocomplete Menu */}
+      {editor && docLinkState && (
+        <DocLinkMenu
+          editor={editor}
+          state={docLinkState}
+          currentPath={path}
+          onClose={() => { setDocLinkState(null) }}
         />
       )}
 
@@ -398,8 +497,14 @@ export function TipTapEditor({
         <TableOfContents
           editor={editor}
           isOpen={outlineOpen}
-          onOpen={() => setOutlineOpen(true)}
-          onClose={() => setOutlineOpen(false)}
+          onOpen={() => {
+            setOutlineOpen(true)
+            try { localStorage.setItem('dsh_toc_open', 'true') } catch {}
+          }}
+          onClose={() => {
+            setOutlineOpen(false)
+            try { localStorage.setItem('dsh_toc_open', 'false') } catch {}
+          }}
         />
       )}
     </div>

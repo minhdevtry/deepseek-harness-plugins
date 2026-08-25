@@ -172,6 +172,26 @@
   margin: 10px 0;
 }
 
+/* ── Rich Links & Internal Doc Link Badges ── */
+.container :global(.ProseMirror a) {
+  color: var(--dsw-alias-state-business-primary, #2563eb);
+  background: var(--dsw-alias-interactive-bg-hover, rgba(37, 99, 235, 0.08));
+  padding: 1px 6px;
+  border-radius: var(--radius-sm, 4px);
+  text-decoration: none;
+  font-weight: 500;
+  border-bottom: 1px solid rgba(37, 99, 235, 0.25);
+  transition: all var(--duration-fast, 100ms) ease;
+  cursor: pointer;
+  display: inline;
+}
+
+.container :global(.ProseMirror a:hover) {
+  background: rgba(37, 99, 235, 0.16);
+  border-bottom-color: var(--dsw-alias-state-business-primary, #2563eb);
+  color: #1d4ed8;
+}
+
 .container :global(.ProseMirror hr) {
   border: none;
   border-top: 1px solid var(--dsw-alias-border-l1, #e2e8f0);

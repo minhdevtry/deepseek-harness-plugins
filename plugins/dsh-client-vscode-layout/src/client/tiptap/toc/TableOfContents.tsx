@@ -97,7 +97,13 @@ export function TableOfContents({ editor, isOpen, onOpen, onClose }: TableOfCont
   const [headings, setHeadings] = useState<HeadingEntry[]>([])
   const [activePos, setActivePos] = useState<number | null>(null)
   const [collapsedPos, setCollapsedPos] = useState<Set<number>>(new Set())
-  const [isPinned, setIsPinned] = useState<boolean>(false)
+  const [isPinned, setIsPinned] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('dsh_toc_pinned') === 'true'
+    } catch {
+      return false
+    }
+  })
   const [panelWidth, setPanelWidth] = useState<number>(() => {
     const saved = localStorage.getItem('dsh_toc_width')
     return saved ? Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, Number(saved))) : DEFAULT_WIDTH
@@ -458,7 +464,13 @@ export function TableOfContents({ editor, isOpen, onOpen, onClose }: TableOfCont
             <button
               type="button"
               className={`${css.tocHeaderBtn} ${isPinned ? css.tocHeaderBtnActive : ''}`}
-              onClick={() => setIsPinned((p) => !p)}
+              onClick={() => {
+                setIsPinned(p => {
+                  const next = !p
+                  try { localStorage.setItem('dsh_toc_pinned', String(next)) } catch {}
+                  return next
+                })
+              }}
               title={isPinned ? 'Unpin Table of Contents (Click outside to close)' : 'Pin Table of Contents (Keep open)'}
             >
               {IconPin}

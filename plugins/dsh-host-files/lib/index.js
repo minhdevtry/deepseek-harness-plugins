@@ -322,9 +322,10 @@ async function searchDir(root, q) {
 			if (isHiddenName(entry.name)) continue;
 			budget.used += 1;
 			const full = join(dir, entry.name);
+			const rel = full.slice(root.length + 1).replace(/\\/g, "/");
 			if (entry.isDirectory()) await walk(full, depth + 1);
-			else if (entry.name.toLowerCase().includes(needle)) {
-				out.push({ name: entry.name, path: full, rel: full.slice(root.length + 1).replace(/\\/g, "/") });
+			else if (entry.name.toLowerCase().includes(needle) || rel.toLowerCase().includes(needle) || full.replace(/\\/g, "/").toLowerCase().includes(needle)) {
+				out.push({ name: entry.name, path: full, rel });
 			}
 		}
 	}
@@ -821,7 +822,10 @@ function apply(ctx) {
 			}
 
 			// ── Protected GET Operations ──
-			const rawTarget = url.searchParams.get("path") || SANDBOX_ROOT;
+			let rawTarget = url.searchParams.get("path");
+			if (!rawTarget || rawTarget === "." || rawTarget === "./") {
+				rawTarget = SANDBOX_ROOT;
+			}
 			const target = resolve(rawTarget);
 
 			if (!isInsideSandbox(target, SANDBOX_ROOT)) {

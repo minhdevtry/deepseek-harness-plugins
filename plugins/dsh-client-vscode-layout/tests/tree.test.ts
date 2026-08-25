@@ -161,3 +161,39 @@ describe('creationParent', () => {
     assert.equal(creationParent({ path: '/work/app/src/main.ts', kind: 'file' }), '/work/app/src')
   })
 })
+
+import { getDocLinkInfo, resolveRelativePath } from '../src/client/utils/path.ts'
+
+describe('getDocLinkInfo', () => {
+  it('uses simple filename without extension for same directory files', () => {
+    const info = getDocLinkInfo('/work/app/src/App.tsx', '/work/app/src/Button.tsx')
+    assert.equal(info.title, 'Button')
+    assert.equal(info.href, './Button.tsx')
+    assert.equal(info.folderBadge, '.')
+  })
+
+  it('includes subfolder in title and href for nested files', () => {
+    const info = getDocLinkInfo('/work/app/src/App.tsx', '/work/app/src/components/Modal.tsx')
+    assert.equal(info.title, 'components/Modal')
+    assert.equal(info.href, './components/Modal.tsx')
+    assert.equal(info.folderBadge, 'components')
+  })
+
+  it('provides clean title without ../ for sibling or external folders', () => {
+    const infoWithRoot = getDocLinkInfo('/work/app/src/tiptap/Editor.tsx', '/work/app/src/utils/path.ts', '/work/app')
+    assert.equal(infoWithRoot.title, 'src/utils/path')
+    assert.equal(infoWithRoot.href, '../utils/path.ts')
+    assert.equal(infoWithRoot.folderBadge, 'src/utils')
+
+    const infoExternal = getDocLinkInfo('/work/app/src/App.tsx', '/home/user/Downloads/Code/notes.md')
+    assert.equal(infoExternal.title, 'Downloads/Code/notes')
+    assert.equal(infoExternal.folderBadge, 'Downloads/Code')
+  })
+})
+
+describe('resolveRelativePath', () => {
+  it('resolves same folder and parent folder relative paths', () => {
+    assert.equal(resolveRelativePath('/work/app/src/App.tsx', './Button.tsx'), '/work/app/src/Button.tsx')
+    assert.equal(resolveRelativePath('/work/app/src/tiptap/Editor.tsx', '../utils/path.ts'), '/work/app/src/utils/path.ts')
+  })
+})
