@@ -80,6 +80,7 @@ export interface NameHit {
   path: string
   /** Path relative to the search root, forward-slashed. */
   rel: string
+  isDir?: boolean | undefined
 }
 
 /** One matching line inside a content-search hit. */
@@ -165,16 +166,36 @@ async function post(route: string, body: unknown): Promise<ApiResult<unknown>> {
   })
 }
 
+let cachedSandboxRoot = '/home/minhdn3'
+
+export function expandUserPath(p: string): string {
+  if (!p) return p
+  if (p === '~' || p === '~/') {
+    return cachedSandboxRoot
+  }
+  if (p.startsWith('~/')) {
+    return `${cachedSandboxRoot.replace(/\/+$/, '')}/${p.slice(2)}`
+  }
+  if (p.startsWith('~')) {
+    return `${cachedSandboxRoot.replace(/\/+$/, '')}/${p.slice(1)}`
+  }
+  return p
+}
+
 /** List one directory. */
 export async function listDir(path: string): Promise<ApiResult<Listing>> {
-  const result = await get('list', { path })
+  const resolvedPath = expandUserPath(path)
+  const result = await get('list', { path: resolvedPath })
   if (!result.ok) return result
   const body = result.value as Partial<Listing>
+  if (body.sandboxRoot) {
+    cachedSandboxRoot = body.sandboxRoot
+  }
   return {
     ok: true,
     value: {
-      path: body.path ?? path,
-      sandboxRoot: body.sandboxRoot ?? path,
+      path: body.path ?? resolvedPath,
+      sandboxRoot: body.sandboxRoot ?? resolvedPath,
       dirs: body.dirs ?? [],
       files: body.files ?? [],
     },
@@ -296,7 +317,8 @@ export async function searchNames(
   query: string,
   signal?: AbortSignal,
 ): Promise<ApiResult<NameHit[]>> {
-  const result = await get('search', { path: root, q: query, type: 'filename' }, signal)
+  const resolvedRoot = expandUserPath(root)
+  const result = await get('search', { path: resolvedRoot, q: query, type: 'filename' }, signal)
   if (!result.ok) return result
   return { ok: true, value: (result.value as { results?: NameHit[] }).results ?? [] }
 }

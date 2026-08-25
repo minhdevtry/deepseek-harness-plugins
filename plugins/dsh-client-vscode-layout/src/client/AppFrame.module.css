@@ -1,5 +1,3 @@
-@import './styles/tokens.css';
-
 .frame {
   position: relative; /* anchors the drag handles, which straddle column borders */
   display: grid;

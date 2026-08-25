@@ -825,6 +825,10 @@ function apply(ctx) {
 			let rawTarget = url.searchParams.get("path");
 			if (!rawTarget || rawTarget === "." || rawTarget === "./") {
 				rawTarget = SANDBOX_ROOT;
+			} else if (rawTarget === "~") {
+				rawTarget = homedir();
+			} else if (rawTarget.startsWith("~/")) {
+				rawTarget = join(homedir(), rawTarget.slice(2));
 			}
 			const target = resolve(rawTarget);
 

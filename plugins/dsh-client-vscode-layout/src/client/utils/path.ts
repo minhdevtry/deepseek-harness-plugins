@@ -27,17 +27,67 @@ export function extensionOf(path: string): string {
 }
 
 /**
+ * Strips Vietnamese and Latin diacritics / accents for seamless non-accented search.
+ * e.g. "Tổng hợp lỗi hệ thống" -> "tong hop loi he thong"
+ */
+export function removeDiacritics(str: string): string {
+  if (!str) return ''
+  return str
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/Đ/g, 'D')
+    .toLowerCase()
+}
+
+/**
+ * Extracts camelCase and snake_case acronym / initials.
+ * e.g. "speechsuper_word_eval.py" -> "swe", "FileIcon.tsx" -> "fi", "HDSD.md" -> "hdsd"
+ */
+export function getAcronym(str: string): string {
+  if (!str) return ''
+  const base = basename(str).replace(/\.[^/.]+$/, '')
+  const parts = base.split(/[-_.\s]+/).filter(Boolean)
+  if (parts.length > 1) {
+    return parts.map(p => p[0] || '').join('').toLowerCase()
+  }
+  const camelInitials = base.replace(/[^A-Z]/g, '').toLowerCase()
+  return camelInitials.length > 1 ? camelInitials : base.toLowerCase()
+}
+
+/**
+ * Converts a heading title into a clean GitHub / TipTap slug.
+ * e.g. "1. Điểm khởi động (Entrypoint)" -> "1-diem-khoi-dong-entrypoint"
+ */
+export function slugifyHeading(heading: string): string {
+  return removeDiacritics(heading)
+    .replace(/[^\w\s-]/g, '')
+    .trim()
+    .replace(/\s+/g, '-')
+}
+
+/**
  * Resolves a relative path (e.g. `./sub/doc.md` or `../utils/path.ts`) against the
  * current document's absolute path to produce a fully qualified target path.
  */
 export function resolveRelativePath(currentFilePath: string, relativePath: string): string {
-  if (relativePath.startsWith('/') || /^[a-zA-Z]:[\\/]/.test(relativePath)) {
-    return relativePath.replace(/\\/g, '/')
+  if (!relativePath) return ''
+  // Strip hash fragment before resolving path
+  const hashIdx = relativePath.indexOf('#')
+  const rawPath = hashIdx !== -1 ? relativePath.slice(0, hashIdx) : relativePath
+  const hash = hashIdx !== -1 ? relativePath.slice(hashIdx) : ''
+
+  if (!rawPath && hash) {
+    return `${currentFilePath}${hash}`
+  }
+
+  if (rawPath.startsWith('/') || /^[a-zA-Z]:[\\/]/.test(rawPath)) {
+    return `${rawPath.replace(/\\/g, '/')}${hash}`
   }
   const normCurrent = currentFilePath.replace(/\\/g, '/')
   const currentDir = normCurrent.slice(0, Math.max(0, normCurrent.lastIndexOf('/')))
   const parts = currentDir ? currentDir.split('/').filter(Boolean) : []
-  const relParts = relativePath.replace(/\\/g, '/').split('/')
+  const relParts = rawPath.replace(/\\/g, '/').split('/')
 
   for (const part of relParts) {
     if (!part || part === '.') continue
@@ -49,7 +99,7 @@ export function resolveRelativePath(currentFilePath: string, relativePath: strin
   }
 
   const prefix = normCurrent.startsWith('/') ? '/' : ''
-  return prefix + parts.join('/')
+  return `${prefix}${parts.join('/')}${hash}`
 }
 
 /**
@@ -71,15 +121,37 @@ export function getDocLinkInfo(
   currentFilePath?: string,
   targetFilePath?: string,
   workspaceRoot?: string,
-): { title: string; href: string; folderBadge?: string } {
+): { title: string; href: string; folderBadge?: string; isHeading?: boolean } {
   if (!targetFilePath) return { title: '', href: '' }
+
+  // Handle local heading link (e.g. "#Điểm khởi động")
+  if (targetFilePath.startsWith('#')) {
+    const headingText = targetFilePath.slice(1)
+    const slug = slugifyHeading(headingText)
+    return {
+      title: `# ${headingText}`,
+      href: `#${slug}`,
+      folderBadge: 'heading',
+      isHeading: true,
+    }
+  }
+
+  const hashIdx = targetFilePath.indexOf('#')
+  const cleanTarget = hashIdx !== -1 ? targetFilePath.slice(0, hashIdx) : targetFilePath
+  const hashPart = hashIdx !== -1 ? targetFilePath.slice(hashIdx + 1) : ''
+  const hashSuffix = hashPart ? `#${slugifyHeading(hashPart)}` : ''
+  const hashTitleSuffix = hashPart ? ` > ${hashPart}` : ''
+
   if (!currentFilePath) {
-    const rawName = basename(targetFilePath)
-    return { title: rawName.replace(/\.[^/.]+$/, ''), href: './' + rawName }
+    const rawName = basename(cleanTarget)
+    return {
+      title: `${rawName.replace(/\.[^/.]+$/, '')}${hashTitleSuffix}`,
+      href: `./${rawName}${hashSuffix}`,
+    }
   }
 
   const normCurrent = currentFilePath.replace(/\\/g, '/')
-  const normTarget = targetFilePath.replace(/\\/g, '/')
+  const normTarget = cleanTarget.replace(/\\/g, '/')
   const normRoot = workspaceRoot ? workspaceRoot.replace(/\\/g, '/').replace(/\/+$/, '') : undefined
   const currentDir = normCurrent.slice(0, Math.max(0, normCurrent.lastIndexOf('/')))
 
@@ -92,17 +164,15 @@ export function getDocLinkInfo(
   }
   const upCount = fromParts.length - common
   const relParts = [...Array(upCount).fill('..'), ...toParts.slice(common)]
-  const href = (relParts.length > 0 && !relParts[0]?.startsWith('..') ? './' : '') + relParts.join('/')
+  const href = (relParts.length > 0 && !relParts[0]?.startsWith('..') ? './' : '') + relParts.join('/') + hashSuffix
 
-  // Target directory name for badge
-  const targetDir = normTarget.slice(0, Math.max(0, normTarget.lastIndexOf('/')))
   const targetFileName = basename(normTarget)
   const targetBaseName = targetFileName.replace(/\.[^/.]+$/, '')
 
   // 1. Same directory
   if (normTarget.startsWith(currentDir + '/') && !normTarget.slice(currentDir.length + 1).includes('/')) {
     return {
-      title: targetBaseName,
+      title: `${targetBaseName}${hashTitleSuffix}`,
       href,
       folderBadge: '.',
     }
@@ -112,7 +182,7 @@ export function getDocLinkInfo(
   if (normTarget.startsWith(currentDir + '/')) {
     const subPath = normTarget.slice(currentDir.length + 1)
     return {
-      title: subPath.replace(/\.[^/.]+$/, ''),
+      title: `${subPath.replace(/\.[^/.]+$/, '')}${hashTitleSuffix}`,
       href,
       folderBadge: subPath.slice(0, Math.max(0, subPath.lastIndexOf('/'))),
     }
@@ -127,7 +197,6 @@ export function getDocLinkInfo(
     cleanTitle = fromRoot.replace(/\.[^/.]+$/, '')
     folderBadge = fromRoot.slice(0, Math.max(0, fromRoot.lastIndexOf('/')))
   } else {
-    // If not within workspace root or no root given, strip common base or home path
     const match = normTarget.match(/(?:Documents|Downloads|Projects|Code|src)\/.*$/i)
     if (match) {
       cleanTitle = match[0].replace(/\.[^/.]+$/, '')
@@ -140,8 +209,8 @@ export function getDocLinkInfo(
   }
 
   return {
-    title: cleanTitle || targetBaseName,
+    title: `${cleanTitle}${hashTitleSuffix}`,
     href,
-    folderBadge: folderBadge || basename(targetDir),
+    folderBadge,
   }
 }

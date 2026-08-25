@@ -82,6 +82,18 @@
   white-space: nowrap;
 }
 
+.openBadge {
+  font-size: 9.5px;
+  font-weight: 600;
+  color: var(--dsw-alias-state-business-primary, #2563eb);
+  background: rgba(37, 99, 235, 0.1);
+  padding: 0 4px;
+  border-radius: 3px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  flex: none;
+}
+
 .folderBadge {
   font-size: 10px;
   font-weight: 500;

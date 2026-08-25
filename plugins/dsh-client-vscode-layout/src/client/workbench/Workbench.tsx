@@ -470,6 +470,7 @@ export function Workbench({
                       key={activePath}
                       path={activePath}
                       root={explorerRoot}
+                      openTabs={tabs}
                       documents={documents}
                       onSave={(p) => { void save(p) }}
                       onViewRaw={() => {

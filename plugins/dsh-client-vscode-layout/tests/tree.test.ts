@@ -162,7 +162,7 @@ describe('creationParent', () => {
   })
 })
 
-import { getDocLinkInfo, resolveRelativePath } from '../src/client/utils/path.ts'
+import { getDocLinkInfo, resolveRelativePath, removeDiacritics, getAcronym, slugifyHeading } from '../src/client/utils/path.ts'
 
 describe('getDocLinkInfo', () => {
   it('uses simple filename without extension for same directory files', () => {
@@ -189,11 +189,44 @@ describe('getDocLinkInfo', () => {
     assert.equal(infoExternal.title, 'Downloads/Code/notes')
     assert.equal(infoExternal.folderBadge, 'Downloads/Code')
   })
+
+  it('handles heading section anchors correctly', () => {
+    const headingInfo = getDocLinkInfo('/work/app/src/App.tsx', '#Điểm khởi động')
+    assert.equal(headingInfo.title, '# Điểm khởi động')
+    assert.equal(headingInfo.href, '#diem-khoi-dong')
+    assert.equal(headingInfo.isHeading, true)
+
+    const fileHeadingInfo = getDocLinkInfo('/work/app/src/App.tsx', '/work/app/src/ARCHITECTURE.md#Điểm khởi động')
+    assert.equal(fileHeadingInfo.title, 'ARCHITECTURE > Điểm khởi động')
+    assert.equal(fileHeadingInfo.href, './ARCHITECTURE.md#diem-khoi-dong')
+  })
 })
 
 describe('resolveRelativePath', () => {
   it('resolves same folder and parent folder relative paths', () => {
     assert.equal(resolveRelativePath('/work/app/src/App.tsx', './Button.tsx'), '/work/app/src/Button.tsx')
     assert.equal(resolveRelativePath('/work/app/src/tiptap/Editor.tsx', '../utils/path.ts'), '/work/app/src/utils/path.ts')
+  })
+
+  it('preserves hash fragments in resolved paths', () => {
+    assert.equal(resolveRelativePath('/work/app/src/App.tsx', './ARCHITECTURE.md#entrypoint'), '/work/app/src/ARCHITECTURE.md#entrypoint')
+    assert.equal(resolveRelativePath('/work/app/src/App.tsx', '#heading'), '/work/app/src/App.tsx#heading')
+  })
+})
+
+describe('removeDiacritics and getAcronym', () => {
+  it('removes Vietnamese and Latin diacritics', () => {
+    assert.equal(removeDiacritics('[Vuihoc] Tổng hợp lỗi hệ thống 2026'), '[vuihoc] tong hop loi he thong 2026')
+    assert.equal(removeDiacritics('Điểm Khởi Động'), 'diem khoi dong')
+  })
+
+  it('extracts snake_case, kebab-case and CamelCase acronyms', () => {
+    assert.equal(getAcronym('speechsuper_word_eval.py'), 'swe')
+    assert.equal(getAcronym('HDSD.md'), 'hdsd')
+    assert.equal(getAcronym('FileIcon.tsx'), 'fi')
+  })
+
+  it('slugifies headings with diacritics into URL-safe slugs', () => {
+    assert.equal(slugifyHeading('1. Điểm khởi động (Entrypoint)'), '1-diem-khoi-dong-entrypoint')
   })
 })
