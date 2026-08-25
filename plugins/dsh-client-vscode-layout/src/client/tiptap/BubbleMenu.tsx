@@ -75,9 +75,7 @@ export function BubbleMenu({ editor, path, markdown }: BubbleMenuProps) {
       }
     }
 
-    updatePosition()
-    editor.on('selectionUpdate', updatePosition)
-    editor.on('blur', () => {
+    const handleBlur = () => {
       // Small timeout to allow button clicks inside bubble menu
       setTimeout(() => {
         if (!menuRef.current?.contains(document.activeElement)) {
@@ -85,10 +83,15 @@ export function BubbleMenu({ editor, path, markdown }: BubbleMenuProps) {
           setLinkMode(false)
         }
       }, 150)
-    })
+    }
+
+    updatePosition()
+    editor.on('selectionUpdate', updatePosition)
+    editor.on('blur', handleBlur)
 
     return () => {
       editor.off('selectionUpdate', updatePosition)
+      editor.off('blur', handleBlur)
     }
   }, [editor])
 

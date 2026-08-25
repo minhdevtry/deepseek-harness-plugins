@@ -15,7 +15,7 @@ export interface SlashMenuProps {
   range: { from: number; to: number }
   position: { top: number; left: number; bottom: number }
   onClose: () => void
-  onOpenMediaModal: (type: 'image' | 'youtube' | 'table') => void
+  onOpenMediaModal: (type: 'image' | 'youtube' | 'video' | 'table') => void
 }
 
 const ICONS: Record<CommandId, string> = {
@@ -148,7 +148,7 @@ export function SlashMenu({
         onOpenMediaModal('youtube')
         break
       case 'video':
-        onOpenMediaModal('youtube')
+        onOpenMediaModal('video')
         break
       case 'table':
         onOpenMediaModal('table')

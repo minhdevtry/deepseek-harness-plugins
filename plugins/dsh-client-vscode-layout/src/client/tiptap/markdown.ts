@@ -38,18 +38,20 @@ import '@tiptap/markdown'
 const MAX_PASSES = 8
 
 /**
- * Clean up noisy serialization artifacts (<br />, &#x20;, excessive newlines)
+ * Clean up noisy serialization artifacts.
+ *
+ * Used to also strip stray `<br />` tags the old `tiptap-markdown` library
+ * emitted around empty table cells and paragraph boundaries — checked against
+ * the current `@tiptap/markdown` pipeline and that noise no longer happens
+ * (empty cells stay empty, hard breaks stay real newlines). Those regexes are
+ * gone: `rawHtmlLine.ts` now models a standalone `<br>` line as real, deliberately-preserved
+ * content, and a "clean up `<br>` noise" pass with no noise left to clean was
+ * deleting it outright.
  */
 export function cleanMarkdown(md: string): string {
   let text = md
     // Replace isolated &#x20; with spaces
     .replace(/&#x20;/g, ' ')
-    // Clean table cells with <br />
-    .replace(/\|\s*<br\s*\/?>\s*\|/g, '|  |')
-    .replace(/\|\s*<br\s*\/?>/g, '| ')
-    .replace(/<br\s*\/?>\s*\|/g, ' |')
-    // Clean standalone <br /> tags
-    .replace(/\n\s*<br\s*\/?>\s*\n/g, '\n\n')
     // Normalize 3+ newlines down to 2
     .replace(/\n{3,}/g, '\n\n')
 

@@ -1,13 +1,15 @@
 /**
  * Media and Block Insert Modal Dialog.
  *
- * Supports inserting Images (URL + alt), YouTube videos (URL), and Custom Tables.
+ * Supports inserting Images (URL + alt), YouTube-only videos (URL),
+ * multi-provider video embeds (YouTube/Bilibili/direct MP4, via
+ * VideoEmbedExtension), and Custom Tables.
  */
 import { useEffect, useRef, useState } from 'react'
 import type { Editor } from '@tiptap/core'
 import css from './MediaModal.module.css'
 
-export type MediaModalType = 'image' | 'youtube' | 'table'
+export type MediaModalType = 'image' | 'youtube' | 'video' | 'table'
 
 export interface MediaModalProps {
   type: MediaModalType
@@ -34,17 +36,23 @@ export function MediaModal({ type, editor, onClose }: MediaModalProps) {
     if (type === 'image') {
       const trimmed = url.trim()
       if (trimmed !== '') {
+        // setRichImage, not the stock extension's setImage: RichImageExtension
+        // is the node that actually owns the `image` markdown token (and the
+        // only one with a resize/zoom/delete node view) — setImage would
+        // insert a plain `image` node that only becomes rich after the file
+        // is saved and reopened.
         const altText = alt.trim()
-        if (altText) {
-          editor.chain().focus().setImage({ src: trimmed, alt: altText }).run()
-        } else {
-          editor.chain().focus().setImage({ src: trimmed }).run()
-        }
+        editor.chain().focus().setRichImage(altText ? { src: trimmed, alt: altText } : { src: trimmed }).run()
       }
     } else if (type === 'youtube') {
       const trimmed = url.trim()
       if (trimmed !== '') {
         editor.chain().focus().setYoutubeVideo({ src: trimmed }).run()
+      }
+    } else if (type === 'video') {
+      const trimmed = url.trim()
+      if (trimmed !== '') {
+        editor.chain().focus().setVideoEmbed({ src: trimmed }).run()
       }
     } else if (type === 'table') {
       const r = Math.max(1, Math.min(20, rows))
@@ -55,7 +63,11 @@ export function MediaModal({ type, editor, onClose }: MediaModalProps) {
     onClose()
   }
 
-  const title = type === 'image' ? 'Insert Image' : type === 'youtube' ? 'Embed YouTube Video' : 'Insert Table'
+  const title =
+    type === 'image' ? 'Insert Image'
+    : type === 'youtube' ? 'Embed YouTube Video'
+    : type === 'video' ? 'Embed Video'
+    : 'Insert Table'
 
   return (
     <div
@@ -109,6 +121,21 @@ export function MediaModal({ type, editor, onClose }: MediaModalProps) {
                   type="url"
                   className={css.input}
                   placeholder="https://www.youtube.com/watch?v=..."
+                  value={url}
+                  onChange={e => { setUrl(e.target.value) }}
+                  required
+                />
+              </div>
+            )}
+
+            {type === 'video' && (
+              <div className={css.field}>
+                <label className={css.label}>Video URL</label>
+                <input
+                  ref={inputRef}
+                  type="url"
+                  className={css.input}
+                  placeholder="YouTube, Bilibili, or a direct .mp4 URL"
                   value={url}
                   onChange={e => { setUrl(e.target.value) }}
                   required

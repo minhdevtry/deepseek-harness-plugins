@@ -112,6 +112,14 @@ export const RichImageExtension = Node.create({
   group: 'block',
   atom: true,
   draggable: true,
+  // Shares markdownTokenName 'image' with the stock Image extension (below,
+  // in extensions.ts) — both unconditionally claim every image token, so
+  // whichever sorts first wins every `![]()` on parse. Above the default 100
+  // so that's this node, explicitly, rather than depending on which one
+  // happens to be listed first in documentExtensions()'s array (the same
+  // "ride an existing token, make the win order explicit" pattern used by
+  // Mermaid/Video for their own fence collision with CodeBlockLowlight).
+  priority: 110,
 
   addAttributes() {
     return {

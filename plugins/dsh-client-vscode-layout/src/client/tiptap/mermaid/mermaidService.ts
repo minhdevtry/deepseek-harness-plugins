@@ -25,14 +25,3 @@ export async function renderMermaidSvg(code: string, isDark: boolean): Promise<s
   const { svg } = await mm.render(id, code)
   return svg
 }
-
-/**
- * Re-initialize mermaid when theme changes (only if already loaded)
- */
-export async function reinitializeMermaidTheme(isDark: boolean): Promise<void> {
-  if (mermaidPromise && isMermaidInitialized) {
-    const mm = await mermaidPromise
-    mm.initialize(getMermaidConfig(isDark))
-    lastThemeIsDark = isDark
-  }
-}

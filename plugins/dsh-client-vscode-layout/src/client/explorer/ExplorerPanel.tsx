@@ -33,6 +33,8 @@ export interface ExplorerPanelProps {
   activePath: string | undefined
   /** Reveal a file, optionally at a 1-based line. */
   onOpenFile: (path: string, line?: number) => void
+  /** A file was renamed in the tree; forwarded from FileTree (see its own doc). */
+  onFileRenamed?: ((oldPath: string, newPath: string) => void) | undefined
   /**
    * The directory being browsed. Held by the frame rather than here because
    * the centre column's breadcrumb navigates it too.
@@ -58,7 +60,7 @@ const NOTICE_MS = 4000
 
 /** The explorer column (see module doc). */
 export function ExplorerPanel({
-  view, activePath, onOpenFile,
+  view, activePath, onOpenFile, onFileRenamed,
   root, workspaceRoot, onRootChange, onWorkspaceRootResolved,
   openWorkspace, pickDirectory, listWorkspaces, onNotify,
 }: ExplorerPanelProps) {
@@ -260,6 +262,7 @@ export function ExplorerPanel({
               showHidden={showHidden}
               activePath={activePath}
               onOpenFile={onOpenFile}
+              onFileRenamed={onFileRenamed}
               onNotify={notify}
             />
           )}

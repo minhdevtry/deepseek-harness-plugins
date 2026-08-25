@@ -13,7 +13,7 @@
  */
 import type { JSONContent, MarkdownRendererHelpers } from '@tiptap/core'
 
-const CELL_LINE_SEPARATOR = ''
+const CELL_LINE_SEPARATOR = '\u001F'
 
 type CellAlign = 'left' | 'right' | 'center' | null
 

@@ -30,8 +30,8 @@ import { Node, mergeAttributes } from '@tiptap/core'
 // U+0001/U+0002 (SOH/STX): bytes nobody can type or paste as prose, so a
 // user's own authored text can never collide with this marker the way a
 // human-readable envelope like `[[RAW_HTML:...]]` could.
-const MARKER_START = 'RAW_HTML_LINE'
-const MARKER_END = ''
+const MARKER_START = '\u0001RAW_HTML_LINE\u0001'
+const MARKER_END = '\u0002'
 
 // One or more complete tags back to back with nothing else on the line, e.g.
 // `<a id="x"></a>` (an anchor's open+close tag both land on one line) or

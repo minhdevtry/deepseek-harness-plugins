@@ -280,6 +280,21 @@ export function Workbench({
     documents.forget(path)
   }, [documents, registry])
 
+  // Registries must not outlive their tab. `requestClose`/`closeNow`/`applyBulk`
+  // already forget before dropping a path from `tabs`, which makes this a
+  // no-op for them — it exists to catch every OTHER way a path can leave the
+  // strip (an explorer rename swapping one path for another via onSetTabs,
+  // any future caller that forgets to) rather than requiring each one to
+  // remember the same cleanup.
+  const previousTabsRef = useRef<readonly string[]>(tabs)
+  useEffect(() => {
+    const previous = previousTabsRef.current
+    previousTabsRef.current = tabs
+    for (const path of previous) {
+      if (!tabs.includes(path)) forget(path)
+    }
+  }, [tabs, forget])
+
   /** Close a tab, asking first when it would lose edits. */
   const requestClose = useCallback((path: string) => {
     if (registry.isDirty(path) || documents.isDirty(path)) {
@@ -311,24 +326,39 @@ export function Workbench({
 
   /** Throw away a tab's unsaved edits and go back to what is on disk. */
   const discard = useCallback((path: string) => {
-    const buffer = registry.status(path)
-    if (buffer?.kind !== 'text') return
     if (isMarkdown(path)) {
-      // A markdown tab's edits live in the tree, and every text view of it is
-      // read-only, so the revert cannot ride a transaction through the view.
-      // Re-parse from disk — which does throw the undo history away, and that is
-      // precisely what the operator asked for — and put the same text back in
-      // the buffer so neither registry is left claiming to be dirty.
-      const disk = buffer.diskDoc.toString()
-      documents.reopen(path, disk)
-      registry.setText(path, disk, { addToHistory: false })
+      // Queued behind any save already in flight for this path — the same
+      // reason performSave is queued (see `save` above). A discard that ran
+      // concurrently with an autosave's writeFile could reopen from the
+      // pre-write disk snapshot while that write was still landing the
+      // *discarded* text, which then reaches disk anyway once the write
+      // settles, and documents.markSaved rebases the freshly-reopened
+      // document against a tree from the editor `reopen` had already
+      // destroyed. Queuing forces the save to fully land first, so discard
+      // always reads whatever is genuinely on disk at that point.
+      void saveQueue.enqueue(path, async () => {
+        const buffer = registry.status(path)
+        if (buffer?.kind !== 'text') return true
+        // A markdown tab's edits live in the tree, and every text view of it
+        // is read-only, so the revert cannot ride a transaction through the
+        // view. Re-parse from disk — which does throw the undo history away,
+        // and that is precisely what the operator asked for — and put the
+        // same text back in the buffer so neither registry is left claiming
+        // to be dirty.
+        const disk = buffer.diskDoc.toString()
+        documents.reopen(path, disk)
+        registry.setText(path, disk, { addToHistory: false })
+        return true
+      })
       return
     }
+    const buffer = registry.status(path)
+    if (buffer?.kind !== 'text') return
     // Everything else goes through the live view, which keeps the revert itself
     // undoable: an accidental discard is recoverable with Ctrl+Z.
     const spec = registry.revertSpec(path)
     if (spec !== undefined) editorRef.current?.dispatch(spec)
-  }, [documents, registry])
+  }, [documents, registry, saveQueue])
 
   const isImage = activePath !== undefined && /\.(png|jpe?g|gif|webp|svg|ico|bmp)$/i.test(activePath)
   const isCsv = activePath !== undefined && /\.(csv|tsv)$/i.test(activePath)
@@ -410,7 +440,12 @@ export function Workbench({
         {status?.kind === 'loading' && <div className={css.notice}>Opening…</div>}
         {status?.kind === 'error' && <div className={css.notice} data-error>Cannot open this file: {status.message}</div>}
         {isImage && activePath !== undefined && (
-          <ImagePreview path={activePath} size={status && 'size' in status ? status.size : undefined} />
+          // key={activePath}: without it, switching between two image tabs
+          // reused the same component instance — the previous image's zoom
+          // level and reported dimensions stayed on screen until the new
+          // <img>'s onLoad fired, same reason CodeEditor/TipTapEditor below
+          // are keyed the same way.
+          <ImagePreview key={activePath} path={activePath} size={status && 'size' in status ? status.size : undefined} />
         )}
         {!isImage && status?.kind === 'binary' && (
           <div className={css.notice}>Binary file — no preview ({status.size.toLocaleString()} bytes).</div>

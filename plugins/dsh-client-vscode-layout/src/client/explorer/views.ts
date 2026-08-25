@@ -21,9 +21,6 @@ import { useSyncExternalStore } from 'react'
  */
 export type ExplorerView = 'explorer' | 'search' | 'scm' | 'sessions'
 
-/** The views this plugin draws itself, in rail order. */
-export const OWN_VIEWS: readonly ExplorerView[] = ['explorer', 'search', 'scm']
-
 /** Shared active-view seam (see module doc). */
 export interface ViewState {
   /** Subscribe to the active view in a component. */

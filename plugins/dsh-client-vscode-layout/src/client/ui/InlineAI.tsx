@@ -9,12 +9,13 @@ import css from './InlineAI.module.css'
 export interface InlineAIProps {
   open: boolean
   selectionText?: string | undefined
-  filePath?: string | undefined
+  /** Absolute path of the active file, shown as context in the header. */
+  path?: string | undefined
   onClose: () => void
   onSubmit: (prompt: string, contextSnippet?: string) => void
 }
 
-export function InlineAI({ open, selectionText, filePath, onClose, onSubmit }: InlineAIProps) {
+export function InlineAI({ open, selectionText, path, onClose, onSubmit }: InlineAIProps) {
   const [prompt, setPrompt] = useState('')
   const inputRef = useRef<HTMLTextAreaElement | null>(null)
 
@@ -54,7 +55,7 @@ export function InlineAI({ open, selectionText, filePath, onClose, onSubmit }: I
       <div className={`${css.widget} vk_inline_ai_widget`} data-vk-inline-ai="true">
         <div className={css.header}>
           <span>🤖 Inline AI Assist</span>
-          {filePath && <span style={{ opacity: 0.7, marginLeft: 'auto', fontSize: 11 }}>{filePath.split('/').pop()}</span>}
+          {path && <span style={{ opacity: 0.7, marginLeft: 'auto', fontSize: 11 }}>{path.split('/').pop()}</span>}
         </div>
 
         {selectionText && selectionText.length > 0 && (

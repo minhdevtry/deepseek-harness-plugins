@@ -21,6 +21,7 @@ import { RightColumn } from './RightColumn.tsx'
 import { ExplorerPanel } from './explorer/ExplorerPanel.tsx'
 import type { ExplorerView } from './explorer/views.ts'
 import { Workbench } from './workbench/Workbench.tsx'
+import { rename as renameTab } from './workbench/model/tabs.ts'
 import { QuickOpen } from './ui/QuickOpen.tsx'
 import { CommandPalette, type CommandItem } from './ui/CommandPalette.tsx'
 import { InlineAI } from './ui/InlineAI.tsx'
@@ -124,6 +125,20 @@ export function AppFrame({
       return true
     })
   }, [actions, isMobile])
+
+  /**
+   * A file was renamed in the explorer. If it was open, its tab is swapped
+   * to the new path in place (not closed-and-reopened, which would drop it
+   * to the end of the strip) — otherwise the tab kept pointing at a path
+   * that no longer exists on disk, with no way to close it.
+   */
+  const handleFileRenamed = useCallback((oldPath: string, newPath: string) => {
+    if (!panels.tabs.includes(oldPath)) return
+    actions.setTabs(
+      renameTab(panels.tabs, oldPath, newPath),
+      panels.activePath === oldPath ? newPath : panels.activePath,
+    )
+  }, [actions, panels.activePath, panels.tabs])
 
   const sidebarCollapsed = narrow ? !panels.narrowExpanded : panels.sidebar === 0
   const sidebarPreference = sidebarCollapsed
@@ -408,6 +423,7 @@ export function AppFrame({
               view={view === 'sessions' ? 'explorer' : view}
               activePath={panels.activePath}
               onOpenFile={actions.openFile}
+              onFileRenamed={handleFileRenamed}
               root={panels.explorerRoot}
               workspaceRoot={panels.workspaceRoot}
               onRootChange={actions.setExplorerRoot}
@@ -466,7 +482,7 @@ export function AppFrame({
         <InlineAI
           open={inlineAIOpen}
           selectionText={inlineSelection}
-          filePath={panels.activePath}
+          path={panels.activePath}
           onClose={() => { setInlineAIOpen(false) }}
           onSubmit={handleInlineAISubmit}
         />

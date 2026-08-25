@@ -16,7 +16,7 @@
 const BASE = '/vscode-files'
 
 /** localStorage key the login flow writes; sent as a Bearer token when present. */
-const TOKEN_KEY = 'dsh_auth_token'
+export const TOKEN_KEY = 'dsh_auth_token'
 
 /** A successful call. */
 export type ApiSuccess<T> = { ok: true; value: T }

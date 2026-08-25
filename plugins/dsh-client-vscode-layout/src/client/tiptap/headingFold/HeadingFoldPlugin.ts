@@ -2,18 +2,31 @@ import { Extension } from '@tiptap/core'
 import { Plugin, PluginKey } from '@tiptap/pm/state'
 import { Decoration, DecorationSet, type EditorView } from '@tiptap/pm/view'
 
-export const headingFoldPluginKey = new PluginKey('heading_fold_decorations')
-export const collapsedHeadingPositions = new Set<number>()
+export const headingFoldPluginKey = new PluginKey<HeadingFoldState>('heading_fold_decorations')
+
+/**
+ * Which headings are collapsed, kept as real ProseMirror plugin state rather
+ * than a module-level `Set`.
+ *
+ * A module-level `Set` is one object shared by every `Editor` built from
+ * `documentExtensions()` — every open markdown tab, plus the headless
+ * round-trip editors in markdown.ts. Two tabs whose first heading happens to
+ * land at the same position (very common for short, similarly-shaped docs)
+ * would collapse together, and closing a tab never removed its entries, so
+ * fold state from long-closed files could resurface on an unrelated
+ * document reusing the same position. Real plugin state is scoped to the
+ * `EditorState` it belongs to (so per-tab, and freed when the editor is
+ * destroyed) and — the second half of the same bug — gets run through
+ * `tr.mapping` on every change, so a collapsed heading's position stays
+ * correct as edits shift the document around it instead of silently going
+ * stale (falling out of sync with the heading it was tracking).
+ */
+type HeadingFoldState = { collapsed: Set<number> }
 
 const CHEVRON_RIGHT = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>`
 const CHEVRON_DOWN = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>`
 
 export function toggleHeadingFold(view: EditorView, headingPos: number): void {
-  if (collapsedHeadingPositions.has(headingPos)) {
-    collapsedHeadingPositions.delete(headingPos)
-  } else {
-    collapsedHeadingPositions.add(headingPos)
-  }
   view.dispatch(view.state.tr.setMeta(headingFoldPluginKey, { toggled: headingPos }))
 }
 
@@ -22,8 +35,28 @@ export const HeadingFoldExtension = Extension.create({
 
   addProseMirrorPlugins() {
     return [
-      new Plugin({
+      new Plugin<HeadingFoldState>({
         key: headingFoldPluginKey,
+        state: {
+          init: () => ({ collapsed: new Set<number>() }),
+          apply(tr, value) {
+            // Keep every tracked position correct across the edit before
+            // touching membership — otherwise an edit above a collapsed
+            // heading silently detaches its fold from the heading it belongs to.
+            let collapsed = value.collapsed
+            if (tr.docChanged) {
+              collapsed = new Set([...collapsed].map((pos) => tr.mapping.map(pos)))
+            }
+            const meta = tr.getMeta(headingFoldPluginKey) as { toggled?: number } | undefined
+            if (meta?.toggled === undefined) {
+              return collapsed === value.collapsed ? value : { collapsed }
+            }
+            collapsed = new Set(collapsed)
+            if (collapsed.has(meta.toggled)) collapsed.delete(meta.toggled)
+            else collapsed.add(meta.toggled)
+            return { collapsed }
+          },
+        },
         props: {
           handleClick(view, _pos, event) {
             const target = (event.target as HTMLElement).closest('[data-heading-fold-btn="true"], [data-heading-indicator="true"]')
@@ -45,6 +78,7 @@ export const HeadingFoldExtension = Extension.create({
             const decos: Decoration[] = []
             const doc = state.doc
             const headings: Array<{ pos: number; level: number; nodeSize: number }> = []
+            const collapsedHeadingPositions = headingFoldPluginKey.getState(state)?.collapsed ?? new Set<number>()
 
             doc.descendants((node, pos) => {
               if (node.type.name === 'heading') {

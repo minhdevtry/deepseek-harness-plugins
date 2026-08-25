@@ -29,6 +29,24 @@ export function close(tabs: Tabs, path: string): string[] {
   return tabs.filter(tab => tab !== path)
 }
 
+/**
+ * Replace a renamed tab in place, keeping its position in the strip.
+ *
+ * Not `close(tabs, oldPath)` followed by `open(tabs, newPath)`: that would
+ * drop the tab to the end of the strip, moving it out from under the
+ * operator's cursor for a rename they didn't ask to reorder anything for.
+ * @returns the list unchanged when `oldPath` was never open. When `newPath`
+ * is already open elsewhere in the strip, `oldPath`'s slot is dropped rather
+ * than duplicated.
+ */
+export function rename(tabs: Tabs, oldPath: string, newPath: string): string[] {
+  const index = tabs.indexOf(oldPath)
+  if (index < 0) return [...tabs]
+  if (oldPath === newPath) return [...tabs]
+  if (tabs.includes(newPath)) return tabs.filter(tab => tab !== oldPath)
+  return tabs.map((tab, i) => (i === index ? newPath : tab))
+}
+
 /** Close everything except one tab. A path that is not open closes everything. */
 export function closeOthers(tabs: Tabs, path: string): string[] {
   return tabs.filter(tab => tab === path)

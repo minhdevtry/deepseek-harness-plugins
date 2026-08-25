@@ -35,6 +35,15 @@ export interface FileTreeProps {
   /** Path of the file currently open in the editor, highlighted in the tree. */
   activePath: string | undefined
   onOpenFile: (path: string) => void
+  /**
+   * Reported after any successful rename, whether or not the renamed path is
+   * open — the caller owns the tab strip and its editor registries, so it
+   * decides what a rename means for them (swap the tab in place if one
+   * exists; do nothing otherwise). Without this, a renamed *open* file kept
+   * its tab pointed at a path that no longer exists on disk, with no way to
+   * close it short of quitting.
+   */
+  onFileRenamed?: ((oldPath: string, newPath: string) => void) | undefined
   /** Transient status for the panel footer (copied path, failure reason). */
   onNotify: (message: string) => void
 }
@@ -71,7 +80,7 @@ export interface FileTreeHandle {
 
 /** The workspace file tree (see module doc). */
 export const FileTree = forwardRef<FileTreeHandle, FileTreeProps>(function FileTree(
-  { root, showHidden, activePath, onOpenFile, onNotify }: FileTreeProps,
+  { root, showHidden, activePath, onOpenFile, onFileRenamed, onNotify }: FileTreeProps,
   ref,
 ) {
   const [listings, setListings] = useState<ReadonlyMap<string, Listing>>(new Map())
@@ -207,14 +216,13 @@ export const FileTree = forwardRef<FileTreeHandle, FileTreeProps>(function FileT
       if (edit.type === 'file') onOpenFile(result.value)
     } else {
       await refreshAll()
-      // A renamed open file keeps its editor tab pointed at a path that no
-      // longer exists; re-opening under the new name is the honest repair.
-      if (activePath !== undefined && normalize(activePath) === normalize(edit.path)) {
-        onOpenFile(result.value)
-      }
+      // Report the rename regardless of whether it's the active tab — a
+      // renamed *background* tab would otherwise go stale exactly the same
+      // way the active one used to.
+      onFileRenamed?.(edit.path, result.value)
     }
     await refreshGit()
-  }, [activePath, edit, loadDir, onOpenFile, refreshAll, refreshGit])
+  }, [edit, loadDir, onFileRenamed, onOpenFile, refreshAll, refreshGit])
 
   const confirmTrash = useCallback(async (): Promise<void> => {
     if (pendingTrash === undefined) return

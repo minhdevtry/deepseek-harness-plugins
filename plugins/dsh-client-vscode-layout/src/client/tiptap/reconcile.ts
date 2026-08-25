@@ -55,10 +55,6 @@ export type ReconcileParams = {
   roundTrip: (markdown: string) => string | null
 }
 
-export function restoreMarkdownSourceEol(markdown: string, source: string): string {
-  return restoreEol(toLf(markdown), detectDominantEol(source))
-}
-
 /**
  * Carry the user's edit into the original source's style so untouched regions
  * keep their non-canonical bytes. Falls back to canonical `edited` whenever
@@ -100,12 +96,20 @@ export function reconcileSerializedMarkdown({
     Math.max(originalSource.length, baseCanonical.length, edited.length) >
     RECONCILE_SIZE_CAP_CODE_UNITS
   ) {
+    console.warn(
+      `[vscode-layout] markdown reconcile: source over ${RECONCILE_SIZE_CAP_CODE_UNITS} code units, ` +
+      'falling back to a full canonical rewrite for this save',
+    )
     return restoreEol(editedLf, eol)
   }
 
   // Branch 4: dmp's half-match accelerator ignores the diff deadline on
   // highly repetitive replacements (100ms+ observed) -> bail to canonical.
   if (hasRepeatedHalfMatchSeed(baseLf, editedLf)) {
+    console.warn(
+      '[vscode-layout] markdown reconcile: repetitive-edit heuristic fired, ' +
+      'falling back to a full canonical rewrite for this save',
+    )
     return restoreEol(editedLf, eol)
   }
 

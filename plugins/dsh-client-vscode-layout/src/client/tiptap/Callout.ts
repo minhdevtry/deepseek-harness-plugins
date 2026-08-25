@@ -20,6 +20,13 @@ export interface CalloutOptions {
  * GitHub-style alert markdown, e.g. `> [!WARNING]\n> body`. Maps onto our five
  * callout colors; IMPORTANT collapses onto 'info' since we don't have a
  * distinct sixth color for it.
+ *
+ * `success` has no standard GitHub marker (the real convention is exactly
+ * NOTE/TIP/IMPORTANT/WARNING/CAUTION), so it gets its own SUCCESS marker
+ * instead of also collapsing onto TIP. Sharing TIP's marker used to mean a
+ * `success` callout silently became a `tip` one on the very next save+reload
+ * — SUCCESS isn't real GitHub syntax, but it round-trips correctly within
+ * this editor, and degrades to a plain, readable blockquote everywhere else.
  */
 const CALLOUT_MARKER_TO_TYPE: Record<string, CalloutType> = {
   note: 'info',
@@ -27,6 +34,7 @@ const CALLOUT_MARKER_TO_TYPE: Record<string, CalloutType> = {
   important: 'info',
   warning: 'warning',
   caution: 'danger',
+  success: 'success',
 }
 
 const CALLOUT_TYPE_TO_MARKER: Record<CalloutType, string> = {
@@ -34,11 +42,11 @@ const CALLOUT_TYPE_TO_MARKER: Record<CalloutType, string> = {
   tip: 'TIP',
   warning: 'WARNING',
   danger: 'CAUTION',
-  success: 'TIP',
+  success: 'SUCCESS',
 }
 
-const CALLOUT_ALERT_START = /^ {0,3}>\s*\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\]/i
-const CALLOUT_ALERT_MARKER_LINE = /^\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\]\s*(.*)$/i
+const CALLOUT_ALERT_START = /^ {0,3}>\s*\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION|SUCCESS)\]/i
+const CALLOUT_ALERT_MARKER_LINE = /^\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION|SUCCESS)\]\s*(.*)$/i
 const CALLOUT_ALERT_QUOTE_LINE = /^ {0,3}>( ?)/
 
 declare module '@tiptap/core' {

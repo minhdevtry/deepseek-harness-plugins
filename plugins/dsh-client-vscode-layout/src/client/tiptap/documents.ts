@@ -66,6 +66,24 @@ interface OpenDocument {
    */
   baseCanonical: string
   /**
+   * `markdown()`'s own canonical serialization of the tree, cached for
+   * {@link markSaved} to reuse as the next `baseCanonical` instead of
+   * re-deriving it from the written bytes through another `stabilizedRoundTrip`
+   * (itself up to `MAX_PASSES` throwaway editors). Safe to reuse verbatim:
+   * `canonical(written) === edited` holds in every branch of
+   * {@link reconcileSerializedMarkdown} by construction — that equality is
+   * what branch 6 exists to prove, and every other branch returns `edited`
+   * itself (verbatim or EOL-adjusted). Reusable across the async gap to the
+   * write settling because it depends on what `markdown()` computed, not on
+   * the live tree's later state — a keystroke after this was cached doesn't
+   * invalidate it, since `written` (and this value with it) already reflects
+   * a specific moment in the past, same as `snapshotDoc` above. Only valid
+   * for the *next* `markSaved` call, since `markdown()` is only ever called
+   * from inside the per-path save queue (Workbench.tsx), which never lets a
+   * second save for this path start before this one's `markSaved` lands.
+   */
+  pendingCanonical: string | undefined
+  /**
    * The element the editor is mounted into, or null when detached.
    *
    * Kept so {@link DocumentRegistry.reopen} can put the replacement document
@@ -162,6 +180,7 @@ export class DocumentRegistry {
       diskDoc: editor.state.doc,
       source: markdown,
       baseCanonical: stabilizedRoundTrip(markdown),
+      pendingCanonical: undefined,
       host: null,
     })
     // Dirtiness is derived, so the only listener this registry needs is one
@@ -263,18 +282,30 @@ export class DocumentRegistry {
     const doc = this.#docs.get(path)
     if (doc === undefined) return undefined
     const edited = serializeStable(doc.editor)
-    return reconcileSerializedMarkdown({
+    const written = reconcileSerializedMarkdown({
       originalSource: doc.source,
       baseCanonical: doc.baseCanonical,
       edited,
       roundTrip: (markdown) => {
         try {
           return stabilizedRoundTrip(markdown)
-        } catch {
+        } catch (error) {
+          // reconcile.ts treats null the same as "the fuzzy patch didn't
+          // reproduce the edit" and falls back to canonical, which is the
+          // right safety behavior either way — but that fallback looks
+          // identical whether this was a genuine parser bug or an ordinary
+          // fuzzy-match miss, so a real regression here needs this line to
+          // ever be noticed at all.
+          console.warn('[vscode-layout] markdown reconcile safety re-parse threw', error)
           return null
         }
       },
     })
+    // Handed to markSaved so it isn't re-derived from `written` through
+    // another full stabilize pass — see OpenDocument.pendingCanonical for why
+    // that's sound rather than a shortcut.
+    doc.pendingCanonical = edited
+    return written
   }
 
   /**
@@ -314,11 +345,13 @@ export class DocumentRegistry {
     if (doc === undefined) return
     doc.diskDoc = savedDoc ?? doc.editor.state.doc
     doc.source = written
-    // Derived from the bytes that actually reached disk, not from whatever
-    // `markdown()` last computed — the source of truth for "what does the
-    // file canonicalize to now" is the file, not a value passed across two
-    // calls into this method.
-    doc.baseCanonical = stabilizedRoundTrip(written)
+    // Reuses markdown()'s own canonical form when there is one to reuse (see
+    // OpenDocument.pendingCanonical for why that's sound, not a shortcut) —
+    // falling back to a fresh derivation only for a markSaved call with no
+    // preceding markdown() call for this path, so this method stays correct
+    // even if that stops being the only way it's reached.
+    doc.baseCanonical = doc.pendingCanonical ?? stabilizedRoundTrip(written)
+    doc.pendingCanonical = undefined
     this.#bump(true)
   }
 

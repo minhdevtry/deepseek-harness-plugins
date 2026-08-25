@@ -5,6 +5,7 @@
  * for Cloudflare tunnel & remote collaboration.
  */
 import { useEffect, useState } from 'react'
+import { TOKEN_KEY } from '../api/files.ts'
 import css from './LoginModal.module.css'
 
 export interface UserProfile {
@@ -28,7 +29,7 @@ export function LoginModal({ open, onLoginSuccess }: LoginModalProps) {
     // Check initial auth status
     void (async () => {
       try {
-        const token = localStorage.getItem('dsh_auth_token')
+        const token = localStorage.getItem(TOKEN_KEY)
         const headers: Record<string, string> = token ? { authorization: `Bearer ${token}` } : {}
         const res = await fetch('/vscode-files/auth/status', { headers })
         const data = await res.json()
@@ -37,7 +38,13 @@ export function LoginModal({ open, onLoginSuccess }: LoginModalProps) {
             onLoginSuccess(token || '', data.user)
           }
         }
-      } catch {}
+      } catch {
+        // Network/localStorage failure on the initial status check: fall
+        // through and show the login form, same as if the host had said
+        // "not authenticated" (files.ts's authHeaders() treats a throwing
+        // localStorage the same way, for the same reason — privacy-mode
+        // browsers can throw on read).
+      }
     })()
   }, [onLoginSuccess])
 
@@ -58,9 +65,12 @@ export function LoginModal({ open, onLoginSuccess }: LoginModalProps) {
       if (data && data.ok) {
         if (data.token) {
           try {
-            localStorage.setItem('dsh_auth_token', data.token)
+            localStorage.setItem(TOKEN_KEY, data.token)
             localStorage.setItem('dsh_user_profile', JSON.stringify(data.user))
-          } catch {}
+          } catch {
+            // Login still succeeds for this session even if persisting it
+            // doesn't — same privacy-mode-can-throw reasoning as above.
+          }
         }
         onLoginSuccess(data.token, data.user)
       } else {
