@@ -41,7 +41,7 @@ function escapeRegex(str: string): string {
 }
 
 const MARKER_REGEX = new RegExp(
-  `^[ \\t]*${escapeRegex(MARKER_START)}([^${escapeRegex(MARKER_END)}]*)${escapeRegex(MARKER_END)}`,
+  `^([ \\t]*)${escapeRegex(MARKER_START)}([^${escapeRegex(MARKER_END)}]*)${escapeRegex(MARKER_END)}`,
 )
 
 function isLineOnlyHtml(trimmed: string): boolean {
@@ -73,7 +73,7 @@ export function encodeRawHtmlLines(source: string): string {
   let activeFence: '`' | '~' | null = null
   let activeFenceLength = 0
 
-  const encoded = lines.map((line) => {
+  const encoded = lines.map((line, index) => {
     const fenceMatch = /^\s*(`{3,}|~{3,})/.exec(line)
     const fenceRun = fenceMatch?.[1]
     if (fenceRun) {
@@ -94,16 +94,38 @@ export function encodeRawHtmlLines(source: string): string {
     }
 
     const trimmed = line.trim()
-    // The `>` belongs to the blockquote, not to the opaque line: baking it into
-    // the node's value makes the serializer emit it twice.
+    const indent = line.slice(0, line.length - line.trimStart().length)
+
+    // The `>` belongs to the blockquote, not to the opaque line, so it stays
+    // outside the marker — baking it into the node's value would make the
+    // serializer emit it twice (`> > <!-- x -->`).
+    //
+    // Only a blockquote that is *nothing but* this one line can be preserved.
+    // `rawHtmlLine` is a block node, so putting one in the middle of a
+    // multi-line quote closes the paragraph before it and opens another after,
+    // and the quote comes back out as three blocks separated by bare `>`
+    // lines — which then re-encode and grow again on the next save. For those,
+    // fall through to the parser's own (lossy) handling: losing the comment
+    // once beats a file that gains two lines every time it is written.
     const quote = /^>\s*/.exec(trimmed)
-    const payload = quote ? trimmed.slice(quote[0].length) : trimmed
-    if (payload === '' || !isOpaqueLine(payload)) {
+    if (quote !== null) {
+      const previous = lines[index - 1] ?? ''
+      const next = lines[index + 1] ?? ''
+      if (/^\s*>/.test(previous) || /^\s*>/.test(next)) {
+        return line
+      }
+      const payload = trimmed.slice(quote[0].length)
+      if (payload === '' || !isOpaqueLine(payload)) {
+        return line
+      }
+      return `${indent}${quote[0]}${MARKER_START}${encodeURIComponent(payload)}${MARKER_END}`
+    }
+
+    if (trimmed === '' || !isOpaqueLine(trimmed)) {
       return line
     }
 
-    const indent = line.slice(0, line.length - line.trimStart().length)
-    return `${indent}${quote?.[0] ?? ''}${MARKER_START}${encodeURIComponent(payload)}${MARKER_END}`
+    return `${indent}${MARKER_START}${encodeURIComponent(trimmed)}${MARKER_END}`
   })
 
   return encoded.join('\n')
@@ -161,7 +183,7 @@ export const RawHtmlLineExtension = Node.create({
         return {
           type: 'rawHtmlLine',
           raw: match[0],
-          value: decodeURIComponent(match[1] ?? ''),
+          value: (match[1] ?? '') + decodeURIComponent(match[2] ?? ''),
         }
       } catch {
         return undefined

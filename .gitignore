@@ -11,3 +11,4 @@ plugins/dsh-client-vscode-layout/lib/
 *.tsbuildinfo
 epytor/
 .tmpaudit/
+.tmpv/
