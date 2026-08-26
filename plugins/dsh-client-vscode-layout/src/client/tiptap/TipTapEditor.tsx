@@ -32,6 +32,21 @@ import { useEditorSnapshot } from './useEditorSnapshot.ts'
 import { Button, IconButton, Tooltip } from '../ui/primitives/index.ts'
 import { resolveRelativePath } from '../utils/path.ts'
 import { openInWorkbench } from '../fileOpener.ts'
+import {
+  IconSparkles,
+  IconTocOutline,
+  IconSearch,
+  IconUndo,
+  IconRedo,
+  IconMermaid,
+  IconMath,
+  IconCallout,
+  IconDetails,
+  IconCopy,
+  IconCode,
+  IconPrint,
+} from './ui/TipTapIcons.tsx'
+import { formatModShortcut, formatRedoShortcut } from '../utils/platform.ts'
 import css from './TipTapEditor.module.css'
 
 export interface TipTapEditorProps {
@@ -362,85 +377,92 @@ export function TipTapEditor({
     <div ref={wrapperRef} className={css.wrapper}>
       {/* Top action bar */}
       <div className={css.topBar}>
-        <Tooltip content="Ask AI / In-line AI Assistant (Ctrl+K)">
+        <Tooltip
+          content="Ask AI / In-line Assistant"
+          shortcut={formatModShortcut('k')}
+        >
           <Button
             size="xs"
             variant="ghost"
             onClick={() => openAI()}
-            style={{
-              color: '#c084fc',
-              fontWeight: 600,
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '4px',
-              padding: '2px 8px',
-              background: 'rgba(168, 85, 247, 0.12)',
-              border: '1px solid rgba(168, 85, 247, 0.25)',
-              borderRadius: '6px',
-            }}
+            className={css.aiBtn}
+            icon={<IconSparkles size={13} />}
           >
-            <span>✨</span>
-            <span>Ask AI</span>
+            Ask AI
           </Button>
         </Tooltip>
 
-        <span style={{ width: 1, height: 16, background: 'var(--dsw-alias-border-l2, #cbd5e1)', margin: '0 4px' }} />
+        <span className={css.divider} />
 
-        <Tooltip content="Document Outline / Table of Contents">
+        <Tooltip content="Document Outline">
           <IconButton
             size="xs"
             variant="ghost"
             active={outlineOpen}
             onClick={toggleOutline}
+            aria-label="Document Outline"
           >
-            📑
+            <IconTocOutline size={14} />
           </IconButton>
         </Tooltip>
 
-        <Tooltip content="Find in document (Ctrl+F)">
+        <Tooltip
+          content="Find in document"
+          shortcut={formatModShortcut('f')}
+        >
           <IconButton
             size="xs"
             variant="ghost"
             active={findBarOpen}
             onClick={() => { setFindBarOpen((open) => !open) }}
+            aria-label="Find in document"
           >
-            🔍
+            <IconSearch size={14} />
           </IconButton>
         </Tooltip>
 
-        <span style={{ width: 1, height: 16, background: 'var(--dsw-alias-border-l2, #cbd5e1)', margin: '0 4px' }} />
+        <span className={css.divider} />
 
-        <Tooltip content="Undo (Ctrl+Z)">
+        <Tooltip
+          content="Undo"
+          shortcut={formatModShortcut('z')}
+        >
           <IconButton
             size="xs"
             variant="ghost"
             disabled={!editor?.can().undo()}
             onClick={() => { editor?.commands.undo() }}
+            aria-label="Undo"
           >
-            ↩
+            <IconUndo size={14} />
           </IconButton>
         </Tooltip>
 
-        <Tooltip content="Redo (Ctrl+Y)">
+        <Tooltip
+          content="Redo"
+          shortcut={formatRedoShortcut()}
+        >
           <IconButton
             size="xs"
             variant="ghost"
             disabled={!editor?.can().redo()}
             onClick={() => { editor?.commands.redo() }}
+            aria-label="Redo"
           >
-            ↪
+            <IconRedo size={14} />
           </IconButton>
         </Tooltip>
 
-        <span style={{ width: 1, height: 16, background: 'var(--dsw-alias-border-l2, #cbd5e1)', margin: '0 4px' }} />
+        <span className={css.divider} />
 
         <Tooltip content="Insert Mermaid Diagram">
           <IconButton
             size="xs"
             variant="ghost"
             onClick={() => { (editor?.commands as any).setMermaid?.() }}
+            aria-label="Insert Mermaid Diagram"
           >
-            📊
+            <IconMermaid size={14} />
           </IconButton>
         </Tooltip>
 
@@ -449,8 +471,9 @@ export function TipTapEditor({
             size="xs"
             variant="ghost"
             onClick={() => { (editor?.commands as any).setMathBlock?.() }}
+            aria-label="Insert LaTeX Math"
           >
-            ∑
+            <IconMath size={14} />
           </IconButton>
         </Tooltip>
 
@@ -459,8 +482,9 @@ export function TipTapEditor({
             size="xs"
             variant="ghost"
             onClick={() => { editor?.chain().focus().toggleCallout({ type: 'info' }).run() }}
+            aria-label="Insert Callout Alert"
           >
-            💡
+            <IconCallout size={14} />
           </IconButton>
         </Tooltip>
 
@@ -469,8 +493,9 @@ export function TipTapEditor({
             size="xs"
             variant="ghost"
             onClick={() => { (editor?.commands as any).insertDetails?.() }}
+            aria-label="Insert Toggle / Details Block"
           >
-            ▶
+            <IconDetails size={14} />
           </IconButton>
         </Tooltip>
 
@@ -480,6 +505,7 @@ export function TipTapEditor({
           <Button
             size="xs"
             variant="ghost"
+            icon={<IconCopy size={13} />}
             onClick={() => {
               const md = documents.markdown(path, { forSave: false })
               if (md === undefined) return
@@ -489,30 +515,46 @@ export function TipTapEditor({
               })
             }}
           >
-            {copiedMd ? '✓ Copied' : '📋 Copy MD'}
+            {copiedMd ? 'Copied' : 'Copy MD'}
           </Button>
         </Tooltip>
 
-        <Tooltip content="View the markdown source (read-only)">
-          <Button size="xs" variant="ghost" onClick={onViewRaw}>
-            {'</> Raw'}
+        <Tooltip content="View markdown source (read-only)">
+          <Button
+            size="xs"
+            variant="ghost"
+            icon={<IconCode size={13} />}
+            onClick={onViewRaw}
+          >
+            Raw
           </Button>
         </Tooltip>
 
         <Tooltip content="Print / Export PDF">
-          <IconButton size="xs" variant="ghost" onClick={() => { window.print() }}>
-            📄
+          <IconButton
+            size="xs"
+            variant="ghost"
+            onClick={() => { window.print() }}
+            aria-label="Print / Export PDF"
+          >
+            <IconPrint size={14} />
           </IconButton>
         </Tooltip>
 
-        <Button
-          size="xs"
-          variant={isDirty ? 'primary' : 'secondary'}
-          onClick={() => { onSave(path) }}
+        <Tooltip
+          content={isDirty ? 'Save changes' : 'All changes saved'}
+          shortcut={formatModShortcut('s')}
         >
-          <span className={`${css.saveDot} ${!isDirty ? css.saveDotSaved : ''}`} />
-          {isDirty ? 'Save' : 'Saved ✓'}
-        </Button>
+          <Button
+            size="xs"
+            variant={isDirty ? 'primary' : 'ghost'}
+            disabled={!isDirty}
+            onClick={() => { onSave(path) }}
+          >
+            <span className={`${css.saveDot} ${!isDirty ? css.saveDotSaved : ''}`} />
+            {isDirty ? 'Save' : 'Saved'}
+          </Button>
+        </Tooltip>
       </div>
 
       {/* Contextual Table Controls */}

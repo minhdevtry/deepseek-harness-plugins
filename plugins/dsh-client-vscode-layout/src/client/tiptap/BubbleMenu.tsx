@@ -14,6 +14,7 @@ import { appendToComposer, focusComposer } from '../composer.ts'
 import { clampBubblePosition } from '../utils/positioning.ts'
 import { basename } from '../utils/path.ts'
 import { Button, IconButton, Tooltip } from '../ui/primitives/index.ts'
+import { formatModShortcut } from '../utils/platform.ts'
 import css from './BubbleMenu.module.css'
 
 export interface BubbleMenuProps {
@@ -258,36 +259,39 @@ export function BubbleMenu({ editor, path, markdown, onOpenAI }: BubbleMenuProps
 
           <span className={css.divider} />
 
-          <Tooltip content="Bold" shortcut="Ctrl+B">
+          <Tooltip content="Bold" shortcut={formatModShortcut('b')}>
             <IconButton
               size="xs"
               variant="ghost"
               active={editor.isActive('bold')}
               onClick={() => { editor.chain().focus().toggleBold().run() }}
+              aria-label="Bold"
               style={{ fontWeight: 800 }}
             >
               B
             </IconButton>
           </Tooltip>
 
-          <Tooltip content="Italic" shortcut="Ctrl+I">
+          <Tooltip content="Italic" shortcut={formatModShortcut('i')}>
             <IconButton
               size="xs"
               variant="ghost"
               active={editor.isActive('italic')}
               onClick={() => { editor.chain().focus().toggleItalic().run() }}
+              aria-label="Italic"
               style={{ fontStyle: 'italic' }}
             >
               I
             </IconButton>
           </Tooltip>
 
-          <Tooltip content="Underline" shortcut="Ctrl+U">
+          <Tooltip content="Underline" shortcut={formatModShortcut('u')}>
             <IconButton
               size="xs"
               variant="ghost"
               active={editor.isActive('underline')}
               onClick={() => { editor.chain().focus().toggleUnderline().run() }}
+              aria-label="Underline"
               style={{ textDecoration: 'underline' }}
             >
               U
@@ -300,6 +304,7 @@ export function BubbleMenu({ editor, path, markdown, onOpenAI }: BubbleMenuProps
               variant="ghost"
               active={editor.isActive('strike')}
               onClick={() => { editor.chain().focus().toggleStrike().run() }}
+              aria-label="Strikethrough"
               style={{ textDecoration: 'line-through' }}
             >
               S
@@ -312,6 +317,7 @@ export function BubbleMenu({ editor, path, markdown, onOpenAI }: BubbleMenuProps
               variant="ghost"
               active={editor.isActive('code')}
               onClick={() => { editor.chain().focus().toggleCode().run() }}
+              aria-label="Inline Code"
               style={{ fontFamily: 'monospace', fontSize: 11 }}
             >
               {'</>'}
@@ -325,6 +331,7 @@ export function BubbleMenu({ editor, path, markdown, onOpenAI }: BubbleMenuProps
                 variant="ghost"
                 active={editor.isActive('highlight') || editor.isActive('textStyle')}
                 onClick={() => setShowPalette((prev) => !prev)}
+                aria-label="Text & Background Color"
               >
                 🎨
               </IconButton>
@@ -336,12 +343,13 @@ export function BubbleMenu({ editor, path, markdown, onOpenAI }: BubbleMenuProps
             )}
           </div>
 
-          <Tooltip content="Link" shortcut="Ctrl+K">
+          <Tooltip content="Link" shortcut={formatModShortcut('k')}>
             <IconButton
               size="xs"
               variant="ghost"
               active={editor.isActive('link')}
               onClick={openLinkMode}
+              aria-label="Insert Link"
             >
               🔗
             </IconButton>
@@ -355,6 +363,7 @@ export function BubbleMenu({ editor, path, markdown, onOpenAI }: BubbleMenuProps
               variant="ghost"
               active={editor.isActive({ textAlign: 'left' })}
               onClick={() => { editor.chain().focus().setTextAlign('left').run() }}
+              aria-label="Align Left"
             >
               ⇤
             </IconButton>
@@ -366,6 +375,7 @@ export function BubbleMenu({ editor, path, markdown, onOpenAI }: BubbleMenuProps
               variant="ghost"
               active={editor.isActive({ textAlign: 'center' })}
               onClick={() => { editor.chain().focus().setTextAlign('center').run() }}
+              aria-label="Align Center"
             >
               ≡
             </IconButton>
@@ -377,6 +387,7 @@ export function BubbleMenu({ editor, path, markdown, onOpenAI }: BubbleMenuProps
               variant="ghost"
               active={editor.isActive({ textAlign: 'right' })}
               onClick={() => { editor.chain().focus().setTextAlign('right').run() }}
+              aria-label="Align Right"
             >
               ⇥
             </IconButton>
@@ -388,6 +399,7 @@ export function BubbleMenu({ editor, path, markdown, onOpenAI }: BubbleMenuProps
               variant="ghost"
               active={editor.isActive({ textAlign: 'justify' })}
               onClick={() => { editor.chain().focus().setTextAlign('justify').run() }}
+              aria-label="Align Justify"
             >
               ⇿
             </IconButton>

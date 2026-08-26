@@ -63,6 +63,8 @@ export function Tooltip({
       className={css.wrapper}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
+      onFocus={handleMouseEnter}
+      onBlur={handleMouseLeave}
       onClick={handleClick}
     >
       {children}
@@ -70,7 +72,6 @@ export function Tooltip({
         <div
           role="tooltip"
           className={`${css.tooltip} ${css[placement]}`}
-          aria-hidden="true"
         >
           <span className={css.content}>{content}</span>
           {shortcut && <span className={css.shortcut}>{shortcut}</span>}

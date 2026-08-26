@@ -216,6 +216,7 @@ export function FindBar({ editor, isOpen, onClose }: FindBarProps) {
           variant="ghost"
           onClick={handlePrev}
           disabled={matchCount === 0}
+          aria-label="Previous match"
         >
           ▲
         </IconButton>
@@ -227,6 +228,7 @@ export function FindBar({ editor, isOpen, onClose }: FindBarProps) {
           variant="ghost"
           onClick={handleNext}
           disabled={matchCount === 0}
+          aria-label="Next match"
         >
           ▼
         </IconButton>
@@ -240,13 +242,14 @@ export function FindBar({ editor, isOpen, onClose }: FindBarProps) {
           variant="ghost"
           active={matchCase}
           onClick={() => setMatchCase((c) => !c)}
+          aria-label="Match case"
         >
           Aa
         </IconButton>
       </Tooltip>
 
       <Tooltip content="Close" shortcut="Esc">
-        <IconButton size="xs" variant="ghost" onClick={onClose}>
+        <IconButton size="xs" variant="ghost" onClick={onClose} aria-label="Close find bar">
           ✕
         </IconButton>
       </Tooltip>

@@ -125,3 +125,15 @@
   pointer-events: auto;
 }
 
+@media print {
+  .handle,
+  .overlayLayer {
+    display: none !important;
+  }
+  .frame {
+    display: block !important;
+    height: auto !important;
+  }
+}
+
+

@@ -11,6 +11,7 @@
   cursor: pointer;
   white-space: nowrap;
   user-select: none;
+  flex-shrink: 0;
   transition: all var(--duration-fast, 100ms) var(--ease-in-out, ease);
 }
 

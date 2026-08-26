@@ -13,6 +13,7 @@ export interface IconButtonProps extends React.ButtonHTMLAttributes<HTMLButtonEl
 
 export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(function IconButton(
   {
+    type = 'button',
     variant = 'ghost',
     size = 'sm',
     active = false,
@@ -36,6 +37,7 @@ export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(functio
   return (
     <button
       ref={ref}
+      type={type}
       className={classNames}
       disabled={disabled}
       data-active={active || undefined}

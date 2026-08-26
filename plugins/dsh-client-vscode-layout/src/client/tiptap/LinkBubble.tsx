@@ -145,12 +145,12 @@ export function LinkBubble({ editor, currentPath }: LinkBubbleProps) {
             onKeyDown={handleEditKeyDown}
           />
           <Tooltip content="Apply (Enter)">
-            <IconButton size="xs" variant="default" onClick={handleSaveEdit}>
+            <IconButton size="xs" variant="default" onClick={handleSaveEdit} aria-label="Apply link edit">
               ✓
             </IconButton>
           </Tooltip>
           <Tooltip content="Cancel (Esc)">
-            <IconButton size="xs" variant="ghost" onClick={() => { setIsEditing(false) }}>
+            <IconButton size="xs" variant="ghost" onClick={() => { setIsEditing(false) }} aria-label="Cancel link edit">
               ✕
             </IconButton>
           </Tooltip>
@@ -163,7 +163,7 @@ export function LinkBubble({ editor, currentPath }: LinkBubbleProps) {
           </span>
 
           <Tooltip content={isExternal ? 'Open link in new browser tab' : 'Open document in Workbench tab'}>
-            <IconButton size="xs" variant="ghost" onClick={handleOpen}>
+            <IconButton size="xs" variant="ghost" onClick={handleOpen} aria-label="Open link">
               {isExternal ? (
                 <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
                   <path d="M12 9v4a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h4m3-2h4v4m-9 9L14 2" />
@@ -177,7 +177,7 @@ export function LinkBubble({ editor, currentPath }: LinkBubbleProps) {
           </Tooltip>
 
           <Tooltip content="Edit link">
-            <IconButton size="xs" variant="ghost" onClick={() => { setIsEditing(true) }}>
+            <IconButton size="xs" variant="ghost" onClick={() => { setIsEditing(true) }} aria-label="Edit link">
               <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
                 <path d="M11 2l3 3L5 14H2v-3L11 2z" />
               </svg>
@@ -185,9 +185,9 @@ export function LinkBubble({ editor, currentPath }: LinkBubbleProps) {
           </Tooltip>
 
           <Tooltip content={copied ? 'Copied!' : 'Copy URL'}>
-            <IconButton size="xs" variant="ghost" onClick={handleCopy}>
+            <IconButton size="xs" variant="ghost" onClick={handleCopy} aria-label="Copy URL">
               {copied ? (
-                <span style={{ color: '#22c55e', fontWeight: 'bold' }}>✓</span>
+                <span style={{ color: 'var(--dsw-alias-state-success-primary, #22c55e)', fontWeight: 'bold' }}>✓</span>
               ) : (
                 <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
                   <rect x="5" y="5" width="8" height="8" rx="1.5" />
@@ -198,7 +198,7 @@ export function LinkBubble({ editor, currentPath }: LinkBubbleProps) {
           </Tooltip>
 
           <Tooltip content="Remove link">
-            <IconButton size="xs" variant="ghost" onClick={handleUnlink}>
+            <IconButton size="xs" variant="ghost" onClick={handleUnlink} aria-label="Remove link">
               <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
                 <path d="M2 2l12 12M7 9a3 3 0 0 1 0-4.24l1.5-1.5a3 3 0 0 1 4.24 0M9 7a3 3 0 0 1 0 4.24l-1.5 1.5a3 3 0 0 1-4.24 0" />
               </svg>

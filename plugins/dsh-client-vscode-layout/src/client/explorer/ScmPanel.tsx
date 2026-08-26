@@ -169,6 +169,7 @@ export function ScmPanel({ root, onOpenFile, onNotify }: ScmPanelProps) {
             onClick={() => { void refresh() }}
             disabled={loading}
             className={css.refreshBtn}
+            aria-label="Refresh Git Status"
           >
             {loading ? (
               <Spinner size="xs" />
@@ -202,6 +203,7 @@ export function ScmPanel({ root, onOpenFile, onNotify }: ScmPanelProps) {
                 variant="ghost"
                 onClick={handleGenerateCommitMessage}
                 disabled={staged.length === 0 && unstaged.length === 0}
+                aria-label="Generate Commit Message with AI"
               >
                 🪄
               </IconButton>
@@ -231,6 +233,7 @@ export function ScmPanel({ root, onOpenFile, onNotify }: ScmPanelProps) {
                   size="xs"
                   variant="ghost"
                   onClick={() => { void handleUnstageAll() }}
+                  aria-label="Unstage All Changes"
                 >
                   −
                 </IconButton>
@@ -262,6 +265,7 @@ export function ScmPanel({ root, onOpenFile, onNotify }: ScmPanelProps) {
                       size="xs"
                       variant="ghost"
                       onClick={e => { void handleUnstage(file.path, e) }}
+                      aria-label="Unstage"
                     >
                       −
                     </IconButton>
@@ -283,6 +287,7 @@ export function ScmPanel({ root, onOpenFile, onNotify }: ScmPanelProps) {
                   size="xs"
                   variant="ghost"
                   onClick={() => { void handleStageAll() }}
+                  aria-label="Stage All Changes"
                 >
                   +
                 </IconButton>
@@ -320,6 +325,7 @@ export function ScmPanel({ root, onOpenFile, onNotify }: ScmPanelProps) {
                       size="xs"
                       variant="ghost"
                       onClick={e => { void handleStage(file.path, e) }}
+                      aria-label="Stage changes"
                     >
                       +
                     </IconButton>
@@ -329,6 +335,7 @@ export function ScmPanel({ root, onOpenFile, onNotify }: ScmPanelProps) {
                       size="xs"
                       variant="ghost"
                       onClick={e => { void handleDiscard(file.path, e) }}
+                      aria-label="Discard changes"
                     >
                       ↩
                     </IconButton>
