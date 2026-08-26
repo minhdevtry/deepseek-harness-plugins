@@ -1,21 +1,28 @@
 /**
- * The one write path from this plugin into the host's chat composer.
+ * The write path from this plugin into the host's chat composer.
  *
- * Everything that used to reach into the composer's DOM goes through here.
+ * Everything that reaches into the composer's input face goes through here.
  * The real implementation is built in index.ts from `ctx.conversation.input`
  * — `IConversation` documents that registry as the input face "other plugins
- * may reach", and `SessionInput.setDraft` is its "single write path for draft
- * text (all mutation rides machine events)". So the draft, its revision
- * counter and its occurrence table stay the host's business; we hand it a
- * string and nothing else.
+ * may reach", and `SessionInput` is its single write path.
  *
- * Why a module seam instead of prop threading: the callers are scattered
- * across three unrelated subtrees (the frame's shortcut handler, the command
- * palette, TipTap's bubble menu four levels down) and only one of them sits
- * near a registration that could inject a callback. This mirrors the seam in
- * explorer/views.ts — installed once by the plugin body, retracted on unload,
- * inert if anything calls it in between.
+ * Supports two distinct verbs:
+ * 1. `appendToComposer(text)` — appends raw plain text to the draft.
+ * 2. `appendReferenceToComposer(ref)` — inserts an authentic U+FFFC reference chip
+ *    into the draft, backed by the host's ReferenceInsert and Occurrence system.
  */
+
+/** Reference chip data structure for the composer. */
+export interface ComposerReference {
+  /** Registered source name — must match FILE_SOURCE ('files'). */
+  readonly source: string
+  /** Identifier for source; this is what codec.serialize() receives. */
+  readonly ref: string
+  /** Label displayed on the 4em chip. */
+  readonly label: string
+  /** Text representation for clipboard/persist, NOT what's sent to model. */
+  readonly clipboardText: string
+}
 
 /**
  * Append text to the current session's composer draft.
@@ -24,21 +31,37 @@
  */
 export type ComposerWriter = (text: string) => boolean
 
-/** Inert until the plugin body installs the ctx-backed writer. */
+/** Writer for reference chips. */
+export type ReferenceWriter = (ref: ComposerReference) => boolean
+
+/** Inert until the plugin body installs the ctx-backed writers. */
 const NO_COMPOSER: ComposerWriter = () => false
+const NO_REFERENCE: ReferenceWriter = () => false
 
 let writer: ComposerWriter = NO_COMPOSER
+let referenceWriter: ReferenceWriter = NO_REFERENCE
 
 /**
  * Seat the ctx-backed writer. Called once from the plugin body.
  * @param next - the real writer.
- * @returns disposer restoring the inert default (last-in wins, and a stale
- *   disposer from an earlier install never clobbers a newer one).
+ * @returns disposer restoring the inert default.
  */
 export function installComposerWriter(next: ComposerWriter): () => void {
   writer = next
   return () => {
     if (writer === next) writer = NO_COMPOSER
+  }
+}
+
+/**
+ * Seat the ctx-backed reference chip writer. Called once from the plugin body.
+ * @param next - the real reference writer.
+ * @returns disposer restoring the inert default.
+ */
+export function installReferenceWriter(next: ReferenceWriter): () => void {
+  referenceWriter = next
+  return () => {
+    if (referenceWriter === next) referenceWriter = NO_REFERENCE
   }
 }
 
@@ -53,13 +76,90 @@ export function appendToComposer(text: string): boolean {
 }
 
 /**
+ * Append a reference chip to the end of the composer draft.
+ * @param ref - the reference chip definition.
+ * @returns whether the chip was successfully inserted.
+ */
+export function appendReferenceToComposer(ref: ComposerReference): boolean {
+  return referenceWriter(ref)
+}
+
+/**
+ * Resolve an absolute path to a workspace-relative path against session cwd.
+ */
+export function toWorkspaceRelative(abs: string, cwd: string | undefined): string {
+  if (cwd === undefined) return abs
+  const root = cwd.endsWith('/') ? cwd : `${cwd}/`
+  return abs.startsWith(root) ? abs.slice(root.length) : abs
+}
+
+/**
+ * Short label for 4em (~64px) chip cell: fits ~10 characters.
+ * Prioritizes line numbers since that distinguishes chips of the same file.
+ */
+import { basename } from './utils/path.ts'
+import { FILE_SOURCE } from './inputTriggers/fileSource.ts'
+
+/**
+ * Normalize any line range into canonical `#Lstart-end` or `#Lstart` format.
+ * Strips duplicate `L`s: e.g. `#L36-L43` -> `#L36-43`, `L36-L43` -> `#L36-43`.
+ */
+export function normalizeLineRange(range: string): string {
+  const trimmed = range.trim()
+  if (!trimmed) return ''
+  // Strip duplicate -L\d+ to -\d+
+  const singleL = trimmed.replace(/-L(\d+)/g, '-$1')
+  if (singleL.startsWith('#L')) return singleL
+  if (singleL.startsWith('#')) return `#L${singleL.slice(1)}`
+  if (singleL.startsWith('L')) return `#L${singleL.slice(1)}`
+  return `#L${singleL}`
+}
+
+/**
+ * Format a file mention using pure filename (basename) and optional line range #L...
+ * Examples:
+ * - formatFileMention('/path/to/ARCHITECTURE.md') -> '@ARCHITECTURE.md'
+ * - formatFileMention('/path/to/AppFrame.tsx', '#L36-L43') -> '@AppFrame.tsx#L36-43'
+ * - formatFileMention('/path/to/AppFrame.tsx', '#L2-6') -> '@AppFrame.tsx#L2-6'
+ * - formatFileMention('file.ts', '1-90') -> '@file.ts#L1-90'
+ */
+export function formatFileMention(path: string, range?: string): string {
+  const filename = basename(path) || path
+  if (!range) return `@${filename}`
+  const lineTag = normalizeLineRange(range)
+  return `@${filename}${lineTag}`
+}
+
+/**
+ * Send a file mention as an authentic blue reference chip into the chat composer,
+ * falling back to plain text if reference chips are unsupported.
+ */
+export function sendFileMention(path: string, range?: string): boolean {
+  const filename = basename(path) || path
+  const cleanRange = range ? normalizeLineRange(range) : ''
+  const ref = `${filename}${cleanRange}`
+  const label = `${filename}${cleanRange}`
+  const clipboardText = `@${filename}${cleanRange}`
+
+  const ok = appendReferenceToComposer({
+    source: FILE_SOURCE,
+    ref,
+    label,
+    clipboardText,
+  })
+  if (ok) return true
+  return appendToComposer(clipboardText)
+}
+
+/**
+ * Append a formatted file mention string to the chat composer.
+ */
+export function appendMentionToComposer(path: string, range?: string): boolean {
+  return sendFileMention(path, range)
+}
+
+/**
  * Put the caret in the composer after a programmatic append.
- *
- * The single DOM touch left in this file, and the reason it survives: the
- * input face exposes draft mutation but no focus verb, and the whole point of
- * Ctrl+L is that the operator types their question immediately afterwards.
- * Focusing cannot corrupt state the way the old value-setter write could — on
- * a markup change this degrades to "the operator clicks the composer".
  */
 export function focusComposer(): void {
   const panel = document.querySelector('[data-dsh-chat-panel="true"]')

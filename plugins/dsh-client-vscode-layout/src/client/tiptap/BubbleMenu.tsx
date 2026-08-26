@@ -10,7 +10,7 @@ import { useLayoutEffect, useRef, useState, type ReactNode, type KeyboardEvent }
 import type { Editor } from '@tiptap/core'
 import { HighlightPalette } from './highlight/HighlightPalette.tsx'
 import { getLineRangeForSelection } from '../utils/chatComposer.ts'
-import { appendToComposer, focusComposer } from '../composer.ts'
+import { appendMentionToComposer, focusComposer } from '../composer.ts'
 import { clampBubblePosition } from '../utils/positioning.ts'
 import { basename } from '../utils/path.ts'
 import type { AIActionId } from './ai/types.ts'
@@ -578,7 +578,8 @@ export function BubbleMenu({ editor, path, markdown, onOpenAI }: BubbleMenuProps
                         to: fromOffset + selectedText.length,
                       })
                       const filename = basename(path) || path
-                      if (appendToComposer(`@${filename} ${rangeString}`)) focusComposer()
+                      appendMentionToComposer(filename, rangeString)
+                      focusComposer()
                     }
                   }}
                   title="Mention selection in Chat"

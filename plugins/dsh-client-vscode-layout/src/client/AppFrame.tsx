@@ -28,9 +28,29 @@ import { InlineAI } from './ui/InlineAI.tsx'
 import { Toast, type ToastItem, type ToastType } from './ui/Toast.tsx'
 import { getLineRangeForSelection } from './utils/chatComposer.ts'
 import { basename } from './utils/path.ts'
-import { appendToComposer, focusComposer } from './composer.ts'
+import { appendToComposer, appendMentionToComposer, focusComposer } from './composer.ts'
 import { installWorkbenchOpener } from './fileOpener.ts'
 import css from './AppFrame.module.css'
+
+/**
+ * Send a file mention with optional range to the chat composer.
+ * Formats as pure filename without directory path: e.g. @ARCHITECTURE.md#L2-5 or @ARCHITECTURE.md
+ */
+function sendReferenceToComposer(path: string, sel?: any): boolean {
+  const filename = basename(path) || path
+  let range = ''
+  if (sel?.rangeString) {
+    range = sel.rangeString
+  } else if (sel?.selectedText && typeof sel.selectedText === 'string' && sel.selectedText.trim().length > 0) {
+    const docText = (window as any).__dsh_get_active_text?.(path) || ''
+    if (docText) {
+      const offsets = { from: sel.fromOffset ?? sel.from, to: sel.toOffset ?? sel.to }
+      const res = getLineRangeForSelection(docText, sel.selectedText, offsets)
+      if (res.rangeString) range = res.rangeString
+    }
+  }
+  return appendMentionToComposer(filename, range)
+}
 
 /**
  * Ctrl/Cmd+Shift chords that select a left-column view, keyed by the letter.
@@ -57,6 +77,12 @@ export function AppFrame({
   useExplorerView, setExplorerView,
 }: AppFrameProps) {
   const panels = useStore(s => s)
+
+  // Modals and Overlays
+  const [quickOpen, setQuickOpen] = useState(false)
+  const [cmdPalette, setCmdPalette] = useState(false)
+  const [inlineAIOpen, setInlineAIOpen] = useState(false)
+  const [inlineSelection, setInlineSelection] = useState('')
   // The details surface is session-strict: it has nothing to show until a real
   // (non-blank) session is current.
   const detailsSession = useSessions((s) => {
@@ -189,15 +215,8 @@ export function AppFrame({
     setToasts(prev => prev.filter(t => t.id !== id))
   }, [])
 
-  // Modals and Overlays
-  const [quickOpen, setQuickOpen] = useState(false)
-  const [cmdPalette, setCmdPalette] = useState(false)
-  const [inlineAIOpen, setInlineAIOpen] = useState(false)
-  const [inlineSelection, setInlineSelection] = useState('')
-
-  // Global Keyboard Shortcuts
+  // Global keyboard shortcuts.
   useEffect(() => {
-    if (isMobile) return
     const handleKeyDown = (e: KeyboardEvent) => {
       const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0
       const mod = isMac ? e.metaKey : e.ctrlKey
@@ -205,12 +224,20 @@ export function AppFrame({
       if (mod && e.key.toLowerCase() === 'p' && !e.shiftKey) {
         e.preventDefault()
         setQuickOpen(prev => !prev)
-      } else if (mod && e.key === 'Tab') {
+      } else if (mod && e.key.toLowerCase() === 'w') {
         e.preventDefault()
-        const tabs = panels.tabs
-        if (tabs.length > 1) {
-          const currentIdx = panels.activePath ? tabs.indexOf(panels.activePath) : -1
-          const nextIdx = e.shiftKey
+        if (panels.activePath) {
+          const remaining = panels.tabs.filter(t => t !== panels.activePath)
+          const nextActive = remaining.length > 0 ? remaining[remaining.length - 1] : undefined
+          actions.setTabs(remaining, nextActive)
+        }
+      } else if (mod && (e.key === 'Tab' || e.key === 'PageDown' || e.key === 'PageUp')) {
+        if (panels.tabs.length > 1 && panels.activePath) {
+          e.preventDefault()
+          const tabs = panels.tabs
+          const currentIdx = tabs.indexOf(panels.activePath)
+          const isPrev = e.shiftKey || e.key === 'PageUp'
+          const nextIdx = isPrev
             ? (currentIdx - 1 + tabs.length) % tabs.length
             : (currentIdx + 1) % tabs.length
           actions.openFile(tabs[nextIdx]!)
@@ -224,67 +251,49 @@ export function AppFrame({
         const reported = activeSel?.path === panels.activePath
           ? (activeSel.selectedText as string | undefined)
           : undefined
-        const sel = reported ?? window.getSelection()?.toString() ?? ''
+        const winSel = window.getSelection()
+        const inEditor =
+          winSel !== null && !winSel.isCollapsed &&
+          winSel.anchorNode !== null &&
+          document.querySelector('.ProseMirror, .cm-content')?.contains(winSel.anchorNode) === true
+        const sel = reported ?? (inEditor ? winSel!.toString() : '')
         setInlineSelection(sel.slice(0, 500))
         setInlineAIOpen(prev => !prev)
       } else if (mod && e.key.toLowerCase() === 'b') {
         e.preventDefault()
         actions.toggleSidebar()
       } else if (mod && e.shiftKey && VIEW_KEYS[e.key.toLowerCase()] !== undefined) {
-        // VS Code's viewlet keys. Search earns one because it is a *mode*, not
-        // a permanent tab — that is the whole reason it stopped occupying a
-        // slot in the column's chrome. Selecting also reveals a collapsed
-        // column (index.ts), so the chord works from the rail.
         e.preventDefault()
         setExplorerView(VIEW_KEYS[e.key.toLowerCase()]!)
       } else if (mod && e.key.toLowerCase() === 'l' && !e.shiftKey) {
         e.preventDefault()
-        if (panels.activePath) {
+
+        const activeSel = (window as any).__dsh_active_selection
+        const hasSelection =
+          panels.activePath !== undefined &&
+          activeSel != null &&
+          activeSel.path === panels.activePath &&
+          typeof activeSel.selectedText === 'string' &&
+          activeSel.selectedText.trim().length > 0
+
+        if (hasSelection) {
           actions.openRight()
           actions.setRightTab('chat')
-          const filename = basename(panels.activePath) || panels.activePath
-          const activeSel = (window as any).__dsh_active_selection
-          let lineTag = ''
-          if (activeSel && activeSel.path === panels.activePath && activeSel.rangeString) {
-            lineTag = ` ${activeSel.rangeString}`
-          } else {
-            // The WYSIWYG surface publishes the selected text without a range —
-            // resolving line numbers there means serialising the document, which
-            // is now a click-time cost, not a per-keystroke one. Prefer its text
-            // over the DOM selection, which a floating menu can have collapsed.
-            const reported = activeSel?.path === panels.activePath
-              ? (activeSel.selectedText as string | undefined)
-              : undefined
-            const sel = reported ?? window.getSelection()?.toString() ?? ''
-            if (sel.trim().length > 0) {
-              const docText = (window as any).__dsh_get_active_text?.(panels.activePath) || ''
-              if (docText) {
-                const offsets = activeSel?.path === panels.activePath
-                  ? { from: activeSel.fromOffset ?? activeSel.from, to: activeSel.toOffset ?? activeSel.to }
-                  : undefined
-                const { rangeString } = getLineRangeForSelection(docText, sel, offsets)
-                if (rangeString) lineTag = ` ${rangeString}`
-              }
-            }
-          }
-          if (appendToComposer(`@${filename}${lineTag}`)) focusComposer()
+          if (sendReferenceToComposer(panels.activePath!, activeSel)) focusComposer()
           else handleNotify('Open a session first', 'warning')
+        } else if (colsRef.current.right === 0) {
+          actions.openRight()
+          actions.setRightTab('chat')
         } else {
-          if (colsRef.current.right === 0) {
-            actions.openRight()
-            actions.setRightTab('chat')
-          } else {
-            actions.closeRight()
-          }
+          actions.closeRight()
         }
       }
     }
 
     window.addEventListener('keydown', handleKeyDown)
     return () => { window.removeEventListener('keydown', handleKeyDown) }
-  }, [actions, handleNotify, isMobile, panels.activeLine, panels.activePath, setExplorerView])
+  }, [actions, handleNotify, isMobile, panels.activeLine, panels.activePath, panels.tabs, setExplorerView])
 
-  // Commands for Command Palette
   const commands: CommandItem[] = useMemo(() => [
     {
       id: 'workbench.action.quickOpen',
@@ -295,7 +304,7 @@ export function AppFrame({
     },
     {
       id: 'workbench.action.toggleChat',
-      title: 'Toggle AI Chat / Details Column',
+      title: 'Toggle AI Chat',
       category: 'View',
       keybinding: 'Ctrl+L',
       action: () => {
@@ -358,44 +367,28 @@ export function AppFrame({
         if (panels.activePath) {
           actions.openRight()
           actions.setRightTab('chat')
-          const filename = basename(panels.activePath) || panels.activePath
-          if (appendToComposer(`@${filename}`)) focusComposer()
+          const activeSel = (window as any).__dsh_active_selection
+          const selObj = activeSel?.path === panels.activePath ? activeSel : undefined
+          if (sendReferenceToComposer(panels.activePath, selObj)) focusComposer()
           else handleNotify('Open a session first', 'warning')
         } else {
           handleNotify('No active file open', 'warning')
         }
       },
     },
-  ], [actions, cols.right, handleNotify, panels.activePath, panels.autoSave, setExplorerView])
+  ], [actions, handleNotify, panels.activePath, panels.autoSave, setExplorerView])
 
   const handleInlineAISubmit = useCallback((prompt: string, contextSnippet?: string) => {
     actions.openRight()
     actions.setRightTab('chat')
-    const filename = panels.activePath ? (basename(panels.activePath) || panels.activePath) : ''
-    let mentionTag = filename ? `@${filename}` : ''
-    if (filename && contextSnippet && contextSnippet.trim().length > 0) {
+    if (panels.activePath) {
       const activeSel = (window as any).__dsh_active_selection
-      if (
-        activeSel &&
-        activeSel.path === panels.activePath &&
-        activeSel.rangeString &&
-        typeof activeSel.selectedText === 'string' &&
-        activeSel.selectedText.trim() === contextSnippet.trim()
-      ) {
-        mentionTag = `@${filename} ${activeSel.rangeString}`
-      } else {
-        const docText = (window as any).__dsh_get_active_text?.(panels.activePath!) || ''
-        if (docText) {
-          const offsets = activeSel?.path === panels.activePath
-            ? { from: activeSel.fromOffset ?? activeSel.from, to: activeSel.toOffset ?? activeSel.to }
-            : undefined
-          const { rangeString } = getLineRangeForSelection(docText, contextSnippet, offsets)
-          if (rangeString) mentionTag = `@${filename} ${rangeString}`
-        }
-      }
+      const selObj = activeSel?.path === panels.activePath && activeSel.selectedText?.trim() === contextSnippet?.trim()
+        ? activeSel
+        : contextSnippet ? { selectedText: contextSnippet } : undefined
+      sendReferenceToComposer(panels.activePath, selObj)
     }
-    const fullMention = mentionTag ? `${mentionTag} ${prompt}` : prompt
-    if (appendToComposer(fullMention)) focusComposer()
+    if (appendToComposer(prompt)) focusComposer()
     else handleNotify('Open a session first', 'warning')
   }, [actions, handleNotify, panels.activePath])
 

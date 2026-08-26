@@ -56,15 +56,15 @@ export function getLineRangeForSelection(
 
     const newlineCount = selPart.match(/\n/g)?.length ?? 0
     const endLine = startLine + newlineCount
-    const rangeString = startLine === endLine ? `#L${startLine}` : `#L${startLine}-L${endLine}`
+    const rangeString = startLine === endLine ? `#L${startLine}` : `#L${startLine}-${endLine}`
     return { startLine, endLine, rangeString }
   }
 
-  // Fallback: substring search across document lines
+  // Substring search fallback
   const lines = fullMarkdown.split('\n')
-  const selLines = trimmed.split('\n').map((l) => l.trim()).filter(Boolean)
-  const firstSel = selLines[0] || trimmed
-  const lastSel = selLines[selLines.length - 1] || trimmed
+  const selLines = selectedText.split('\n')
+  const firstSel = selLines[0]?.trim() || ''
+  const lastSel = selLines[selLines.length - 1]?.trim() || ''
 
   let startLine = -1
   let endLine = -1
@@ -90,8 +90,7 @@ export function getLineRangeForSelection(
       startLine = (before.match(/\n/g)?.length ?? 0) + 1
       endLine = startLine + Math.max(0, selLines.length - 1)
     } else {
-      startLine = 1
-      endLine = 1
+      return { startLine: 1, endLine: 1, rangeString: '' }
     }
   }
 
@@ -99,6 +98,6 @@ export function getLineRangeForSelection(
     endLine = Math.min(lines.length, startLine + Math.max(0, selLines.length - 1))
   }
 
-  const rangeString = startLine === endLine ? `#L${startLine}` : `#L${startLine}-L${endLine}`
+  const rangeString = startLine === endLine ? `#L${startLine}` : `#L${startLine}-${endLine}`
   return { startLine, endLine, rangeString }
 }

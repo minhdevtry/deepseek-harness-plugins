@@ -32,9 +32,11 @@ import { createViewState, type ExplorerView } from './explorer/views.ts'
 import { basename } from './utils/path.ts'
 import { RailViews, type RailViewsInjected } from './explorer/RailViews.tsx'
 import { createFileSource } from './inputTriggers/fileSource.ts'
-import { installComposerWriter } from './composer.ts'
+import { installComposerWriter, installReferenceWriter, toWorkspaceRelative, type ComposerReference } from './composer.ts'
 import { openInWorkbench, routeFor } from './fileOpener.ts'
 import { readFile } from './api/files.ts'
+
+export { toWorkspaceRelative }
 
 // Contract exports only (export discipline): the ctx.layout face consumers and
 // test fakes type against, plus the owner shares registrants compose with. The
@@ -109,6 +111,43 @@ export function apply(ctx: ClientContext): void {
     input.setDraft(`${draft}${gap}${text} `)
     return true
   }), 'vscode-layout: composer writer')
+
+  /**
+   * The frame's reference chip write path into the chat composer.
+   * Inserts an authentic U+FFFC occurrence chip into the current session draft.
+   */
+  ctx.effect(() => installReferenceWriter((reference) => {
+    const conversation = ctx.get('conversation') as IConversation | undefined
+    if (conversation === undefined) return false
+    const sessionId = ctx.sessions.list.getSnapshot().current
+    if (sessionId === undefined) return false
+    const actx = ctx.sessions.scope(sessionId)
+    if (actx === undefined) return false
+    const input = conversation.input.for(actx)
+
+    // If inputTriggers is missing from profile, reference chips cannot be resolved by codec
+    if (ctx.get('inputTriggers') === undefined) return false
+
+    // Chip adds a trailing space after itself, but not before. Ensure a space
+    // if draft already ends in non-whitespace.
+    const before = input.state.getSnapshot()
+    if (before.draft.length > 0 && !/\s$/.test(before.draft)) {
+      input.setDraft(`${before.draft} `)
+    }
+
+    const snap = input.state.getSnapshot()
+    const at = snap.draft.length
+
+    const cwd = ctx.sessions.list.getSnapshot().byId[sessionId]?.cwd
+    const relRef = toWorkspaceRelative(reference.ref, cwd)
+    const resolvedRef: ComposerReference = {
+      ...reference,
+      ref: relRef,
+      clipboardText: `@${relRef}`,
+    }
+
+    return input.insertReference(resolvedRef, { start: at, end: at, draftRev: snap.draftRev })
+  }), 'vscode-layout: composer reference writer')
 
   /**
    * Route a clicked file into the workbench instead of the OS (see fileOpener.ts).

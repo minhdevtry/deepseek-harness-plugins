@@ -238,7 +238,7 @@ export function TipTapEditor({
       const startLine = (textBefore.match(/\n/g)?.length ?? 0) + 1
       const newlineCount = selectedText.match(/\n/g)?.length ?? 0
       const endLine = startLine + newlineCount
-      const rangeString = startLine === endLine ? `#L${startLine}` : `#L${startLine}-L${endLine}`
+      const rangeString = startLine === endLine ? `#L${startLine}` : `#L${startLine}-${endLine}`
 
       ;(window as any).__dsh_active_selection = {
         path,

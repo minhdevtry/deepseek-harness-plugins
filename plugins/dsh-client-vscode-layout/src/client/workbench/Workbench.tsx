@@ -340,6 +340,8 @@ export function Workbench({
   const forget = useCallback((path: string) => {
     registry.forget(path)
     documents.forget(path)
+    const sel = (window as any).__dsh_active_selection
+    if (sel?.path === path) (window as any).__dsh_active_selection = null
   }, [documents, registry])
 
   // Registries must not outlive their tab. `requestClose`/`closeNow`/`applyBulk`

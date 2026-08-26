@@ -116,7 +116,7 @@ export const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(function
           const to = Math.max(head.from, head.to)
           const startLine = instance.state.doc.lineAt(from).number
           const endLine = instance.state.doc.lineAt(to).number
-          const rangeString = startLine === endLine ? `#L${startLine}` : `#L${startLine}-L${endLine}`
+          const rangeString = startLine === endLine ? `#L${startLine}` : `#L${startLine}-${endLine}`
           ;(window as any).__dsh_active_selection = {
             path,
             selectedText: instance.state.sliceDoc(from, to),
