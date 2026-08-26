@@ -33,8 +33,25 @@ import { Editor } from '@tiptap/core'
 import type { Node as ProseMirrorNode } from '@tiptap/pm/model'
 import { documentExtensions } from './extensions.ts'
 import { encodeRawHtmlLines } from './html/rawHtmlLine.ts'
+import { splitFrontmatter, joinFrontmatter } from './frontmatter/splitFrontmatter.ts'
 import { serializeOnce, serializeStable, stabilizedRoundTrip } from './markdown.ts'
 import { reconcileSerializedMarkdown } from './reconcile.ts'
+
+/** Off-screen parking lot for detached editor views: keeping the EditorView
+ *  alive is the whole point of this registry, but parking it in a node React
+ *  has already unmounted retains dead DOM and gives `reopen` a mount target
+ *  that will never be shown. */
+function limbo(): HTMLElement {
+  if (typeof document === 'undefined') return {} as HTMLElement
+  let el = document.getElementById('dsh-editor-limbo')
+  if (el === null) {
+    el = document.createElement('div')
+    el.id = 'dsh-editor-limbo'
+    el.style.display = 'none'
+    document.body.appendChild(el)
+  }
+  return el
+}
 
 /** One open markdown document. */
 interface OpenDocument {
@@ -55,6 +72,8 @@ interface OpenDocument {
    * card has to read the file's own text, not a re-serialisation of the tree.
    */
   source: string
+  /** The file's frontmatter block, kept verbatim and never parsed. */
+  frontmatter: string
   /**
    * Canonical form of `source` — what a fresh, unedited parse of it would
    * serialize to. The other half of {@link reconcileSerializedMarkdown}'s
@@ -105,8 +124,16 @@ export interface DocumentSnapshot {
 /** Per-path WYSIWYG editors and their disk baselines (see module doc). */
 export class DocumentRegistry {
   readonly #docs = new Map<string, OpenDocument>()
+  readonly #epochs = new Map<string, number>()
   readonly #listeners = new Set<() => void>()
   #snapshot: DocumentSnapshot = { version: 0, dirty: new Set() }
+
+  /** How many times this path's document has been (re)parsed. Changes on
+   *  reopen, so a view keyed on it remounts against the new editor instead of
+   *  holding a destroyed one. */
+  epoch(path: string): number {
+    return this.#epochs.get(path) ?? 0
+  }
 
   /**
    * Subscribe to observable changes (opened, dirty flipped, forgotten).
@@ -164,6 +191,8 @@ export class DocumentRegistry {
     const existing = this.#docs.get(path)
     if (existing !== undefined) return existing.editor
 
+    const { frontmatter, body } = splitFrontmatter(markdown)
+
     // element: null — born unmounted. Views attach to it; it does not belong
     // to whichever view happened to open the file first.
     const editor = new Editor({
@@ -182,7 +211,7 @@ export class DocumentRegistry {
       // Encoded only for the parser's benefit — `source` below keeps the
       // real bytes, since frontmatter and the raw view read the file's own
       // text, not this editor-internal encoding.
-      content: encodeRawHtmlLines(markdown),
+      content: encodeRawHtmlLines(body),
       contentType: 'markdown',
     })
 
@@ -194,10 +223,12 @@ export class DocumentRegistry {
       editor.commands.insertContentAt(editor.state.doc.content.size, { type: 'paragraph' })
     }
 
+    this.#epochs.set(path, (this.#epochs.get(path) ?? 0) + 1)
     this.#docs.set(path, {
       editor,
       diskDoc: editor.state.doc,
       source: markdown,
+      frontmatter,
       baseCanonical: stabilizedRoundTrip(markdown),
       pendingCanonical: undefined,
       host: null,
@@ -238,8 +269,6 @@ export class DocumentRegistry {
   attach(path: string, el: HTMLElement): Editor | undefined {
     const doc = this.#docs.get(path)
     if (doc === undefined) return undefined
-    const isFirstMount = doc.host === null
-    const wasClean = isFirstMount || !isDocDirty(doc.editor.state.doc, doc.diskDoc)
 
     if (doc.host === null) {
       // First mount: initialize ProseMirror EditorView into el
@@ -256,14 +285,6 @@ export class DocumentRegistry {
       }
     }
     doc.host = el
-
-    // On mount, ProseMirror's DOM view normalization (e.g. trailing paragraph
-    // after a final table or block node) may reconcile the schema in DOM.
-    // If the document was clean before mounting, rebase diskDoc to this clean
-    // post-mount state so initial view layout is never mistaken for user edits.
-    if (wasClean) {
-      doc.diskDoc = doc.editor.state.doc
-    }
     return doc.editor
   }
 
@@ -277,7 +298,15 @@ export class DocumentRegistry {
   detach(path: string): void {
     const doc = this.#docs.get(path)
     if (doc === undefined || doc.host === null) return
-    // Keep doc.host reference and EditorView alive across tab switches.
+    const park = limbo()
+    try {
+      if (park && park.appendChild && doc.editor.view?.dom) {
+        park.appendChild(doc.editor.view.dom)
+      }
+    } catch {
+      /* already gone */
+    }
+    doc.host = park
   }
 
   /** Destroy a path's document — the tab was closed. */
@@ -307,16 +336,26 @@ export class DocumentRegistry {
    * doesn't rewrite the file's other 500 lines into this editor's preferred
    * style. See `reconcile.ts` for the mechanism and its safety net.
    * @param path - absolute file path.
+   * @param options - optional save/copy control and fallback logger.
    * @returns markdown ready to write to disk, or undefined when not open.
    */
-  markdown(path: string): string | undefined {
+  markdown(
+    path: string,
+    options: {
+      forSave?: boolean | undefined
+      onFallback?: ((reason: string) => void) | undefined
+    } = {},
+  ): string | undefined {
+    const { forSave = true, onFallback } = options
     const doc = this.#docs.get(path)
     if (doc === undefined) return undefined
-    const edited = serializeStable(doc.editor)
+    const editedBody = serializeStable(doc.editor)
+    const edited = joinFrontmatter(doc.frontmatter, editedBody)
     const written = reconcileSerializedMarkdown({
       originalSource: doc.source,
       baseCanonical: doc.baseCanonical,
       edited,
+      onFallback,
       roundTrip: (markdown) => {
         try {
           return stabilizedRoundTrip(markdown)
@@ -335,7 +374,9 @@ export class DocumentRegistry {
     // Handed to markSaved so it isn't re-derived from `written` through
     // another full stabilize pass — see OpenDocument.pendingCanonical for why
     // that's sound rather than a shortcut.
-    doc.pendingCanonical = edited
+    if (forSave) {
+      doc.pendingCanonical = edited
+    }
     return written
   }
 
@@ -350,7 +391,9 @@ export class DocumentRegistry {
    */
   preview(path: string): string | undefined {
     const doc = this.#docs.get(path)
-    return doc === undefined ? undefined : serializeOnce(doc.editor)
+    return doc === undefined
+      ? undefined
+      : joinFrontmatter(doc.frontmatter, serializeOnce(doc.editor))
   }
 
   /**
@@ -376,6 +419,7 @@ export class DocumentRegistry {
     if (doc === undefined) return
     doc.diskDoc = savedDoc ?? doc.editor.state.doc
     doc.source = written
+    doc.frontmatter = splitFrontmatter(written).frontmatter
     // Reuses markdown()'s own canonical form when there is one to reuse (see
     // OpenDocument.pendingCanonical for why that's sound, not a shortcut) —
     // falling back to a fresh derivation only for a markSaved call with no

@@ -230,7 +230,7 @@ export const MermaidExtension = Node.create({
   },
 
   renderMarkdown: (node) => {
-    const code = (node.attrs?.code as string) || DEFAULT_MERMAID_CHART
+    const code = ((node.attrs?.code as string) || DEFAULT_MERMAID_CHART).replace(/\r?\n+$/, '')
     return ['```mermaid', code, '```'].join('\n')
   },
 

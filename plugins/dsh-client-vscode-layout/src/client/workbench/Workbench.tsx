@@ -167,12 +167,21 @@ export function Workbench({
    * nothing here for anyone to step back through, and the tree's own history is
    * where undo belongs.
    */
-  const projectMarkdown = useCallback((path: string, stable: boolean): string | undefined => {
-    const md = stable ? documents.markdown(path) : documents.preview(path)
-    if (md === undefined) return undefined
-    registry.setText(path, md, { addToHistory: false })
-    return md
-  }, [documents, registry])
+  const projectMarkdown = useCallback(
+    (
+      path: string,
+      stable: boolean,
+      onFallback?: (reason: string) => void,
+    ): string | undefined => {
+      const md = stable
+        ? documents.markdown(path, { forSave: true, onFallback })
+        : documents.preview(path)
+      if (md === undefined) return undefined
+      registry.setText(path, md, { addToHistory: false })
+      return md
+    },
+    [documents, registry],
+  )
 
   useEffect(() => {
     // Prefers the tree for markdown: the buffer is only refreshed at visible
@@ -196,6 +205,8 @@ export function Workbench({
   useEffect(() => {
     if (activePath === undefined || !isMarkdown(activePath)) return
     if (documents.editor(activePath) !== undefined) return
+    const buffer = registry.status(activePath)
+    if (buffer?.kind !== 'text' || buffer.truncated) return
     const text = registry.getText(activePath)
     if (text === undefined) return
     documents.open(activePath, text)
@@ -210,7 +221,16 @@ export function Workbench({
     setSaveState('saving')
     // Markdown is written from the tree, through the fixed-point serializer, so
     // what reaches disk regenerates to itself.
-    const written = isMarkdown(path) ? projectMarkdown(path, true) : undefined
+    const written = isMarkdown(path)
+      ? projectMarkdown(path, true, (reason) => {
+          onNotify(`Markdown saved with full canonical rewrite: ${reason}`)
+        })
+      : undefined
+    if (isMarkdown(path) && written === undefined) {
+      setSaveState({ error: 'document not ready' })
+      onNotify('Save skipped: the document is still opening')
+      return false
+    }
     // Snapshotted *before* the write's await, not after: writeFile yields to
     // the event loop, and if the operator keeps typing during that gap the
     // live tree moves on. markSaved has to rebase against the tree `written`
@@ -255,6 +275,23 @@ export function Workbench({
     return all
   }, [buffers.dirty, docs.dirty])
 
+  const [statsTick, setStatsTick] = useState(0)
+  useEffect(() => {
+    if (activePath === undefined || !isMarkdown(activePath)) return
+    const ed = documents.editor(activePath)
+    if (ed === undefined) return
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const onUpdate = () => {
+      clearTimeout(timer)
+      timer = setTimeout(() => { setStatsTick(t => t + 1) }, 250)
+    }
+    ed.on('update', onUpdate)
+    return () => {
+      clearTimeout(timer)
+      ed.off('update', onUpdate)
+    }
+  }, [activePath, documents, docs.version])
+
   /** Live word and character stats for the active markdown document. */
   const markdownStats = useMemo(() => {
     if (activePath === undefined || !isMarkdown(activePath)) return undefined
@@ -264,7 +301,7 @@ export function Workbench({
     const characters = ed.storage.characterCount?.characters?.() ?? 0
     const readingTime = Math.max(1, Math.ceil(words / 200))
     return { words, characters, readingTime }
-  }, [activePath, documents, docs.version])
+  }, [activePath, documents, docs.version, statsTick])
 
   // Auto-save: one timer per dirty path (see saveQueue.ts) — editing file B
   // does not push back file A's already-pending save. Nothing here reads the
@@ -381,6 +418,7 @@ export function Workbench({
   const isMd = activePath !== undefined && isMarkdown(activePath)
 
   const isRaw = activePath !== undefined && (rawModes[activePath] ?? false)
+  const isTruncated = status?.kind === 'text' && Boolean(status.truncated)
 
   /**
    * Every *text* view of a markdown file is read-only — raw and diff alike.
@@ -396,7 +434,7 @@ export function Workbench({
    * seeing what a save would change. CSV and HTML raw modes are untouched; they
    * have no second document.
    */
-  const mdTextReadOnly = isMd && (isRaw || diffOpen)
+  const mdTextReadOnly = (isMd && (isRaw || diffOpen)) || isTruncated
 
   /**
    * Reveal a text view of the active file, refreshing the buffer first.
@@ -470,7 +508,7 @@ export function Workbench({
           <div className={css.notice}>Binary file — no preview ({status.size.toLocaleString()} bytes).</div>
         )}
         {!isImage && status?.kind === 'text' && activePath !== undefined && (
-          isMd && !isRaw && !diffOpen
+          isMd && !isRaw && !diffOpen && !isTruncated
             ? (
               <div className={css.editor}>
                 {/*
@@ -483,7 +521,7 @@ export function Workbench({
                 {documents.editor(activePath) !== undefined
                   ? (
                     <TipTapEditor
-                      key={activePath}
+                      key={`${activePath}#${documents.epoch(activePath)}`}
                       path={activePath}
                       root={explorerRoot}
                       openTabs={tabs}
@@ -529,6 +567,11 @@ export function Workbench({
                 )
                 : (
                   <div className={css.editor} style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0, position: 'relative' }}>
+                    {isTruncated && (
+                      <div className={css.notice} data-error style={{ borderRadius: 0, borderTop: 'none', borderLeft: 'none', borderRight: 'none', margin: 0 }}>
+                        File quá lớn ({status.size.toLocaleString()} bytes) — chỉ hiển thị phần đầu, chế độ chỉ đọc.
+                      </div>
+                    )}
                     {diffOpen && (
                       <DiffView
                         path={activePath}
@@ -539,7 +582,7 @@ export function Workbench({
                         onClose={() => { setDiffOpen(false) }}
                       />
                     )}
-                    {(isMd || isCsv || isHtml) && !diffOpen && (
+                    {(isMd || isCsv || isHtml) && !diffOpen && !isTruncated && (
                       <div style={{ position: 'absolute', top: 6, right: 16, zIndex: 20 }}>
                         <button
                           type="button"

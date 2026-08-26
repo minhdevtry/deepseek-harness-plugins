@@ -25,8 +25,6 @@ export function isEditorMounted(editor: Editor | null | undefined): editor is Ed
 }
 
 export function DragHandleMenu({ editor }: DragHandleMenuProps) {
-  if (!isEditorMounted(editor)) return null
-
   const [currentNode, setCurrentNode] = useState<ProseMirrorNode | null>(null)
   const [currentPos, setCurrentPos] = useState<number | null>(null)
   const [menuOpen, setMenuOpen] = useState(false)
@@ -170,6 +168,8 @@ export function DragHandleMenu({ editor }: DragHandleMenuProps) {
       action: () => editor.chain().focus().setDetails().run(),
     },
   ]
+
+  if (!isEditorMounted(editor)) return null
 
   return (
     <>

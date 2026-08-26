@@ -93,7 +93,6 @@ export function TableOfContents({ editor, isOpen, onOpen, onClose }: TableOfCont
   const tocListRef = useRef<HTMLDivElement | null>(null)
   const isProgrammaticScroll = useRef<boolean>(false)
   const isUserWheelingToc = useRef<boolean>(false)
-  const tocWheelTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const lastWheelTimeRef = useRef<number>(0)
 
   const [headings, setHeadings] = useState<HeadingEntry[]>([])
@@ -188,15 +187,18 @@ export function TableOfContents({ editor, isOpen, onOpen, onClose }: TableOfCont
         }
 
         const targetPos = currentActive ?? (headings[0] ? headings[0].pos : null)
-        if (targetPos !== null && targetPos !== activePos) {
-          setActivePos(targetPos)
-          if (tocListRef.current && !isUserWheelingToc.current) {
-            const itemEl = tocListRef.current.querySelector<HTMLElement>(`[data-toc-pos="${targetPos}"]`)
-            if (itemEl) {
-              itemEl.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+        setActivePos((prev) => {
+          if (targetPos !== null && targetPos !== prev) {
+            if (tocListRef.current && !isUserWheelingToc.current) {
+              const itemEl = tocListRef.current.querySelector<HTMLElement>(`[data-toc-pos="${targetPos}"]`)
+              if (itemEl) {
+                itemEl.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+              }
             }
+            return targetPos
           }
-        }
+          return prev
+        })
       })
     }
 
@@ -207,7 +209,7 @@ export function TableOfContents({ editor, isOpen, onOpen, onClose }: TableOfCont
       if (rafId) cancelAnimationFrame(rafId)
       canvas.removeEventListener('scroll', handleScroll)
     }
-  }, [editor, headings, activePos])
+  }, [editor, headings])
 
   // Direction B (TOC Wheel Scrub -> Document Navigation):
   // When rolling mouse wheel inside TOC, advance active heading and scroll document in sync
@@ -219,42 +221,27 @@ export function TableOfContents({ editor, isOpen, onOpen, onClose }: TableOfCont
     isUserWheelingToc.current = true
     isProgrammaticScroll.current = true
 
-    if (tocWheelTimeoutRef.current) clearTimeout(tocWheelTimeoutRef.current)
+    const currentIndex = headings.findIndex(h => h.pos === activePos)
+    const direction = e.deltaY > 0 ? 1 : -1
+    const nextIndex = Math.max(0, Math.min(headings.length - 1, (currentIndex === -1 ? 0 : currentIndex) + direction))
+    const targetHeading = headings[nextIndex]
 
-    if (headings.length > 0) {
-      const currentIndex = headings.findIndex((h) => h.pos === activePos)
-      const direction = e.deltaY > 0 ? 1 : -1
-      const nextIndex = Math.min(
-        headings.length - 1,
-        Math.max(0, (currentIndex >= 0 ? currentIndex : 0) + direction),
-      )
-      const nextHeading = headings[nextIndex]
+    if (targetHeading && targetHeading.pos !== activePos) {
+      setActivePos(targetHeading.pos)
+      scrollToHeading(targetHeading)
 
-      if (nextHeading && nextHeading.pos !== activePos) {
-        setActivePos(nextHeading.pos)
-        const el = findHeadingElement(editor, nextHeading.pos)
-        if (el) {
-          const canvas = el.closest('[class*="canvas"]') as HTMLElement | null
-          if (canvas) {
-            const canvasRect = canvas.getBoundingClientRect()
-            const elRect = el.getBoundingClientRect()
-            const targetScrollTop = canvas.scrollTop + (elRect.top - canvasRect.top) - 16
-            canvas.scrollTo({ top: Math.max(0, targetScrollTop), behavior: 'smooth' })
-          }
-        }
-        if (tocListRef.current) {
-          const itemEl = tocListRef.current.querySelector<HTMLElement>(`[data-toc-pos="${nextHeading.pos}"]`)
-          if (itemEl) {
-            itemEl.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
-          }
+      if (tocListRef.current) {
+        const itemEl = tocListRef.current.querySelector<HTMLElement>(`[data-toc-pos="${targetHeading.pos}"]`)
+        if (itemEl) {
+          itemEl.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
         }
       }
     }
 
-    tocWheelTimeoutRef.current = setTimeout(() => {
+    setTimeout(() => {
       isUserWheelingToc.current = false
       isProgrammaticScroll.current = false
-    }, 450)
+    }, 200)
   }
 
   // Outside click listener: close when unpinned and clicked outside
@@ -273,7 +260,6 @@ export function TableOfContents({ editor, isOpen, onOpen, onClose }: TableOfCont
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        setIsPinned(false)
         onClose()
       }
     }

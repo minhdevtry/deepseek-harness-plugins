@@ -5,6 +5,7 @@
  * providing direct one-click operations on table rows, columns, and headers.
  */
 import type { Editor } from '@tiptap/core'
+import { useEditorSnapshot } from './useEditorSnapshot.ts'
 import { Button, Tooltip } from '../ui/primitives/index.ts'
 import css from './TableControls.module.css'
 
@@ -13,6 +14,8 @@ export interface TableControlsProps {
 }
 
 export function TableControls({ editor }: TableControlsProps) {
+  useEditorSnapshot(editor)
+
   if (!editor.isActive('table')) return null
 
   return (

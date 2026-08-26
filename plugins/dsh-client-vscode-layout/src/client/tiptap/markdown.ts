@@ -25,6 +25,7 @@
 import { Editor } from '@tiptap/core'
 import { documentExtensions } from './extensions.ts'
 import { encodeRawHtmlLines } from './html/rawHtmlLine.ts'
+import { splitFrontmatter, joinFrontmatter } from './frontmatter/splitFrontmatter.ts'
 // Registers `Editor#getMarkdown()` via ambient module augmentation.
 import '@tiptap/markdown'
 
@@ -109,20 +110,21 @@ export function stabilize(text: string, once: (input: string) => string): string
  * @returns the markdown TipTap would emit for that input.
  */
 export function roundTrip(text: string): string {
+  const { frontmatter, body } = splitFrontmatter(text)
   const editor = new Editor({
     // Detached element: never attached to the document, so it lays out nothing
     // and is discarded with the editor.
     element: typeof document !== 'undefined' ? document.createElement('div') : null,
     extensions: documentExtensions(),
-    // `text` here is markdown that already regenerated raw HTML lines back to
+    // `body` here is markdown that already regenerated raw HTML lines back to
     // their real bytes (see rawHtmlLine.ts), same as any file loaded from
     // disk — it has to go through the same encoding before this throwaway
     // editor parses it, or every stabilize() pass would drop them again.
-    content: encodeRawHtmlLines(text),
+    content: encodeRawHtmlLines(body),
     contentType: 'markdown',
   })
   try {
-    return markdownOf(editor)
+    return joinFrontmatter(frontmatter, markdownOf(editor))
   } finally {
     editor.destroy()
   }

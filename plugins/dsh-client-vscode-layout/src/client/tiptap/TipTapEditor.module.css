@@ -1177,3 +1177,17 @@
   outline: 2px solid var(--dsw-alias-state-business-primary, #3b82f6);
   outline-offset: 2px;
 }
+
+@media print {
+  /* Folding is a reading aid, not part of the document. */
+  .container :global(.tiptap-folded-node) {
+    display: revert !important;
+  }
+  .container :global(.tiptap-fold-btn),
+  .container :global(.tiptap-folded-indicator) {
+    display: none !important;
+  }
+  .topBar {
+    display: none !important;
+  }
+}

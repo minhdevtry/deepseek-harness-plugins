@@ -24,6 +24,9 @@ export function FindBar({ editor, isOpen, onClose }: FindBarProps) {
   const rangesRef = useRef<Range[]>([])
   const inputRef = useRef<HTMLInputElement | null>(null)
 
+  // Clean up CSS highlights on unmount
+  useEffect(() => () => { clearHighlights() }, [])
+
   // Focus input when opened
   useEffect(() => {
     if (isOpen) {
@@ -38,6 +41,14 @@ export function FindBar({ editor, isOpen, onClose }: FindBarProps) {
       rangesRef.current = []
     }
   }, [isOpen])
+
+  // Re-run search when editor content updates
+  useEffect(() => {
+    if (!isOpen) return
+    const rerun = () => { performSearch(query, matchCase, currentIndex) }
+    editor.on('update', rerun)
+    return () => { editor.off('update', rerun) }
+  }, [editor, isOpen, query, matchCase, currentIndex])
 
   // Clear Highlights helper
   const clearHighlights = () => {
@@ -71,6 +82,11 @@ export function FindBar({ editor, isOpen, onClose }: FindBarProps) {
 
     let node = treeWalker.nextNode()
     while (node) {
+      const parent = node.parentElement
+      if (parent === null || parent.offsetParent === null) {
+        node = treeWalker.nextNode()
+        continue
+      }
       const nodeText = node.textContent || ''
       const haystack = caseSensitive ? nodeText : nodeText.toLowerCase()
       let startPos = 0

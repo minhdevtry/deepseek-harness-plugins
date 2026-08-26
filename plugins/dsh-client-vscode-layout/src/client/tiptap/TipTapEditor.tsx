@@ -28,6 +28,7 @@ import { FrontmatterWidget } from './frontmatter/FrontmatterWidget.tsx'
 import { DragHandleMenu } from './dragHandle/DragHandleMenu.tsx'
 import { InlineAIPopover } from './ai/InlineAIPopover.tsx'
 import type { AIState } from './ai/types.ts'
+import { useEditorSnapshot } from './useEditorSnapshot.ts'
 import { Button, IconButton, Tooltip } from '../ui/primitives/index.ts'
 import { resolveRelativePath } from '../utils/path.ts'
 import { openInWorkbench } from '../fileOpener.ts'
@@ -79,6 +80,8 @@ export function TipTapEditor({
   const [findBarOpen, setFindBarOpen] = useState(false)
   const [copiedMd, setCopiedMd] = useState(false)
   const [aiState, setAiState] = useState<AIState | null>(null)
+
+  useEditorSnapshot(editor)
 
   const isDirty = documents.isDirty(path)
 
@@ -306,6 +309,7 @@ export function TipTapEditor({
       el.removeEventListener('click', handleLinkClicks)
       instance.off('update', onUpdate)
       instance.off('selectionUpdate', onSelection)
+      delete (window as any).__dsh_active_selection
       // `detach`, never `destroy`: the document — and with it the undo history —
       // belongs to the registry and has to survive this view going away.
       documents.detach(path)
@@ -315,23 +319,14 @@ export function TipTapEditor({
 
   /**
    * Document-scoped shortcuts that are not already bound inside the editor.
-   *
-   * Undo/redo are deliberately absent. They used to live here, on `window`,
-   * calling `editor.commands.undo()` without checking `defaultPrevented` or
-   * where focus was — which broke undo in two ways at once. Inside the editor
-   * ProseMirror's own keymap had already run `undo` and called
-   * `preventDefault()`; preventDefault does not stop propagation, so the event
-   * reached this listener and undid a *second* step. And outside the editor —
-   * the chat composer, a rename box, the raw CodeMirror view — this fired
-   * anyway, silently rewinding a document nobody was looking at (and
-   * preventDefault killed the native undo of plain inputs).
-   *
-   * Every surface already ships a correct, focus-scoped undo: ProseMirror's
-   * keymap here, `historyKeymap` in CodeMirror, the host's own handler in the
-   * composer. The fix is to bind nothing globally and let focus decide. The
-   * toolbar's Undo/Redo buttons stay: those name their target explicitly.
    */
   useEffect(() => {
+    const insideThisEditor = (): boolean => {
+      const el = containerRef.current
+      const active = document.activeElement
+      return el !== null && active instanceof globalThis.Node && el.contains(active)
+    }
+
     const handleKeyDown = (e: KeyboardEvent) => {
       // Someone closer to the focus already claimed this chord (CodeMirror
       // binds Mod-s itself, for one). A window listener is the last to hear an
@@ -340,10 +335,12 @@ export function TipTapEditor({
       if ((e.ctrlKey || e.metaKey) && e.key === 's') {
         e.preventDefault()
         onSave(path)
-      } else if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+      } else if ((e.ctrlKey || e.metaKey) && (e.key === 'f' || e.key === 'F')) {
+        if (!insideThisEditor()) return
         e.preventDefault()
         setFindBarOpen((prev) => !prev)
       } else if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'K')) {
+        if (!insideThisEditor()) return
         e.preventDefault()
         openAI()
       }
@@ -478,7 +475,7 @@ export function TipTapEditor({
             size="xs"
             variant="ghost"
             onClick={() => {
-              const md = documents.preview(path)
+              const md = documents.markdown(path, { forSave: false })
               if (md === undefined) return
               void navigator.clipboard.writeText(md).then(() => {
                 setCopiedMd(true)
@@ -534,6 +531,13 @@ export function TipTapEditor({
 
           // 2. If clicked in empty space BELOW the document container -> focus end of document
           if (e.clientY > containerRect.bottom) {
+            const { doc } = editor.state
+            const lastChild = doc.lastChild
+            const lastStart = lastChild ? doc.content.size - lastChild.nodeSize : 0
+            const dom = editor.view.nodeDOM(lastStart) as HTMLElement | null
+            // A folded (display:none) tail has no box; focusing it would put the caret
+            // somewhere the operator cannot see.
+            if (dom instanceof HTMLElement && dom.offsetParent === null) return
             editor.commands.focus('end')
             return
           }
@@ -597,7 +601,7 @@ export function TipTapEditor({
       )}
 
       {/* Slash Command Menu */}
-      {editor && slashState && (
+      {editor && slashState && docLinkState === null && (
         <SlashMenu
           editor={editor}
           query={slashState.query}

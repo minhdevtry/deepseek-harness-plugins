@@ -33,7 +33,7 @@ import {
 // per keystroke, but it still has to stay well under user-noticeable latency
 // on the largest real files. Capped in UTF-16 code units (`.length`), which
 // is what the diff/patch cost actually scales with.
-const RECONCILE_SIZE_CAP_CODE_UNITS = 50_000
+const RECONCILE_SIZE_CAP_CODE_UNITS = 500_000
 
 // dmp's default 1s search would stall a save on a large replacement; a
 // coarse timed-out diff is safe here because the round-trip proof below
@@ -53,6 +53,11 @@ export type ReconcileParams = {
    * null when parsing throws (treated as a safety mismatch -> canonical fallback).
    */
   roundTrip: (markdown: string) => string | null
+  /**
+   * Called when the source-preserving path was abandoned; the save still
+   * happens, but the whole file gets re-canonicalized.
+   */
+  onFallback?: ((reason: string) => void) | undefined
 }
 
 /**
@@ -66,6 +71,7 @@ export function reconcileSerializedMarkdown({
   baseCanonical,
   edited,
   roundTrip,
+  onFallback,
 }: ReconcileParams): string {
   // Branch 1: no semantic change vs. the last saved bytes -> return them verbatim, zero disk churn.
   if (edited === baseCanonical) {
@@ -96,20 +102,24 @@ export function reconcileSerializedMarkdown({
     Math.max(originalSource.length, baseCanonical.length, edited.length) >
     RECONCILE_SIZE_CAP_CODE_UNITS
   ) {
+    const reason = `source over ${RECONCILE_SIZE_CAP_CODE_UNITS} code units`
     console.warn(
-      `[vscode-layout] markdown reconcile: source over ${RECONCILE_SIZE_CAP_CODE_UNITS} code units, ` +
+      `[vscode-layout] markdown reconcile: ${reason}, ` +
       'falling back to a full canonical rewrite for this save',
     )
+    onFallback?.(reason)
     return restoreEol(editedLf, eol)
   }
 
   // Branch 4: dmp's half-match accelerator ignores the diff deadline on
   // highly repetitive replacements (100ms+ observed) -> bail to canonical.
   if (hasRepeatedHalfMatchSeed(baseLf, editedLf)) {
+    const reason = 'repetitive-edit heuristic fired'
     console.warn(
-      '[vscode-layout] markdown reconcile: repetitive-edit heuristic fired, ' +
+      `[vscode-layout] markdown reconcile: ${reason}, ` +
       'falling back to a full canonical rewrite for this save',
     )
+    onFallback?.(reason)
     return restoreEol(editedLf, eol)
   }
 
@@ -137,6 +147,8 @@ export function reconcileSerializedMarkdown({
 
   // Branch 5: a hunk failed to locate in the non-canonical source -> unreliable fuzzy match.
   if (results.some((applied) => !applied)) {
+    const reason = 'fuzzy match hunk failed to locate'
+    onFallback?.(reason)
     return restoreEol(editedLf, eol)
   }
 
@@ -144,6 +156,8 @@ export function reconcileSerializedMarkdown({
   // any fuzzy misplacement changes canonical output and is caught here.
   const reparsed = roundTrip(reconciledLf)
   if (reparsed === null || normalizeForSafety(reparsed) !== normalizeForSafety(editedLf)) {
+    const reason = 'safety verification re-parse mismatch'
+    onFallback?.(reason)
     return restoreEol(editedLf, eol)
   }
 

@@ -108,7 +108,11 @@ export function InlineAIPopover({ editor, aiState, onClose }: InlineAIPopoverPro
   const handleAccept = () => {
     if (!streamedText) return onClose()
 
-    const { from, to } = aiState.range
+    const size = editor.state.doc.content.size
+    const from = Math.max(0, Math.min(aiState.range.from, size))
+    const to = Math.max(0, Math.min(aiState.range.to, size))
+    if (from > to) return onClose()
+
     if (from !== to) {
       editor.chain().focus().setTextSelection({ from, to }).deleteSelection().run()
     } else {
@@ -125,7 +129,8 @@ export function InlineAIPopover({ editor, aiState, onClose }: InlineAIPopoverPro
   const handleInsertBelow = () => {
     if (!streamedText) return onClose()
 
-    const { to } = aiState.range
+    const size = editor.state.doc.content.size
+    const to = Math.max(0, Math.min(aiState.range.to, size))
     editor.chain().focus().setTextSelection(to).insertContent(`\n\n${streamedText}`, {
       contentType: 'markdown',
     }).run()

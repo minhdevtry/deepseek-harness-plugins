@@ -85,10 +85,12 @@ export function BubbleMenu({ editor, path, markdown, onOpenAI }: BubbleMenuProps
 
     updatePosition()
     editor.on('selectionUpdate', updatePosition)
+    editor.on('update', updatePosition)
     editor.on('blur', handleBlur)
 
     return () => {
       editor.off('selectionUpdate', updatePosition)
+      editor.off('update', updatePosition)
       editor.off('blur', handleBlur)
     }
   }, [editor])

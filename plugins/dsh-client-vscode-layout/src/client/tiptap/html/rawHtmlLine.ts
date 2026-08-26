@@ -46,9 +46,20 @@ function isLineOnlyHtml(trimmed: string): boolean {
   return /^(?:<\/?[A-Za-z][\w.:-]*(?:\s[^<>]*?)?\/?>)+$/.test(trimmed)
 }
 
+/** `[^id]: text` — a footnote definition. CommonMark has no footnotes, so the
+ *  parser escapes the brackets and the reference is destroyed. */
+const FOOTNOTE_DEF = /^\[\^[^\]]+\]:/
+/** `[id]: url "title"` — a link reference definition. The parser inlines the
+ *  target into every use and then drops this line entirely. */
+const LINK_REF_DEF = /^\[[^\]^]+\]:\s*\S/
+
+function isOpaqueLine(trimmed: string): boolean {
+  return isLineOnlyHtml(trimmed) || FOOTNOTE_DEF.test(trimmed) || LINK_REF_DEF.test(trimmed)
+}
+
 /**
  * Replace every line outside a fenced code block whose trimmed content is a
- * single complete HTML comment or tag with an opaque marker run. Call this on
+ * single complete HTML comment, tag, footnote def, or link ref def with an opaque marker run. Call this on
  * raw source text before it reaches an editor built from `documentExtensions`
  * — `RawHtmlLineExtension`'s tokenizer decodes the marker back on parse.
  */
@@ -78,7 +89,7 @@ export function encodeRawHtmlLines(source: string): string {
     }
 
     const trimmed = line.trim()
-    if (trimmed === '' || !isLineOnlyHtml(trimmed)) {
+    if (trimmed === '' || !isOpaqueLine(trimmed)) {
       return line
     }
 
