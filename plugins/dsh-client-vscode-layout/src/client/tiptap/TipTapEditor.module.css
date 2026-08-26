@@ -215,76 +215,92 @@
 /* ── Notion Independent Toggle / Details Block ── */
 .container :global(.tiptap-details) {
   display: block;
-  margin: 12px 0;
-  border-radius: var(--radius-md, 6px);
-  background: var(--dsw-alias-bg-hover, rgba(0, 0, 0, 0.02));
-  border: 1px solid var(--dsw-alias-border-l1, #e2e8f0);
-  transition: border-color var(--duration-fast, 100ms) ease;
-  overflow: hidden;
-}
-
-.container :global(.tiptap-details:focus-within) {
-  border-color: var(--dsw-alias-state-business-primary, #3b82f6);
+  margin: 4px 0;
+  border: none;
+  background: transparent;
+  width: 100%;
 }
 
 .container :global(.tiptap-details-summary) {
   display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  font-size: 13.5px;
-  font-weight: 600;
-  color: var(--dsw-alias-label-primary, #0f172a);
-  cursor: pointer;
-  user-select: none;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 2px 0;
+  min-height: 26px;
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--dsw-alias-label-primary, #2c2c2b);
+  cursor: text;
+  user-select: text;
   list-style: none;
-  border-radius: var(--radius-md, 6px);
+  border-radius: 4px;
+  outline: none;
 }
 
 .container :global(.tiptap-details-summary::-webkit-details-marker) {
   display: none;
 }
 
+/* Notion Toggle Triangle Caret Icon Button */
 .container :global(.tiptap-details-summary::before) {
-  content: '▶';
-  font-size: 9px;
+  content: '';
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 16px;
-  height: 16px;
+  width: 22px;
+  height: 22px;
+  margin-top: 1px;
+  margin-right: 2px;
   border-radius: 4px;
-  color: var(--dsw-alias-label-secondary, #64748b);
-  transition: transform var(--duration-fast, 150ms) cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
   flex-shrink: 0;
+  user-select: none;
+  transition: transform var(--duration-normal, 150ms) cubic-bezier(0.16, 1, 0.3, 1), background-color var(--duration-fast, 100ms) ease;
+  background-color: var(--dsw-alias-label-secondary, #7d7a75);
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M2.835 3.25a.8.8 0 0 0-.69 1.203l5.164 8.854a.8.8 0 0 0 1.382 0l5.165-8.854a.8.8 0 0 0-.691-1.203z' fill='%23000'/%3E%3C/svg%3E") no-repeat center center / 10px 10px;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M2.835 3.25a.8.8 0 0 0-.69 1.203l5.164 8.854a.8.8 0 0 0 1.382 0l5.165-8.854a.8.8 0 0 0-.691-1.203z' fill='%23000'/%3E%3C/svg%3E") no-repeat center center / 10px 10px;
+  transform: rotate(-90deg); /* Closed: points right ▶ */
 }
 
 .container :global(.tiptap-details-summary:hover::before) {
-  background: var(--dsw-alias-interactive-bg-hover, rgba(0, 0, 0, 0.06));
-  color: var(--dsw-alias-label-primary, #0f172a);
+  background-color: var(--dsw-alias-label-primary, #2c2c2b);
+  box-shadow: 0 0 0 4px var(--dsw-alias-bg-hover, rgba(55, 53, 47, 0.08));
 }
 
+/* Open State: points down ▼ */
 .container :global(.tiptap-details[open] > .tiptap-details-summary::before),
 .container :global(.tiptap-details[data-open="true"] > .tiptap-details-summary::before) {
-  transform: rotate(90deg);
+  transform: rotate(0deg);
 }
 
+/* Toggle Content: indented cleanly, seamless, zero border lines */
 .container :global(.tiptap-details-content) {
-  padding: 6px 14px 12px 28px;
-  margin-left: 12px;
-  border-left: 2px solid var(--dsw-alias-state-business-primary, #3b82f6);
+  padding-left: 24px;
+  margin: 0;
+  border: none !important;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
 }
 
 .container :global(.tiptap-details:not([open]):not([data-open="true"]) > .tiptap-details-content) {
-  display: none;
+  display: none !important;
 }
 
-.container :global(.tiptap-details-content > p:first-child) {
-  margin-top: 0 !important;
+.container :global(.tiptap-details-content > *:first-child) {
+  margin-top: 2px !important;
 }
 
-.container :global(.tiptap-details-content > p:last-child) {
-  margin-bottom: 0 !important;
+.container :global(.tiptap-details-content > *:last-child) {
+  margin-bottom: 4px !important;
+}
+
+.container :global(.tiptap-details-content p.is-empty:first-child::before) {
+  content: "Empty toggle. Set up content or type '/'...";
+  float: left;
+  color: var(--dsw-alias-label-tertiary, #a19e99);
+  pointer-events: none;
+  height: 0;
 }
 
 /* ── Notion Task Lists ── */

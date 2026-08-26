@@ -1,19 +1,23 @@
 /**
- * Design Tokens & Shared Visual Foundations (Orca-grade polish).
+ * Design Tokens & Shared Visual Foundations (Notion-grade authentic polish).
  *
- * Derived scales for border-radius, spacing, elevation shadows, transitions,
- * and unified fallback definitions for DSH theme variables.
+ * Exact tokens extracted 1:1 from Notion Light & Dark mode themes:
+ * - Surfaces & Canvas (#ffffff in Light, #191919 in Dark)
+ * - Elevated Cards & Popovers (#ffffff in Light, #202020 in Dark)
+ * - Soft Typography (#2c2c2b in Light, #f0efed in Dark)
+ * - Micro-borders & Dividers (#e6e5e3 in Light, #383836 in Dark)
+ * - Multi-layer Shadows & Palette Color Tokens
  */
 
 :root {
-  /* Radius scale derived from a single base radius */
+  /* Radius scale derived from Notion standard */
   --radius: 8px;
-  --radius-xs: 2px;
-  --radius-sm: calc(var(--radius) * 0.5); /* 4px */
-  --radius-md: calc(var(--radius) * 0.75); /* 6px */
-  --radius-lg: var(--radius); /* 8px */
-  --radius-xl: calc(var(--radius) * 1.5); /* 12px */
-  --radius-2xl: calc(var(--radius) * 2); /* 16px */
+  --radius-xs: 3px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+  --radius-2xl: 14px;
   --radius-full: 9999px;
 
   /* Spacing scale */
@@ -25,13 +29,13 @@
   --space-6: 24px;
   --space-8: 32px;
 
-  /* Shadow & Elevation scale */
-  --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-  --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
-  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
-  --shadow-popover: 0 12px 32px -4px rgb(0 0 0 / 0.22), 0 4px 12px -2px rgb(0 0 0 / 0.1);
-  --shadow-dialog: 0 25px 50px -12px rgb(0 0 0 / 0.35);
+  /* Notion Light Theme Shadows */
+  --shadow-xs: 0px 1px 2px 0px rgba(25, 25, 25, 0.04);
+  --shadow-sm: 0px 2px 4px 0px rgba(0, 0, 0, 0.04), 0px 0px 0px 1px rgba(42, 28, 0, 0.07);
+  --shadow-md: 0px 8px 12px 0px rgba(25, 25, 25, 0.027), 0px 2px 6px 0px rgba(25, 25, 25, 0.027), 0px 0px 0px 1px rgba(42, 28, 0, 0.07);
+  --shadow-lg: 0px 20px 24px 0px rgba(25, 25, 25, 0.05), 0px 5px 8px 0px rgba(25, 25, 25, 0.027), 0px 0px 0px 1px rgba(42, 28, 0, 0.07);
+  --shadow-popover: 0px 20px 24px 0px rgba(25, 25, 25, 0.05), 0px 5px 8px 0px rgba(25, 25, 25, 0.027), 0px 0px 0px 1px rgba(42, 28, 0, 0.07);
+  --shadow-dialog: 0px 24px 48px 0px rgba(25, 25, 25, 0.1), 0px 4px 12px 0px rgba(25, 25, 25, 0.08), 0px 0px 0px 1px rgba(42, 28, 0, 0.08);
 
   /* Animation & Easings */
   --ease-spring: cubic-bezier(0.16, 1, 0.3, 1);
@@ -41,35 +45,103 @@
   --duration-normal: 150ms;
   --duration-slow: 250ms;
 
-  /* Unified Light Fallbacks */
+  /* Notion Light Theme Tokens */
   --dsw-alias-bg-base: #ffffff;
   --dsw-alias-bg-elevated: #ffffff;
-  --dsw-alias-bg-hover: rgba(0, 0, 0, 0.05);
-  --dsw-alias-border-l1: #e2e8f0;
-  --dsw-alias-border-l2: #cbd5e1;
-  --dsw-alias-label-primary: #0f172a;
-  --dsw-alias-label-secondary: #64748b;
-  --dsw-alias-label-tertiary: #94a3b8;
-  --dsw-alias-interactive-bg-hover: rgba(59, 130, 246, 0.08);
-  --dsw-alias-interactive-bg-selected: rgba(59, 130, 246, 0.15);
-  --dsw-alias-state-business-primary: #2563eb;
-  --dsw-alias-state-error-primary: #ef4444;
+  --dsw-alias-bg-secondary: #f9f8f7;
+  --dsw-alias-bg-tertiary: #f0efed;
+  --dsw-alias-bg-hover: rgba(55, 53, 47, 0.08);
+  --dsw-alias-border-l1: #e6e5e3;
+  --dsw-alias-border-l2: #d4d3cf;
+  --dsw-alias-label-primary: #2c2c2b;
+  --dsw-alias-label-secondary: #7d7a75;
+  --dsw-alias-label-tertiary: #a19e99;
+  --dsw-alias-label-disabled: #bcbab6;
+  --dsw-alias-interactive-bg-hover: rgba(35, 131, 226, 0.08);
+  --dsw-alias-interactive-bg-selected: rgba(35, 131, 226, 0.14);
+  --dsw-alias-state-business-primary: #2383e2;
+  --dsw-alias-state-error-primary: #eb5757;
+
+  /* Notion Light Palette */
+  --notion-blue-bg: #f3f9fd;
+  --notion-blue-text: #264a72;
+  --notion-blue-border: #cee3f7;
+  --notion-green-bg: #f6f9f7;
+  --notion-green-text: #2a533c;
+  --notion-green-border: #d7e6dd;
+  --notion-yellow-bg: #fcfaef;
+  --notion-yellow-text: #655121;
+  --notion-yellow-border: #f2e3b7;
+  --notion-orange-bg: #fcf7f4;
+  --notion-orange-text: #6a4222;
+  --notion-orange-border: #f3ddcb;
+  --notion-red-bg: #fdf6f6;
+  --notion-red-text: #6d3531;
+  --notion-red-border: #f7d9d5;
+  --notion-purple-bg: #faf7fc;
+  --notion-purple-text: #553b69;
+  --notion-purple-border: #e8dbf2;
+  --notion-pink-bg: #fcf7f9;
+  --notion-pink-text: #68354e;
+  --notion-pink-border: #f4d8e4;
+  --notion-gray-bg: #f9f8f7;
+  --notion-gray-text: #494846;
+  --notion-gray-border: #e6e5e3;
 }
 
 body[data-ds-dark-theme],
 body.dark,
 body[data-theme="dark"] {
-  /* Unified Dark Theme matching host DeepSeek Harness (#151517 / #1e1e20) */
-  --dsw-alias-bg-base: #151517;
-  --dsw-alias-bg-elevated: #1e1e20;
-  --dsw-alias-bg-hover: rgba(255, 255, 255, 0.08);
-  --dsw-alias-border-l1: rgba(255, 255, 255, 0.12);
-  --dsw-alias-border-l2: rgba(255, 255, 255, 0.2);
-  --dsw-alias-label-primary: #f9fafb;
-  --dsw-alias-label-secondary: #94a3b8;
-  --dsw-alias-label-tertiary: #64748b;
-  --dsw-alias-interactive-bg-hover: rgba(59, 130, 246, 0.18);
-  --dsw-alias-interactive-bg-selected: rgba(59, 130, 246, 0.28);
+  /* Notion Dark Theme Shadows */
+  --shadow-xs: 0px 0px 0px 1px #383836;
+  --shadow-sm: 0px 0px 0px 1px #383836, 0px 2px 4px 0px rgba(25, 25, 25, 0.08);
+  --shadow-md: 0px 0px 0px 1px #383836, 0px 4px 12px -2px rgba(25, 25, 25, 0.08);
+  --shadow-lg: 0px 0px 0px 1px #383836, 0px 14px 28px -6px rgba(25, 25, 25, 0.2), 0px 2px 4px -1px rgba(25, 25, 25, 0.118);
+  --shadow-popover: 0px 0px 0px 1px #383836, 0px 14px 28px -6px rgba(25, 25, 25, 0.2), 0px 2px 4px -1px rgba(25, 25, 25, 0.118);
+  --shadow-dialog: 0px 0px 0px 1px #383836, 0px 24px 48px 0px rgba(25, 25, 25, 0.64), 0px 4px 12px 0px rgba(25, 25, 25, 0.56);
+
+  /* Notion Dark Theme Tokens */
+  --dsw-alias-bg-base: #191919;
+  --dsw-alias-bg-elevated: #202020;
+  --dsw-alias-bg-secondary: #202020;
+  --dsw-alias-bg-tertiary: #383836;
+  --dsw-alias-bg-hover: rgba(255, 255, 255, 0.07);
+  --dsw-alias-border-l1: #383836;
+  --dsw-alias-border-l2: #2c2c2b;
+  --dsw-alias-label-primary: #f0efed;
+  --dsw-alias-label-secondary: #ada9a3;
+  --dsw-alias-label-tertiary: #7d7a75;
+  --dsw-alias-label-disabled: #5f5e59;
+  --dsw-alias-interactive-bg-hover: rgba(35, 131, 226, 0.18);
+  --dsw-alias-interactive-bg-selected: rgba(35, 131, 226, 0.28);
+  --dsw-alias-state-business-primary: #4fa7ff;
+  --dsw-alias-state-error-primary: #eb5757;
+
+  /* Notion Dark Palette */
+  --notion-blue-bg: #1a2027;
+  --notion-blue-text: #e5f2fc;
+  --notion-blue-border: #233850;
+  --notion-green-bg: #1b211d;
+  --notion-green-text: #e8f1ec;
+  --notion-green-border: #263d30;
+  --notion-yellow-bg: #23221a;
+  --notion-yellow-text: #f9f3dc;
+  --notion-yellow-border: #504425;
+  --notion-orange-bg: #231e1b;
+  --notion-orange-text: #fbebde;
+  --notion-orange-border: #53361f;
+  --notion-red-bg: #241d1d;
+  --notion-red-text: #fce9e7;
+  --notion-red-border: #502c29;
+  --notion-purple-bg: #221d25;
+  --notion-purple-text: #f3ebf9;
+  --notion-purple-border: #3c2d47;
+  --notion-pink-bg: #261c20;
+  --notion-pink-text: #fae9f1;
+  --notion-pink-border: #4e2b3c;
+  --notion-gray-bg: #202020;
+  --notion-gray-text: #f0efed;
+  --notion-gray-border: #383836;
 }
 
 /* Global Keyframe Animations */
@@ -114,7 +186,7 @@ body[data-theme="dark"] {
 .customScrollbar,
 * {
   scrollbar-width: thin;
-  scrollbar-color: var(--dsw-alias-border-l1, #cbd5e1) transparent;
+  scrollbar-color: var(--dsw-alias-border-l1, #e6e5e3) transparent;
 }
 
 ::-webkit-scrollbar {
@@ -127,15 +199,15 @@ body[data-theme="dark"] {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--dsw-alias-border-l1, #cbd5e1);
+  background: var(--dsw-alias-border-l1, #e6e5e3);
   border-radius: var(--radius-full);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--dsw-alias-border-l2, #94a3b8);
+  background: var(--dsw-alias-border-l2, #d4d3cf);
 }
 
-/* Theme Switching Transition Guard (Orca smoothness) */
+/* Theme Switching Transition Guard */
 .theme-transition-disabled,
 .theme-transition-disabled * {
   transition: none !important;

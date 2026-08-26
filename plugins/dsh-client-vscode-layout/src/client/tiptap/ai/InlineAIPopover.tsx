@@ -54,6 +54,9 @@ export function InlineAIPopover({ editor, aiState, onClose }: InlineAIPopoverPro
 
   useEffect(() => {
     inputRef.current?.focus()
+    if (aiState.status === 'generating' && (aiState.action || aiState.customPrompt)) {
+      void handleRunAction(aiState.action || 'custom', undefined, undefined, aiState.customPrompt)
+    }
   }, [])
 
   // Outside click to dismiss

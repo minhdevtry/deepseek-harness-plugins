@@ -36,7 +36,6 @@ import { Details, DetailsSummary, DetailsContent } from './details/Details.ts'
 import { RichCodeBlockLowlight } from './codeblock/CodeBlockExtension.ts'
 import { MermaidExtension } from './mermaid/MermaidExtension.tsx'
 import { MathBlockExtension } from './math/MathExtension.tsx'
-import { HeadingFoldExtension } from './headingFold/HeadingFoldPlugin.ts'
 import { RichImageExtension } from './image/ImageViewExtension.tsx'
 import { RawHtmlLineExtension } from './html/rawHtmlLine.ts'
 
@@ -130,7 +129,6 @@ export function documentExtensions(): Extensions {
     DetailsSummary,
     DetailsContent,
     RawHtmlLineExtension,
-    HeadingFoldExtension,
     MermaidExtension,
     MathBlockExtension,
     RichImageExtension,

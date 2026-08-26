@@ -76,6 +76,7 @@ export function clampCaretPosition({
 
 export interface BubblePositionOptions {
   startTop: number
+  startBottom?: number
   startLeft: number
   endLeft: number
   width: number
@@ -86,10 +87,12 @@ export interface BubblePositionOptions {
 
 /**
  * Calculates clamped viewport coordinates for a selection bubble toolbar.
- * Centered horizontally across the selection range and placed above the selection.
+ * Centered horizontally across the selection range and placed above the selection
+ * (flips below if placing above would clip outside the viewport).
  */
 export function clampBubblePosition({
   startTop,
+  startBottom,
   startLeft,
   endLeft,
   width,
@@ -98,8 +101,17 @@ export function clampBubblePosition({
   gap = 8,
 }: BubblePositionOptions): { left: number; top: number } {
   const viewportWidth = typeof window !== 'undefined' ? window.innerWidth : 1024
+  const viewportHeight = typeof window !== 'undefined' ? window.innerHeight : 768
 
-  const top = Math.max(margin, startTop - height - gap)
+  let top = startTop - height - gap
+  if (top < margin) {
+    if (typeof startBottom === 'number' && startBottom + height + gap <= viewportHeight - margin) {
+      top = startBottom + gap
+    } else {
+      top = margin
+    }
+  }
+
   let left = (startLeft + endLeft) / 2
 
   if (left - width / 2 < margin) {

@@ -27,26 +27,10 @@ import { FindBar } from './findBar/FindBar.tsx'
 import { FrontmatterWidget } from './frontmatter/FrontmatterWidget.tsx'
 import { DragHandleMenu } from './dragHandle/DragHandleMenu.tsx'
 import { InlineAIPopover } from './ai/InlineAIPopover.tsx'
-import type { AIState } from './ai/types.ts'
+import type { AIState, AIActionId } from './ai/types.ts'
 import { useEditorSnapshot } from './useEditorSnapshot.ts'
-import { Button, IconButton, Tooltip } from '../ui/primitives/index.ts'
 import { resolveRelativePath } from '../utils/path.ts'
 import { openInWorkbench } from '../fileOpener.ts'
-import {
-  IconSparkles,
-  IconTocOutline,
-  IconSearch,
-  IconUndo,
-  IconRedo,
-  IconMermaid,
-  IconMath,
-  IconCallout,
-  IconDetails,
-  IconCopy,
-  IconCode,
-  IconPrint,
-} from './ui/TipTapIcons.tsx'
-import { formatModShortcut, formatRedoShortcut } from '../utils/platform.ts'
 import css from './TipTapEditor.module.css'
 
 export interface TipTapEditorProps {
@@ -78,7 +62,7 @@ export function TipTapEditor({
   openTabs,
   documents,
   onSave,
-  onViewRaw,
+  onViewRaw: _onViewRaw,
 }: TipTapEditorProps) {
   const wrapperRef = useRef<HTMLDivElement | null>(null)
   const containerRef = useRef<HTMLDivElement | null>(null)
@@ -94,14 +78,11 @@ export function TipTapEditor({
     }
   })
   const [findBarOpen, setFindBarOpen] = useState(false)
-  const [copiedMd, setCopiedMd] = useState(false)
   const [aiState, setAiState] = useState<AIState | null>(null)
 
   useEditorSnapshot(editor)
 
-  const isDirty = documents.isDirty(path)
-
-  const openAI = (customInitialPrompt?: string) => {
+  const openAI = (customInitialPrompt?: string, actionId?: AIActionId, executeNow = false) => {
     if (!editor) return
     const { selection } = editor.state
     const { from, to, empty } = selection
@@ -111,33 +92,25 @@ export function TipTapEditor({
     try {
       const coords = editor.view.coordsAtPos(from)
       setAiState({
-        status: 'prompting',
+        status: executeNow ? 'generating' : 'prompting',
         pos: { top: coords.bottom + 4, left: coords.left },
         range: { from, to },
         originalText,
         generatedText: '',
         customPrompt: promptStr || undefined,
+        action: actionId,
       })
     } catch {
       setAiState({
-        status: 'prompting',
+        status: executeNow ? 'generating' : 'prompting',
         pos: { top: 120, left: 240 },
         range: { from, to },
         originalText,
         generatedText: '',
         customPrompt: promptStr || undefined,
+        action: actionId,
       })
     }
-  }
-
-  const toggleOutline = () => {
-    setOutlineOpen(prev => {
-      const next = !prev
-      try {
-        localStorage.setItem('dsh_toc_open', String(next))
-      } catch {}
-      return next
-    })
   }
 
   /** Detect if the cursor is directly after a "/" trigger for slash menu */
@@ -375,188 +348,6 @@ export function TipTapEditor({
 
   return (
     <div ref={wrapperRef} className={css.wrapper}>
-      {/* Top action bar */}
-      <div className={css.topBar}>
-        <Tooltip
-          content="Ask AI / In-line Assistant"
-          shortcut={formatModShortcut('k')}
-        >
-          <Button
-            size="xs"
-            variant="ghost"
-            onClick={() => openAI()}
-            className={css.aiBtn}
-            icon={<IconSparkles size={13} />}
-          >
-            Ask AI
-          </Button>
-        </Tooltip>
-
-        <span className={css.divider} />
-
-        <Tooltip content="Document Outline">
-          <IconButton
-            size="xs"
-            variant="ghost"
-            active={outlineOpen}
-            onClick={toggleOutline}
-            aria-label="Document Outline"
-          >
-            <IconTocOutline size={14} />
-          </IconButton>
-        </Tooltip>
-
-        <Tooltip
-          content="Find in document"
-          shortcut={formatModShortcut('f')}
-        >
-          <IconButton
-            size="xs"
-            variant="ghost"
-            active={findBarOpen}
-            onClick={() => { setFindBarOpen((open) => !open) }}
-            aria-label="Find in document"
-          >
-            <IconSearch size={14} />
-          </IconButton>
-        </Tooltip>
-
-        <span className={css.divider} />
-
-        <Tooltip
-          content="Undo"
-          shortcut={formatModShortcut('z')}
-        >
-          <IconButton
-            size="xs"
-            variant="ghost"
-            disabled={!editor?.can().undo()}
-            onClick={() => { editor?.commands.undo() }}
-            aria-label="Undo"
-          >
-            <IconUndo size={14} />
-          </IconButton>
-        </Tooltip>
-
-        <Tooltip
-          content="Redo"
-          shortcut={formatRedoShortcut()}
-        >
-          <IconButton
-            size="xs"
-            variant="ghost"
-            disabled={!editor?.can().redo()}
-            onClick={() => { editor?.commands.redo() }}
-            aria-label="Redo"
-          >
-            <IconRedo size={14} />
-          </IconButton>
-        </Tooltip>
-
-        <span className={css.divider} />
-
-        <Tooltip content="Insert Mermaid Diagram">
-          <IconButton
-            size="xs"
-            variant="ghost"
-            onClick={() => { (editor?.commands as any).setMermaid?.() }}
-            aria-label="Insert Mermaid Diagram"
-          >
-            <IconMermaid size={14} />
-          </IconButton>
-        </Tooltip>
-
-        <Tooltip content="Insert LaTeX Math">
-          <IconButton
-            size="xs"
-            variant="ghost"
-            onClick={() => { (editor?.commands as any).setMathBlock?.() }}
-            aria-label="Insert LaTeX Math"
-          >
-            <IconMath size={14} />
-          </IconButton>
-        </Tooltip>
-
-        <Tooltip content="Insert Callout Alert">
-          <IconButton
-            size="xs"
-            variant="ghost"
-            onClick={() => { editor?.chain().focus().toggleCallout({ type: 'info' }).run() }}
-            aria-label="Insert Callout Alert"
-          >
-            <IconCallout size={14} />
-          </IconButton>
-        </Tooltip>
-
-        <Tooltip content="Insert Toggle / Details Block">
-          <IconButton
-            size="xs"
-            variant="ghost"
-            onClick={() => { (editor?.commands as any).insertDetails?.() }}
-            aria-label="Insert Toggle / Details Block"
-          >
-            <IconDetails size={14} />
-          </IconButton>
-        </Tooltip>
-
-        <span className={css.spacer} />
-
-        <Tooltip content="Copy Markdown (as saved)">
-          <Button
-            size="xs"
-            variant="ghost"
-            icon={<IconCopy size={13} />}
-            onClick={() => {
-              const md = documents.markdown(path, { forSave: false })
-              if (md === undefined) return
-              void navigator.clipboard.writeText(md).then(() => {
-                setCopiedMd(true)
-                setTimeout(() => { setCopiedMd(false) }, 1500)
-              })
-            }}
-          >
-            {copiedMd ? 'Copied' : 'Copy MD'}
-          </Button>
-        </Tooltip>
-
-        <Tooltip content="View markdown source (read-only)">
-          <Button
-            size="xs"
-            variant="ghost"
-            icon={<IconCode size={13} />}
-            onClick={onViewRaw}
-          >
-            Raw
-          </Button>
-        </Tooltip>
-
-        <Tooltip content="Print / Export PDF">
-          <IconButton
-            size="xs"
-            variant="ghost"
-            onClick={() => { window.print() }}
-            aria-label="Print / Export PDF"
-          >
-            <IconPrint size={14} />
-          </IconButton>
-        </Tooltip>
-
-        <Tooltip
-          content={isDirty ? 'Save changes' : 'All changes saved'}
-          shortcut={formatModShortcut('s')}
-        >
-          <Button
-            size="xs"
-            variant={isDirty ? 'primary' : 'ghost'}
-            disabled={!isDirty}
-            onClick={() => { onSave(path) }}
-          >
-            <span className={`${css.saveDot} ${!isDirty ? css.saveDotSaved : ''}`} />
-            {isDirty ? 'Save' : 'Saved'}
-          </Button>
-        </Tooltip>
-      </div>
-
       {/* Contextual Table Controls */}
       {editor && <TableControls editor={editor} />}
 
