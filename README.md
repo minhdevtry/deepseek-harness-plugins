@@ -30,9 +30,15 @@
 - **Inline AI Assistant (`Ctrl+K` like Cursor IDE)**:
   - Highlight any text, paragraph, or code lines and press `Ctrl+K`.
   - Floating glassmorphism card appears with quick action chips (`⚡ Polish Text`, `📊 Format Table`, `💡 Summarize`, `🔧 Refactor Code`) or custom natural language instructions.
-- **`@` Mention File Autocomplete in Chat**:
-  - Type `@` in the chat input and workspace files appear as a **`files` group inside the host's own `@` menu**, beside the shipped groups (e.g. `ui-subagent`'s running agents). This is a `ctx.inputTriggers.registerSource` registration, so the menu, keyboard arbitration, IME guard and reference decoration all stay the host's — the plugin adds candidates, it does not replace the composer.
-  - The mentions this plugin composes *for* you — `Ctrl+L`, the TipTap `💬 Mention` bubble button, and `Ask AI About Active File` in the palette — are written through the host's own input face (`ctx.conversation.input.for(actx).setDraft`), not into the composer's DOM. The draft, its revision counter and its reference table stay the host's business, so the `@` menu keeps working on text this plugin appended.
+- **`@` Mention File Autocomplete & Authentic Blue Reference Chips**:
+  - Type `@` in the chat input: workspace files appear inside the host's own `@` menu (`files` group) with search-by-filename and path hint.
+  - Selecting a file candidate inserts an authentic **Blue Reference Chip** (`OccurrenceChip`) directly into the composer.
+  - Mentions automatically format with pure filename (`@ARCHITECTURE.md`) and precise line ranges (`#L36-43`, `#L6`) when text is selected in the active editor.
+- **`Ctrl+L` Smart Chat Navigation & Mentions**:
+  - **With selection in editor**: Inserts an authentic reference chip (e.g. `@ARCHITECTURE.md#L36-43` or `@AppFrame.tsx#L2-6`) into chat and focuses the composer.
+  - **Without selection**: Instantly toggles the Right Chat panel open or closed without stealing editor focus.
+- **TipTap WYSIWYG `💬 Mention` Bubble Button**:
+  - Any selection in TipTap or Code editor can be sent directly to chat as a reference chip with 1 click from the selection bubble menu.
 - **1-Click "⚡ Apply to Tab" & "📋 Copy" on Chat Code Blocks**:
   - Every code block in AI responses has action buttons to apply directly to the open file or copy to clipboard.
 - **AI Assist Quick Actions Menu (`🤖 AI Assist ▾`)**:
@@ -63,14 +69,16 @@
 
 ### 4. 📝 TipTap Notion WYSIWYG Markdown & Document Suite
 - **Direct WYSIWYG Editing**: Markdown files (`.md`) render directly into rich interactive Notion-style blocks.
+- **Collapsible Toggle Lists (`/toggle`)**: Foldable summary/details blocks matching Notion's UX.
+- **Notion Callouts (`/callout` or `💡`)**: Beautiful highlighted callout boxes with custom icons.
 - **Document Outline TOC (`📑 Outline`)**: Instant drawer showing hierarchical H1, H2, and H3 headings with click-to-scroll navigation.
 - **1-Click Export Suite (`📤 Export`)**:
   - `📋 Copy Clean Markdown`
   - `📋 Copy Formatted HTML`
   - `📄 Print / PDF Preview` (`window.print()`)
 - **Intelligent Auto-Save Engine**: 1.5-second debounce silently persists document edits to disk with subtle `Saved ✓` indicator.
-- **Floating Selection Bubble Menu**: Highlight text to format: **Bold** (`B`), *Italic* (`I`), <u>Underline</u> (`U`), ~~Strikethrough~~ (`S`), `Inline Code` (`</>`), 🎨 Highlight (`Mark`), and `🤖 Ask AI`.
-- **Slash Menu (`/`)**: Type `/` anywhere to insert Headings (H1/H2/H3), Task Lists (`[ ]`), Tables, Notion Callouts (`💡`), Code Blocks with syntax highlighting, Blockquotes, YouTube Embeds, Images, and Dividers.
+- **Floating Selection Bubble Menu**: Highlight text to format: **Bold** (`B`), *Italic* (`I`), <u>Underline</u> (`U`), ~~Strikethrough~~ (`S`), `Inline Code` (`</>`), 🎨 Text & Highlight Colors, `💬 Mention in Chat`, and `🤖 Ask AI`.
+- **Slash Menu (`/`)**: Type `/` anywhere to insert Headings (H1/H2/H3), Collapsible Toggle Lists (`/toggle`), Task Lists (`[ ]`), Tables, Notion Callouts (`💡`), Code Blocks with syntax highlighting, Blockquotes, YouTube Embeds, Images, and Dividers.
 - **Interactive Tables**: Add/delete rows and columns dynamically, toggle header row formatting.
 - **Document Statistics**: Live word count and character count in the editor footer and status bar.
 
@@ -88,7 +96,8 @@
 | `Ctrl+H` | **Find & Replace** | Expands in-editor find widget with single and replace-all controls. |
 | `Ctrl+Z` | **Undo** | Reverts recent typing/formatting in code and TipTap editors. |
 | `Ctrl+Y` / `Ctrl+Shift+Z` | **Redo** | Re-applies reverted typing/formatting. |
-| `Ctrl+L` | **Chat / Selection to AI** | **With selection:** sends snippet + filename to AI chat.<br>**Without selection:** toggles AI panel open/closed. |
+| `Ctrl+L` | **Chat / Selection to AI** | **With selection:** sends mention chip (`@filename#L36-43`) to AI chat and focuses composer.<br>**Without selection:** toggles AI panel open/closed without stealing focus. |
+| `Ctrl+B` | **Toggle Left Sidebar** | Toggles file explorer sidebar, collapsing to the rail. |
 | `Ctrl+S` / `Cmd+S` | **Save File** | Saves active code document or TipTap markdown document. |
 | `F2` | **Rename File** | Inline renaming in the File Explorer. |
 | `Escape` | **Dismiss Modal** | Closes Command Palette, Quick Open, Find Widget, or Dialogs. |

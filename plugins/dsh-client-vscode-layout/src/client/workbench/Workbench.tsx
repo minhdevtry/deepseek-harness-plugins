@@ -27,7 +27,7 @@ import { EditorView, highlightActiveLine, highlightActiveLineGutter, keymap, lin
 import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands'
 import { highlightSelectionMatches, search, searchKeymap } from '@codemirror/search'
 import { bracketMatching, indentOnInput } from '@codemirror/language'
-import { gitStatus } from '../api/files.ts'
+import { gitStatus, readFile } from '../api/files.ts'
 import { Dialog } from '../ui/Dialog.tsx'
 import { BufferRegistry } from './buffers.ts'
 import { DocumentRegistry } from '../tiptap/documents.ts'
@@ -35,14 +35,15 @@ import { SaveQueue } from './saveQueue.ts'
 import { isMarkdown } from './language.ts'
 import { languageExtension, languageName } from './language.ts'
 import { editorTheme } from './theme.ts'
-import { CodeEditor, type CodeEditorHandle, type CursorInfo } from './CodeEditor.tsx'
+import { CodeEditor, type CodeEditorHandle, type CursorInfo, type DiffMode } from './CodeEditor.tsx'
+import { FloatingReviewBar } from './FloatingReviewBar.tsx'
 import { TabStrip } from './TabStrip.tsx'
 import { Breadcrumb } from './Breadcrumb.tsx'
 import { useAutoClear } from '../utils/useAutoClear.ts'
 import { basename } from '../utils/path.ts'
 import { StatusBar } from './StatusBar.tsx'
 import { DiffView } from './DiffView.tsx'
-import { TipTapEditor } from '../tiptap/TipTapEditor.tsx'
+import { TipTapEditor, type TipTapEditorHandle } from '../tiptap/TipTapEditor.tsx'
 import { ImagePreview } from './previews/ImagePreview.tsx'
 import { CsvPreview } from './previews/CsvPreview.tsx'
 import { HtmlPreview } from './previews/HtmlPreview.tsx'
@@ -85,14 +86,26 @@ export function Workbench({
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | { error: string }>('idle')
   const [pendingClose, setPendingClose] = useState<PendingClose | undefined>(undefined)
   const [diffOpen, setDiffOpen] = useState(false)
+  const [diffModes, setDiffModes] = useState<Record<string, DiffMode>>({})
+  const [reviewStats, setReviewStats] = useState<Record<string, { count: number; canUndo: boolean }>>({})
   const [branch, setBranch] = useState<string | undefined>(undefined)
   const [rawModes, setRawModes] = useState<Record<string, boolean>>({})
+
+  const handleReviewStatsChange = useCallback((count: number, canUndo: boolean) => {
+    if (!activePath) return
+    setReviewStats(prev => {
+      const current = prev[activePath]
+      if (current?.count === count && current?.canUndo === canUndo) return prev
+      return { ...prev, [activePath]: { count, canUndo } }
+    })
+  }, [activePath])
 
   // Latest-callback ref: the Ctrl+S binding is baked into every EditorState at
   // creation, so it must reach the *current* save handler, not the one that
   // existed when the first file opened.
   const saveRef = useRef<(path: string) => void>(() => {})
   const editorRef = useRef<CodeEditorHandle | null>(null)
+  const tipTapRef = useRef<TipTapEditorHandle | null>(null)
 
   // One registry for the component's lifetime. Built lazily so the extension
   // factory closes over the ref above rather than a render-scoped value.
@@ -154,6 +167,15 @@ export function Workbench({
   )
 
   const status = activePath === undefined ? undefined : registry.status(activePath)
+
+  // Active diff mode resolution (ai-review outranks unsaved preview)
+  const activeDiffMode = activePath ? diffModes[activePath] : undefined
+  const effectiveDiffMode: DiffMode =
+    activeDiffMode?.kind === 'ai-review'
+      ? activeDiffMode
+      : diffOpen && status?.kind === 'text'
+        ? { kind: 'unsaved', baseline: status.diskDoc }
+        : { kind: 'none' }
 
   /**
    * Push the current tree into the text buffer.
@@ -388,6 +410,88 @@ export function Workbench({
     )
   }, [onNotify])
 
+  // Global hooks for starting / stopping AI Code Reviews
+  useEffect(() => {
+    (window as any).__dsh_start_ai_review = async (targetPath: string, baseline?: string, newContent?: string) => {
+      // 1. Ensure tab is opened
+      if (!tabs.includes(targetPath)) {
+        onOpenFile(targetPath)
+      }
+
+      // 2. Resolve baseline before updating buffer
+      let effectiveBaseline = baseline
+      if (effectiveBaseline === undefined || effectiveBaseline === '') {
+        const currentStatus = registry.status(targetPath)
+        if (currentStatus?.kind === 'text') {
+          effectiveBaseline = currentStatus.state.doc.toString()
+        } else {
+          const diskRes = await readFile(targetPath)
+          effectiveBaseline = diskRes.ok ? diskRes.value.content : ''
+        }
+      }
+
+      // 3. Adopt new content into buffer registry
+      if (typeof newContent === 'string' && newContent.length > 0) {
+        registry.setText(targetPath, newContent, { addToHistory: false })
+      } else {
+        await registry.reload(targetPath)
+      }
+
+      // 4. If markdown document, update TipTap document as well
+      if (isMarkdown(targetPath)) {
+        const freshBuffer = registry.status(targetPath)
+        if (freshBuffer?.kind === 'text') {
+          documents.reopen(targetPath, freshBuffer.state.doc.toString())
+        }
+      } else {
+        // Non-markdown files switch to code editor view
+        setRawModes(prev => ({ ...prev, [targetPath]: true }))
+      }
+
+      // 5. Activate AI review mode
+      setDiffModes(prev => ({
+        ...prev,
+        [targetPath]: { kind: 'ai-review', baseline: effectiveBaseline || '', snapshots: [] },
+      }))
+    }
+
+    (window as any).__dsh_stop_ai_review = (targetPath: string) => {
+      setDiffModes(prev => {
+        const next = { ...prev }
+        delete next[targetPath]
+        return next
+      })
+      if (dirty.has(targetPath)) {
+        void save(targetPath)
+      }
+    }
+
+    (window as any).__dsh_hold_autosave = (targetPath: string) => {
+      saveQueue.hold(targetPath)
+    }
+
+    (window as any).__dsh_release_autosave = (targetPath: string) => {
+      saveQueue.release(targetPath)
+    }
+
+    (window as any).__dsh_revert_turn_file = (targetPath: string) => {
+      discard(targetPath)
+      setDiffModes(prev => {
+        const next = { ...prev }
+        delete next[targetPath]
+        return next
+      })
+    }
+
+    return () => {
+      delete (window as any).__dsh_start_ai_review
+      delete (window as any).__dsh_stop_ai_review
+      delete (window as any).__dsh_revert_turn_file
+      delete (window as any).__dsh_hold_autosave
+      delete (window as any).__dsh_release_autosave
+    }
+  }, [tabs, onOpenFile, dirty, save, registry, documents, saveQueue])
+
   /** Throw away a tab's unsaved edits and go back to what is on disk. */
   const discard = useCallback((path: string) => {
     if (isMarkdown(path)) {
@@ -530,14 +634,38 @@ export function Workbench({
                   effect has run would leave it permanently blank. `docs.version`
                   re-renders us the moment the document lands.
                 */}
+                {effectiveDiffMode.kind === 'ai-review' && (
+                  <FloatingReviewBar
+                    chunkCount={reviewStats[activePath]?.count ?? 0}
+                    canUndo={reviewStats[activePath]?.canUndo ?? false}
+                    onAcceptAll={() => { tipTapRef.current?.acceptAll() }}
+                    onRejectAll={() => { tipTapRef.current?.rejectAll() }}
+                    onUndo={() => { tipTapRef.current?.undoReview() }}
+                    onPrevChunk={() => { tipTapRef.current?.prevChunk() }}
+                    onNextChunk={() => { tipTapRef.current?.nextChunk() }}
+                    onClose={() => {
+                      setDiffModes(prev => {
+                        const next = { ...prev }
+                        delete next[activePath]
+                        return next
+                      })
+                      if (dirty.has(activePath)) {
+                        void save(activePath)
+                      }
+                    }}
+                  />
+                )}
                 {documents.editor(activePath) !== undefined
                   ? (
                     <TipTapEditor
+                      ref={tipTapRef}
                       key={`${activePath}#${documents.epoch(activePath)}`}
                       path={activePath}
                       root={explorerRoot}
                       openTabs={tabs}
                       documents={documents}
+                      diffBaseline={effectiveDiffMode.kind === 'ai-review' ? (typeof effectiveDiffMode.baseline === 'string' ? effectiveDiffMode.baseline : effectiveDiffMode.baseline.toString()) : undefined}
+                      onReviewStatsChange={handleReviewStatsChange}
                       onSave={(p) => { void save(p) }}
                       onViewRaw={() => {
                         showTextView(() => {
@@ -617,6 +745,27 @@ export function Workbench({
                         </button>
                       </div>
                     )}
+                    {effectiveDiffMode.kind === 'ai-review' && (
+                      <FloatingReviewBar
+                        chunkCount={reviewStats[activePath]?.count ?? 0}
+                        canUndo={reviewStats[activePath]?.canUndo ?? false}
+                        onAcceptAll={() => { editorRef.current?.acceptAll() }}
+                        onRejectAll={() => { editorRef.current?.rejectAll() }}
+                        onUndo={() => { editorRef.current?.undoReview() }}
+                        onPrevChunk={() => { editorRef.current?.prevChunk() }}
+                        onNextChunk={() => { editorRef.current?.nextChunk() }}
+                        onClose={() => {
+                          setDiffModes(prev => {
+                            const next = { ...prev }
+                            delete next[activePath]
+                            return next
+                          })
+                          if (dirty.has(activePath)) {
+                            void save(activePath)
+                          }
+                        }}
+                      />
+                    )}
                     <div style={{ flex: 1, minHeight: 0, height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
                       <CodeEditor
                         ref={editorRef}
@@ -624,9 +773,10 @@ export function Workbench({
                         path={activePath}
                         registry={registry}
                         revealLine={activeLine}
-                        diffOriginal={diffOpen ? status.diskDoc : undefined}
+                        diffMode={effectiveDiffMode}
                         readOnly={mdTextReadOnly}
                         onCursor={setCursor}
+                        onReviewStatsChange={handleReviewStatsChange}
                       />
                     </div>
                   </div>
@@ -645,8 +795,8 @@ export function Workbench({
         readOnly={status?.kind === 'text' && status.truncated}
         autoSave={autoSave}
         onToggleAutoSave={onToggleAutoSave}
-        diffOpen={diffOpen}
-        onToggleDiff={activePath !== undefined && dirty.has(activePath)
+        diffOpen={diffOpen || effectiveDiffMode.kind === 'ai-review'}
+        onToggleDiff={activePath !== undefined && dirty.has(activePath) && effectiveDiffMode.kind !== 'ai-review'
           ? () => { showTextView(() => { setDiffOpen(open => !open) }) }
           : undefined}
         saveState={saveState}

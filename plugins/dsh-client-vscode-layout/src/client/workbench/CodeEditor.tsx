@@ -10,9 +10,17 @@
  * belongs to CodeMirror. Re-rendering this component does not touch the editor.
  */
 import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react'
-import { EditorView } from '@codemirror/view'
+import { EditorView, keymap } from '@codemirror/view'
 import { Compartment, EditorState, StateEffect, type Extension, type Text, type TransactionSpec } from '@codemirror/state'
-import { unifiedMergeView } from '@codemirror/merge'
+import {
+  unifiedMergeView,
+  getChunks,
+  getOriginalDoc,
+  acceptChunk,
+  rejectChunk,
+  goToNextChunk,
+  goToPreviousChunk,
+} from '@codemirror/merge'
 import type { BufferRegistry } from './buffers.ts'
 import css from './CodeEditor.module.css'
 
@@ -26,6 +34,14 @@ export interface CursorInfo {
   selected: number
 }
 
+/** Diff modes for CodeEditor */
+export type DiffMode =
+  | { kind: 'none' }
+  /** Save preview: what is on disk vs what is in the buffer. */
+  | { kind: 'unsaved'; baseline: Text | string }
+  /** AI review: the pre-AI text vs current buffer, with baseline undo stack. */
+  | { kind: 'ai-review'; baseline: Text | string; snapshots?: string[] }
+
 /** Editor props. */
 export interface CodeEditorProps {
   /** Absolute path of the buffer to show; changing it remounts via `key`. */
@@ -33,59 +49,172 @@ export interface CodeEditorProps {
   registry: BufferRegistry
   /** 1-based line to reveal once on open — a search hit's target. */
   revealLine?: number | undefined
-  /** Original disk document when inline per-hunk diff is active. */
-  diffOriginal?: Text | undefined
-  /**
-   * Lock the document against editing.
-   *
-   * Dynamic, so it rides a compartment rather than the buffer's baked-in
-   * extension set: the markdown raw view toggles this every time the operator
-   * switches between rich and raw, and rebuilding the state to change it would
-   * throw away the very undo history this component exists to preserve.
-   */
+  /** Explicit diff mode. Takes precedence over diffOriginal. */
+  diffMode?: DiffMode | undefined
+  /** Original disk document when inline per-hunk diff is active (legacy/fallback). */
+  diffOriginal?: Text | string | undefined
+  /** Lock the document against editing. */
   readOnly?: boolean | undefined
   onCursor: (info: CursorInfo) => void
+  /** Notified when review chunk count or undo availability changes. */
+  onReviewStatsChange?: (chunkCount: number, canUndo: boolean) => void
 }
 
 /**
  * Commands the column issues to the live view.
- *
- * A ref, not a DOM lookup: reaching the editor with `querySelector` is exactly
- * how the previous implementation lost track of its own state.
  */
 export interface CodeEditorHandle {
   /** Apply a transaction — the revert path, which stays undoable this way. */
   dispatch: (spec: TransactionSpec) => void
   focus: () => void
+  acceptAll: () => void
+  rejectAll: () => void
+  undoReview: () => boolean
+  nextChunk: () => boolean
+  prevChunk: () => boolean
+  getChunkCount: () => number
 }
 
 /** The editing surface (see module doc). */
 export const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(function CodeEditor(
-  { path, registry, revealLine, diffOriginal, readOnly, onCursor }: CodeEditorProps,
+  { path, registry, revealLine, diffMode, diffOriginal, readOnly, onCursor, onReviewStatsChange }: CodeEditorProps,
   ref,
 ) {
   const hostRef = useRef<HTMLDivElement | null>(null)
   const viewRef = useRef<EditorView | null>(null)
   const diffCompartment = useRef(new Compartment())
   const readOnlyCompartment = useRef(new Compartment())
+  const baselineSnapshotsRef = useRef<string[]>([])
 
-  useImperativeHandle(ref, () => ({
-    dispatch: (spec) => { viewRef.current?.dispatch(spec) },
-    focus: () => { viewRef.current?.focus() },
-  }), [])
   // Latest-callback ref: the update listener is baked into the view for its
   // whole lifetime, but must always reach the current handler.
   const cursorRef = useRef(onCursor)
   cursorRef.current = onCursor
+
+  const statsCallbackRef = useRef(onReviewStatsChange)
+  statsCallbackRef.current = onReviewStatsChange
+
+  const updateStats = (view: EditorView | null) => {
+    if (!view || !statsCallbackRef.current) return
+    const count = getChunks(view.state)?.chunks.length ?? 0
+    statsCallbackRef.current(count, baselineSnapshotsRef.current.length > 0)
+  }
+
+  const onBeforeAccept = () => {
+    const view = viewRef.current
+    if (!view) return
+    try {
+      const orig = getOriginalDoc(view.state).toString()
+      baselineSnapshotsRef.current.push(orig)
+    } catch {
+      // Ignored if originalDoc field not yet attached
+    }
+  }
+
+  const renderMergeControls = (type: 'reject' | 'accept', action: (e: MouseEvent) => void): HTMLElement => {
+    const btn = document.createElement('button')
+    btn.type = 'button'
+    btn.className = type === 'accept' ? 'dsh-review-accept' : 'dsh-review-reject'
+    btn.textContent = type === 'accept' ? '✓ Giữ' : '✕ Bỏ'
+    btn.title = type === 'accept' ? 'Chấp nhận thay đổi này (Giữ)' : 'Từ chối thay đổi này (Bỏ)'
+    btn.addEventListener('click', (e) => {
+      if (type === 'accept') {
+        onBeforeAccept()
+      }
+      action(e)
+    })
+    return btn
+  }
+
+  useImperativeHandle(ref, () => ({
+    dispatch: (spec) => { viewRef.current?.dispatch(spec) },
+    focus: () => { viewRef.current?.focus() },
+    acceptAll: () => {
+      const view = viewRef.current
+      if (!view) return
+      const chunks = getChunks(view.state)?.chunks ?? []
+      if (chunks.length === 0) return
+      onBeforeAccept()
+      for (let i = chunks.length - 1; i >= 0; i--) {
+        const chunk = chunks[i]
+        if (chunk) acceptChunk(view, chunk.fromB)
+      }
+      updateStats(view)
+    },
+    rejectAll: () => {
+      const view = viewRef.current
+      if (!view) return
+      const chunks = getChunks(view.state)?.chunks ?? []
+      if (chunks.length === 0) return
+      for (let i = chunks.length - 1; i >= 0; i--) {
+        const chunk = chunks[i]
+        if (chunk) rejectChunk(view, chunk.fromB)
+      }
+      updateStats(view)
+    },
+    undoReview: () => {
+      const view = viewRef.current
+      if (!view || baselineSnapshotsRef.current.length === 0) return false
+      const prevBaseline = baselineSnapshotsRef.current.pop()!
+      view.dispatch({
+        effects: diffCompartment.current.reconfigure(
+          buildDiffExtensions(prevBaseline, true)
+        ),
+      })
+      updateStats(view)
+      return true
+    },
+    nextChunk: () => {
+      const view = viewRef.current
+      if (!view) return false
+      return goToNextChunk(view)
+    },
+    prevChunk: () => {
+      const view = viewRef.current
+      if (!view) return false
+      return goToPreviousChunk(view)
+    },
+    getChunkCount: () => {
+      const view = viewRef.current
+      if (!view) return 0
+      return getChunks(view.state)?.chunks.length ?? 0
+    },
+  }), [])
+
+  // Resolve active baseline
+  const activeBaseline: Text | string | undefined =
+    diffMode?.kind === 'ai-review'
+      ? diffMode.baseline
+      : diffMode?.kind === 'unsaved'
+        ? diffMode.baseline
+        : diffOriginal
+
+  const buildDiffExtensions = (baseline: Text | string | undefined, isAiReview: boolean) => {
+    if (baseline === undefined) return []
+    return [
+      unifiedMergeView({
+        original: baseline,
+        mergeControls: isAiReview ? renderMergeControls : true,
+      }),
+      keymap.of([
+        { key: 'Alt-ArrowDown', run: goToNextChunk },
+        { key: 'Alt-ArrowUp', run: goToPreviousChunk },
+      ]),
+    ]
+  }
 
   useEffect(() => {
     const host = hostRef.current
     const buffer = registry.status(path)
     if (host === null || buffer?.kind !== 'text') return
 
-    const initialDiff = diffOriginal !== undefined
-      ? unifiedMergeView({ original: diffOriginal, mergeControls: true })
-      : []
+    if (diffMode?.kind === 'ai-review' && diffMode.snapshots) {
+      baselineSnapshotsRef.current = [...diffMode.snapshots]
+    } else if (diffMode?.kind !== 'ai-review') {
+      baselineSnapshotsRef.current = []
+    }
+
+    const initialDiff = buildDiffExtensions(activeBaseline, diffMode?.kind === 'ai-review')
 
     const view = new EditorView({
       state: buffer.state.update({
@@ -95,13 +224,8 @@ export const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(function
         ]),
       }).state,
       parent: host,
-      // `dispatchTransactions`, not the legacy `dispatch`: the older hook
-      // forces transactions to be applied one at a time, which breaks
-      // extensions that rely on dispatching a group together.
       dispatchTransactions: (transactions, instance) => {
         instance.update(transactions)
-        // Every transaction, not just document changes: a selection move has
-        // to reach the status bar too.
         registry.sync(path, instance.state)
         const head = instance.state.selection.main
         const line = instance.state.doc.lineAt(head.head)
@@ -127,6 +251,9 @@ export const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(function
         } else {
           ;(window as any).__dsh_active_selection = null
         }
+
+        // Notify review stats
+        updateStats(instance)
       },
     })
 
@@ -136,40 +263,38 @@ export const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(function
       const target = view.state.doc.line(revealLine)
       view.dispatch({
         selection: { anchor: target.from },
-        // 'center' rather than the default nearest: a hit revealed flush
-        // against the top or bottom edge shows none of its context.
         effects: EditorView.scrollIntoView(target.from, { y: 'center' }),
       })
     }
     view.focus()
+    updateStats(view)
 
     return () => {
-      // Hand the final state back before tearing the view down — this is the
-      // tab's undo history and cursor.
       registry.sync(path, view.state)
       view.destroy()
       viewRef.current = null
     }
-    // Deliberately keyed to the buffer identity alone. revealLine is read once
-    // at open: re-running on it would rebuild the view and throw away the
-    // operator's scroll position and undo history every time a search hit
-    // changed.
   }, [path, registry])
 
-  // Dynamically reconfigure inline diff without tearing down the view or losing state
+  // Dynamically reconfigure inline diff without tearing down view
   useEffect(() => {
     const view = viewRef.current
     if (!view) return
+    if (diffMode?.kind === 'ai-review' && diffMode.snapshots) {
+      baselineSnapshotsRef.current = [...diffMode.snapshots]
+    } else if (diffMode?.kind !== 'ai-review') {
+      baselineSnapshotsRef.current = []
+    }
+
     view.dispatch({
       effects: diffCompartment.current.reconfigure(
-        diffOriginal !== undefined
-          ? unifiedMergeView({ original: diffOriginal, mergeControls: true })
-          : []
+        buildDiffExtensions(activeBaseline, diffMode?.kind === 'ai-review')
       ),
     })
-  }, [diffOriginal])
+    updateStats(view)
+  }, [activeBaseline, diffMode?.kind])
 
-  // Same for the lock: a reconfigure, so toggling raw view keeps the state.
+  // Dynamic lock extension reconfigure
   useEffect(() => {
     const view = viewRef.current
     if (!view) return
@@ -183,11 +308,8 @@ export const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(function
 
 /**
  * The extensions that make a document read-only.
- * @param locked - whether to lock it.
- * @returns the locking extensions, or nothing when editable.
  */
 function lockExtension(locked: boolean): Extension {
-  // Both halves are needed: `readOnly` refuses document changes, `editable`
-  // takes the caret out of the DOM so the browser stops offering to type.
   return locked ? [EditorState.readOnly.of(true), EditorView.editable.of(false)] : []
 }
+

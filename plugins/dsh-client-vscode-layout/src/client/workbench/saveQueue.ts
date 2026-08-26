@@ -23,6 +23,23 @@
 export class SaveQueue {
   readonly #inFlight = new Map<string, Promise<boolean>>()
   readonly #autosaveTimers = new Map<string, ReturnType<typeof setTimeout>>()
+  readonly #held = new Set<string>()
+
+  /** Hold autosave and enqueue for a path while external/AI write is in flight. */
+  hold(path: string): void {
+    this.#held.add(path)
+    this.#cancelAutosave(path)
+  }
+
+  /** Release autosave hold on a path after AI write / review settles. */
+  release(path: string): void {
+    this.#held.delete(path)
+  }
+
+  /** Check if a path is currently held. */
+  isHeld(path: string): boolean {
+    return this.#held.has(path)
+  }
 
   /**
    * Run `task` for `path` after any save already queued or in flight for it.
@@ -31,6 +48,9 @@ export class SaveQueue {
    * @returns whether that save succeeded.
    */
   enqueue(path: string, task: () => Promise<boolean>): Promise<boolean> {
+    if (this.#held.has(path)) {
+      return Promise.resolve(false)
+    }
     const previous = this.#inFlight.get(path) ?? Promise.resolve(true)
     const chained = previous.catch(() => false).then(task)
     const tracked = chained.finally(() => {
@@ -59,9 +79,10 @@ export class SaveQueue {
    */
   reconcileAutosave(dirtyPaths: ReadonlySet<string>, delayMs: number, run: (path: string) => void): void {
     for (const path of [...this.#autosaveTimers.keys()]) {
-      if (!dirtyPaths.has(path)) this.#cancelAutosave(path)
+      if (!dirtyPaths.has(path) || this.#held.has(path)) this.#cancelAutosave(path)
     }
     for (const path of dirtyPaths) {
+      if (this.#held.has(path)) continue
       if (this.#autosaveTimers.has(path)) continue
       const timer = setTimeout(() => {
         this.#autosaveTimers.delete(path)

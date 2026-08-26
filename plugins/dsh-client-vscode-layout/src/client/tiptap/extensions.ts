@@ -95,6 +95,16 @@ const RichHighlight = Highlight.extend({
   },
 })
 
+import { Extension } from '@tiptap/core'
+import { createTipTapReviewPlugin } from './TipTapReviewPlugin.ts'
+
+export const TipTapReviewExtension = Extension.create({
+  name: 'tiptapReview',
+  addProseMirrorPlugins() {
+    return [createTipTapReviewPlugin()]
+  },
+})
+
 /**
  * Build the extension list.
  * @returns the extensions, in a fixed order.
@@ -154,6 +164,7 @@ export function documentExtensions(): Extensions {
     TaskItem.configure({ nested: true }),
     TextAlign.configure({ types: ['heading', 'paragraph'] }),
     Typography,
+    TipTapReviewExtension,
     Markdown,
   ]
 }

@@ -35,6 +35,7 @@ import { createFileSource } from './inputTriggers/fileSource.ts'
 import { installComposerWriter, installReferenceWriter, toWorkspaceRelative, type ComposerReference } from './composer.ts'
 import { openInWorkbench, routeFor } from './fileOpener.ts'
 import { readFile } from './api/files.ts'
+import { TurnReviewCard, selectTurnModifiedFiles } from './chat/TurnReviewCard.tsx'
 
 export { toWorkspaceRelative }
 
@@ -294,6 +295,15 @@ export function apply(ctx: ClientContext): void {
   }, RailViews)), 'vscode-layout: rail view switcher')
 
   /**
+   * Register In-Chat Turn Review Card into conversation.chat.turnTail.
+   * Gives a sleek per-turn review card with deep-link into editor.
+   */
+  ctx.effect(() => ctx.slots.inject('conversation.chat.turnTail', () => ctx.slots.register({
+    name: 'conversation.chat.turnTail',
+    select: selectTurnModifiedFiles,
+  }, TurnReviewCard)), 'vscode-layout: in-chat turn review card')
+
+  /**
    * Workspace files as an `@` group, beside ui-subagent's agents.
    *
    * `ctx.inject` defers until the service exists: ui-input-trigger is an
@@ -309,6 +319,112 @@ export function apply(ctx: ClientContext): void {
       )),
       'vscode-layout: @ workspace files',
     )
+  })
+
+  /**
+   * Watch agent tool calls and diffs from active session.
+   * When an agent writes or edits a file, automatically trigger AI Review mode!
+   */
+  ctx.inject(['sessions'], (scope: ClientContext) => {
+    scope.effect(() => {
+      const processedCallIds = new Set<string>()
+      let unsubscribeSession: (() => void) | undefined
+
+      const drainSnapshot = (snap: any) => {
+        if (!snap) return
+        const cwd = scope.sessions.list.getSnapshot().byId[snap.sessionId]?.cwd
+
+        // 1. Hold autosave for running tool calls that touch files
+        for (const running of snap.runningCalls ?? []) {
+          try {
+            const raw = running.call?.argsRaw || running.call?.arguments
+            if (!raw) continue
+            const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw
+            const target = parsed.path || parsed.file_path || parsed.target_file || parsed.filePath || parsed.TargetFile
+            if (typeof target === 'string') {
+              const absPath = target.startsWith('/') ? target : (cwd ? `${cwd}/${target}` : target)
+              ;(window as any).__dsh_hold_autosave?.(absPath)
+            }
+          } catch {}
+        }
+
+        // 2. Inspect settled tool results for file writes & diffs
+        for (const node of snap.nodes ?? []) {
+          if (node.kind !== 'tool-result') continue
+          if (processedCallIds.has(node.callId)) continue
+
+          // Check if this tool result has a diff card or was a write/edit tool
+          const diffs = node.resultView?.card === 'diff' ? node.resultView.diffs : null
+          if (Array.isArray(diffs) && diffs.length > 0) {
+            processedCallIds.add(node.callId)
+            for (const hunk of diffs) {
+              if (typeof hunk?.path === 'string') {
+                const absPath = hunk.path.startsWith('/') ? hunk.path : (cwd ? `${cwd}/${hunk.path}` : hunk.path)
+                ;(window as any).__dsh_release_autosave?.(absPath)
+                ;(window as any).__dsh_start_ai_review?.(absPath, hunk.oldText ?? '', hunk.newText)
+              }
+            }
+            continue
+          }
+
+          // Fallback: check call name / args for write_file, edit_file, etc.
+          const callName = (node.call?.name || '').toLowerCase()
+          if (
+            callName.includes('write') ||
+            callName.includes('edit') ||
+            callName.includes('replace') ||
+            callName.includes('create')
+          ) {
+            try {
+              const raw = node.call?.argsRaw || node.call?.arguments
+              if (raw) {
+                const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw
+                const target = parsed.path || parsed.file_path || parsed.target_file || parsed.filePath || parsed.TargetFile
+                if (typeof target === 'string') {
+                  processedCallIds.add(node.callId)
+                  const absPath = target.startsWith('/') ? target : (cwd ? `${cwd}/${target}` : target)
+                  ;(window as any).__dsh_release_autosave?.(absPath)
+                  const oldContent = typeof parsed.old_str === 'string' ? parsed.old_str : (parsed.old_text || '')
+                  const newContent = typeof parsed.content === 'string' ? parsed.content : (parsed.new_str || parsed.new_text || parsed.CodeContent || '')
+                  ;(window as any).__dsh_start_ai_review?.(absPath, oldContent, newContent)
+                }
+              }
+            } catch {}
+          }
+        }
+      }
+
+      const rebind = () => {
+        unsubscribeSession?.()
+        const currentSessionId = scope.sessions.list.getSnapshot().current
+        if (currentSessionId === undefined) {
+          unsubscribeSession = undefined
+          return
+        }
+        const actx = scope.sessions.scope(currentSessionId)
+        if (actx === undefined) {
+          unsubscribeSession = undefined
+          return
+        }
+        const sessionFace = scope.sessions.sessionOf(actx)
+        if (sessionFace === undefined) {
+          unsubscribeSession = undefined
+          return
+        }
+        unsubscribeSession = sessionFace.subscribe(() => {
+          drainSnapshot(sessionFace.getSnapshot())
+        })
+        drainSnapshot(sessionFace.getSnapshot())
+      }
+
+      const offList = scope.sessions.list.subscribe(rebind)
+      rebind()
+
+      return () => {
+        offList()
+        unsubscribeSession?.()
+      }
+    }, 'vscode-layout: watch agent file writes')
   })
 
   // Theme presentation: pure DOM writes from resolved snapshots — initial state

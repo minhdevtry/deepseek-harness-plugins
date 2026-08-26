@@ -13,9 +13,10 @@
  *
  * Nothing here serialises markdown. The registry projects it at save time.
  */
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useImperativeHandle, forwardRef, type ForwardedRef } from 'react'
 import type { Editor } from '@tiptap/core'
 import type { DocumentRegistry } from './documents.ts'
+import { reviewPluginKey, rejectSingleHunk } from './TipTapReviewPlugin.ts'
 import { SlashMenu } from './SlashMenu.tsx'
 import { BubbleMenu } from './BubbleMenu.tsx'
 import { LinkBubble } from './LinkBubble.tsx'
@@ -33,6 +34,15 @@ import { resolveRelativePath } from '../utils/path.ts'
 import { openInWorkbench } from '../fileOpener.ts'
 import css from './TipTapEditor.module.css'
 
+export interface TipTapEditorHandle {
+  acceptAll: () => void
+  rejectAll: () => void
+  undoReview: () => boolean
+  nextChunk: () => boolean
+  prevChunk: () => boolean
+  getChunkCount: () => number
+}
+
 export interface TipTapEditorProps {
   path: string
   root?: string | undefined
@@ -48,6 +58,10 @@ export interface TipTapEditorProps {
    * document — so this is a viewer, not a second editor.
    */
   onViewRaw: () => void
+  /** Active baseline for Notion WYSIWYG AI review */
+  diffBaseline?: string | undefined
+  /** Callback notifying live review chunk statistics */
+  onReviewStatsChange?: ((count: number, canUndo: boolean) => void) | undefined
 }
 
 interface SlashState {
@@ -56,14 +70,16 @@ interface SlashState {
   position: { top: number; left: number; bottom: number }
 }
 
-export function TipTapEditor({
+export const TipTapEditor = forwardRef(function TipTapEditor({
   path,
   root,
   openTabs,
   documents,
   onSave,
   onViewRaw: _onViewRaw,
-}: TipTapEditorProps) {
+  diffBaseline,
+  onReviewStatsChange,
+}: TipTapEditorProps, ref: ForwardedRef<TipTapEditorHandle>) {
   const wrapperRef = useRef<HTMLDivElement | null>(null)
   const containerRef = useRef<HTMLDivElement | null>(null)
   const [editor, setEditor] = useState<Editor | null>(null)
@@ -81,6 +97,99 @@ export function TipTapEditor({
   const [aiState, setAiState] = useState<AIState | null>(null)
 
   useEditorSnapshot(editor)
+
+  // Synchronize AI Review Baseline
+  useEffect(() => {
+    if (!editor) return
+    editor.view.dispatch(
+      editor.state.tr.setMeta(reviewPluginKey, {
+        type: 'SET_BASELINE',
+        baseline: diffBaseline || null,
+      })
+    )
+    if (onReviewStatsChange) {
+      const pState = reviewPluginKey.getState(editor.state)
+      onReviewStatsChange(pState?.hunks.length ?? 0, (pState?.snapshots.length ?? 0) > 0)
+    }
+  }, [editor, diffBaseline, onReviewStatsChange])
+
+  // Expose Review Actions to Workbench Toolbar
+  useImperativeHandle(ref, () => ({
+    acceptAll: () => {
+      if (!editor) return
+      const pState = reviewPluginKey.getState(editor.state)
+      if (!pState || pState.hunks.length === 0) return
+      const currentBase = pState.baselineMarkdown
+      if (currentBase) {
+        editor.view.dispatch(
+          editor.state.tr.setMeta(reviewPluginKey, {
+            type: 'PUSH_SNAPSHOT',
+            snapshot: currentBase,
+          })
+        )
+      }
+      editor.view.dispatch(
+        editor.state.tr.setMeta(reviewPluginKey, {
+          type: 'SET_BASELINE',
+          baseline: editor.getMarkdown(),
+        })
+      )
+      onReviewStatsChange?.(0, true)
+    },
+    rejectAll: () => {
+      if (!editor) return
+      const pState = reviewPluginKey.getState(editor.state)
+      if (!pState || pState.hunks.length === 0) return
+      const hunks = [...pState.hunks]
+      for (let i = hunks.length - 1; i >= 0; i--) {
+        const h = hunks[i]
+        if (h) rejectSingleHunk(editor.view, h, pState)
+      }
+      onReviewStatsChange?.(0, false)
+    },
+    undoReview: () => {
+      if (!editor) return false
+      const pState = reviewPluginKey.getState(editor.state)
+      if (!pState || pState.snapshots.length === 0) return false
+      editor.view.dispatch(
+        editor.state.tr.setMeta(reviewPluginKey, {
+          type: 'POP_SNAPSHOT',
+        })
+      )
+      const nextState = reviewPluginKey.getState(editor.state)
+      onReviewStatsChange?.(nextState?.hunks.length ?? 0, (nextState?.snapshots.length ?? 0) > 0)
+      return true
+    },
+    nextChunk: () => {
+      if (!editor) return false
+      const pState = reviewPluginKey.getState(editor.state)
+      if (!pState || pState.hunks.length === 0) return false
+      const firstHunk = pState.hunks[0]
+      if (!firstHunk) return false
+      try {
+        const domNode = editor.view.nodeDOM(firstHunk.fromPos) as HTMLElement | null
+        domNode?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      } catch {}
+      return true
+    },
+    prevChunk: () => {
+      if (!editor) return false
+      const pState = reviewPluginKey.getState(editor.state)
+      if (!pState || pState.hunks.length === 0) return false
+      const lastHunk = pState.hunks[pState.hunks.length - 1]
+      if (!lastHunk) return false
+      try {
+        const domNode = editor.view.nodeDOM(lastHunk.fromPos) as HTMLElement | null
+        domNode?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      } catch {}
+      return true
+    },
+    getChunkCount: () => {
+      if (!editor) return 0
+      const pState = reviewPluginKey.getState(editor.state)
+      return pState?.hunks.length ?? 0
+    },
+  }), [editor, onReviewStatsChange])
 
   const openAI = (customInitialPrompt?: string, actionId?: AIActionId, executeNow = false) => {
     if (!editor) return
@@ -482,4 +591,4 @@ export function TipTapEditor({
       )}
     </div>
   )
-}
+})
