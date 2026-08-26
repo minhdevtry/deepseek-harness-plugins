@@ -45,7 +45,7 @@ export function InlineAIPopover({ editor, aiState, onClose }: InlineAIPopoverPro
   const [prompt, setPrompt] = useState<string>(
     typeof aiState.customPrompt === 'string' ? aiState.customPrompt : ''
   )
-  const [status, setStatus] = useState<'prompting' | 'generating' | 'reviewing'>(
+  const [status, setStatus] = useState<'prompting' | 'generating' | 'reviewing' | 'error'>(
     aiState.status === 'idle' ? 'prompting' : (aiState.status as any)
   )
   const [streamedText, setStreamedText] = useState(aiState.generatedText || '')
@@ -99,8 +99,8 @@ export function InlineAIPopover({ editor, aiState, onClose }: InlineAIPopoverPro
       setStatus('reviewing')
     } catch (err: any) {
       if (err?.message !== 'AI generation cancelled') {
-        setStreamedText(`Lỗi: ${err?.message || 'Không thể tạo nội dung'}`)
-        setStatus('reviewing')
+        setStreamedText(err?.message || 'Không thể tạo nội dung')
+        setStatus('error')
       }
     }
   }
@@ -332,11 +332,14 @@ export function InlineAIPopover({ editor, aiState, onClose }: InlineAIPopoverPro
         </div>
       )}
 
-      {/* State: Generating / Reviewing with Stream Shimmer */}
-      {(status === 'generating' || status === 'reviewing') && (
+      {/* State: Generating / Reviewing / Error with Stream Shimmer */}
+      {(status === 'generating' || status === 'reviewing' || status === 'error') && (
         <div className={css.streamingBox}>
-          <div className={css.streamingText}>
-            {streamedText}
+          <div
+            className={css.streamingText}
+            style={status === 'error' ? { color: '#ef4444', fontWeight: 500 } : undefined}
+          >
+            {status === 'error' ? `⚠️ Lỗi: ${streamedText}` : streamedText}
             {status === 'generating' && <span className={css.streamingIndicator} />}
           </div>
         </div>
@@ -363,6 +366,25 @@ export function InlineAIPopover({ editor, aiState, onClose }: InlineAIPopoverPro
           </button>
           <button type="button" className={css.btnDanger} onClick={handleDiscard}>
             <span>✕</span> Huỷ bỏ (Esc)
+          </button>
+        </div>
+      )}
+
+      {/* Error Action Bar: only Retry or Close */}
+      {status === 'error' && (
+        <div className={css.reviewBar}>
+          <button
+            type="button"
+            className={css.btnSecondary}
+            onClick={() => {
+              setStatus('prompting')
+              setStreamedText('')
+            }}
+          >
+            <span>🔄</span> Thử lại
+          </button>
+          <button type="button" className={css.btnDanger} onClick={handleDiscard}>
+            <span>✕</span> Đóng (Esc)
           </button>
         </div>
       )}

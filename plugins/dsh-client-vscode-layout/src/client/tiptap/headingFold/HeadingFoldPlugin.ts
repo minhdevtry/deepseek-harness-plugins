@@ -1,5 +1,5 @@
 import { Extension } from '@tiptap/core'
-import { Plugin, PluginKey } from '@tiptap/pm/state'
+import { Plugin, PluginKey, TextSelection } from '@tiptap/pm/state'
 import type { Node as ProseMirrorNode } from '@tiptap/pm/model'
 import { Decoration, DecorationSet, type EditorView } from '@tiptap/pm/view'
 
@@ -12,13 +12,23 @@ const CHEVRON_DOWN = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none
 const STOP_EVENT = () => true
 
 export function toggleHeadingFold(view: EditorView, headingPos: number): void {
-  view.dispatch(view.state.tr.setMeta(headingFoldPluginKey, { toggled: headingPos }))
+  const isCurrentlyCollapsed = headingFoldPluginKey.getState(view.state)?.collapsed.has(headingPos)
+  let tr = view.state.tr.setMeta(headingFoldPluginKey, { toggled: headingPos })
+  if (!isCurrentlyCollapsed) {
+    // When collapsing, if the caret is inside the region being folded, push it out to headingPos + 1
+    const range = foldRangeFor(view.state.doc, headingPos)
+    const { from } = view.state.selection
+    if (range && from > range.start && from < range.end) {
+      tr = tr.setSelection(TextSelection.create(tr.doc, headingPos + 1))
+    }
+  }
+  view.dispatch(tr)
 }
 
 /**
  * Where a heading's folded section ends: the next heading at the same or a
  * shallower level, or the end of the document — but never past the last
- * block, so there is always somewhere to click and keep writing.
+ * empty block, so there is always somewhere to click and keep writing.
  */
 export function foldRangeFor(
   doc: ProseMirrorNode,
@@ -43,10 +53,10 @@ export function foldRangeFor(
     }
   })
 
-  // Never hide the last block if it is a paragraph, so there's always space to write
+  // Never hide the last block if it is an empty paragraph, so there's always space to write
   const lastChild = doc.lastChild
   const lastStart = lastChild ? doc.content.size - lastChild.nodeSize : doc.content.size
-  if (foldEnd >= doc.content.size && lastChild?.type.name === 'paragraph') {
+  if (foldEnd >= doc.content.size && lastChild?.type.name === 'paragraph' && lastChild.content.size === 0) {
     foldEnd = lastStart
   }
 
@@ -79,13 +89,23 @@ export const HeadingFoldExtension = Extension.create({
                 mapped.size !== collapsed.size || [...mapped].some((p) => !collapsed.has(p))
               collapsed = changed ? mapped : collapsed
             }
-            const meta = tr.getMeta(headingFoldPluginKey) as { toggled?: number } | undefined
-            if (meta?.toggled === undefined) {
+            const meta = tr.getMeta(headingFoldPluginKey) as
+              | { toggled?: number; unfold?: number | number[] }
+              | undefined
+            if (!meta || (meta.toggled === undefined && meta.unfold === undefined)) {
               return collapsed === value.collapsed ? value : { collapsed }
             }
             collapsed = new Set(collapsed)
-            if (collapsed.has(meta.toggled)) collapsed.delete(meta.toggled)
-            else collapsed.add(meta.toggled)
+            if (meta.toggled !== undefined) {
+              if (collapsed.has(meta.toggled)) collapsed.delete(meta.toggled)
+              else collapsed.add(meta.toggled)
+            }
+            if (meta.unfold !== undefined) {
+              const unfolds = Array.isArray(meta.unfold) ? meta.unfold : [meta.unfold]
+              for (const pos of unfolds) {
+                collapsed.delete(pos)
+              }
+            }
             return { collapsed }
           },
         },
@@ -95,6 +115,7 @@ export const HeadingFoldExtension = Extension.create({
           if (!transactions.some((tr) => tr.selectionSet || tr.docChanged)) return null
 
           const { from } = newState.selection
+          const toUnfold: number[] = []
           for (const headingPos of value.collapsed) {
             const node = newState.doc.nodeAt(headingPos)
             if (!node || node.type.name !== 'heading') continue
@@ -102,30 +123,15 @@ export const HeadingFoldExtension = Extension.create({
             if (range && from > range.start && from < range.end) {
               // The caret landed inside content this fold is hiding. Unfold rather
               // than leave the operator typing into an invisible node.
-              return newState.tr.setMeta(headingFoldPluginKey, { toggled: headingPos })
+              toUnfold.push(headingPos)
             }
+          }
+          if (toUnfold.length > 0) {
+            return newState.tr.setMeta(headingFoldPluginKey, { unfold: toUnfold })
           }
           return null
         },
         props: {
-          handleClick(view, _pos, event) {
-            const target = (event.target as HTMLElement).closest(
-              '[data-heading-fold-btn="true"], [data-heading-indicator="true"]',
-            )
-            if (!target) return false
-
-            const posAttr = target.getAttribute('data-pos')
-            if (posAttr) {
-              const headingPos = parseInt(posAttr, 10)
-              if (!isNaN(headingPos)) {
-                toggleHeadingFold(view, headingPos)
-                event.preventDefault()
-                event.stopPropagation()
-                return true
-              }
-            }
-            return false
-          },
           decorations(state) {
             const decos: Decoration[] = []
             const doc = state.doc
@@ -151,7 +157,7 @@ export const HeadingFoldExtension = Extension.create({
               decos.push(
                 Decoration.widget(
                   h.pos + 1,
-                  () => {
+                  (view) => {
                     const btn = document.createElement('span')
                     btn.className = `tiptap-fold-btn ${isCollapsed ? 'is-collapsed' : ''}`
                     btn.setAttribute('data-heading-fold-btn', 'true')
@@ -159,6 +165,15 @@ export const HeadingFoldExtension = Extension.create({
                     btn.setAttribute('title', isCollapsed ? 'Expand section' : 'Collapse section')
                     btn.contentEditable = 'false'
                     btn.innerHTML = isCollapsed ? CHEVRON_RIGHT : CHEVRON_DOWN
+                    btn.addEventListener('mousedown', (e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                    })
+                    btn.addEventListener('click', (e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      toggleHeadingFold(view, h.pos)
+                    })
                     return btn
                   },
                   { side: -1, stopEvent: STOP_EVENT, ignoreSelection: true, key: foldKey },
@@ -172,13 +187,22 @@ export const HeadingFoldExtension = Extension.create({
                   decos.push(
                     Decoration.widget(
                       h.pos + h.nodeSize - 1,
-                      () => {
+                      (view) => {
                         const indicator = document.createElement('span')
                         indicator.className = 'tiptap-folded-indicator'
                         indicator.setAttribute('data-heading-indicator', 'true')
                         indicator.setAttribute('data-pos', String(h.pos))
                         indicator.textContent = '… (folded)'
                         indicator.contentEditable = 'false'
+                        indicator.addEventListener('mousedown', (e) => {
+                          e.preventDefault()
+                          e.stopPropagation()
+                        })
+                        indicator.addEventListener('click', (e) => {
+                          e.preventDefault()
+                          e.stopPropagation()
+                          toggleHeadingFold(view, h.pos)
+                        })
                         return indicator
                       },
                       { side: 1, stopEvent: STOP_EVENT, ignoreSelection: true, key: indicatorKey },
@@ -207,3 +231,4 @@ export const HeadingFoldExtension = Extension.create({
     ]
   },
 })
+

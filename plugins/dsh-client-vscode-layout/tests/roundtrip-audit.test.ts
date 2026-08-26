@@ -33,10 +33,10 @@ test('roundTrip: Preserves Footnote definitions as opaque lines', () => {
   assert.strictEqual(out.trim(), src.trim())
 })
 
-test('roundTrip: Preserves Link Reference definitions as opaque lines', () => {
+test('roundTrip: Resolves Reference links to valid active markdown links', () => {
   const src = '[label][ref]\n\n[ref]: https://x.com\n'
   const out = roundTrip(src)
-  assert.ok(out.includes('[ref]: https://x.com'))
+  assert.ok(out.includes('[label](https://x.com)'))
 })
 
 test('roundTrip: Preserves task lists and tables', () => {
@@ -46,3 +46,11 @@ test('roundTrip: Preserves task lists and tables', () => {
   const tableSrc = '| a | b |\n| :--- | :--- |\n| 1 | 2 |\n'
   assert.ok(roundTrip(tableSrc).includes('| a | b |'))
 })
+
+test('roundTrip: Preserves HTML comment inside blockquote without double prefixing', () => {
+  const src = '> normal text\n> <!-- c -->\n> more text\n'
+  const out = roundTrip(src)
+  assert.ok(!out.includes('> >'))
+  assert.ok(out.includes('<!-- c -->'))
+})
+

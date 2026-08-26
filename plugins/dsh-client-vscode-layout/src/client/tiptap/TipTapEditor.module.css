@@ -1178,6 +1178,28 @@
   outline-offset: 2px;
 }
 
+/* ── TipTap Raw HTML / Footnote / Uneditable Block ── */
+.container :global(.raw-html-line) {
+  display: block;
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace);
+  font-size: 0.85em;
+  color: var(--dsw-alias-label-muted, #94a3b8);
+  background: var(--dsw-alias-bg-hover, rgba(0, 0, 0, 0.03));
+  border: 1px dashed var(--dsw-alias-border-l1, #cbd5e1);
+  border-radius: 4px;
+  padding: 3px 8px;
+  margin: 6px 0;
+  user-select: none;
+  cursor: default;
+  line-height: 1.5;
+}
+
+.container :global(.raw-html-line:hover) {
+  border-color: var(--dsw-alias-border-selected, #93c5fd);
+  background: var(--dsw-alias-bg-selected, rgba(59, 130, 246, 0.05));
+  color: var(--dsw-alias-label-secondary, #64748b);
+}
+
 @media print {
   /* Folding is a reading aid, not part of the document. */
   .container :global(.tiptap-folded-node) {

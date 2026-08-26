@@ -54,4 +54,35 @@ No frontmatter here.`
     assert.equal(hasFrontmatter, false)
     assert.deepEqual(meta, {})
   })
+
+  test('does not treat leading thematic break as frontmatter', () => {
+    const md = `---\n\nIntro paragraph...\n\n---\n\n# Real content\n`
+    const { hasFrontmatter, meta } = parseFrontmatter(md)
+    assert.equal(hasFrontmatter, false)
+    assert.deepEqual(meta, {})
+  })
+
+  test('parses double-quoted and single-quoted keys in YAML', () => {
+    const md = `---
+"my key": value1
+'on': push
+---
+Content`
+    const { hasFrontmatter, meta } = parseFrontmatter(md)
+    assert.equal(hasFrontmatter, true)
+    assert.equal(meta['my key'], 'value1')
+    assert.equal(meta['on'], 'push')
+  })
+
+  test('parses frontmatter with blank leading line or comments', () => {
+    const md = `---
+
+# Comment first
+title: Hello World
+---
+Content`
+    const { hasFrontmatter, meta } = parseFrontmatter(md)
+    assert.equal(hasFrontmatter, true)
+    assert.equal(meta.title, 'Hello World')
+  })
 })

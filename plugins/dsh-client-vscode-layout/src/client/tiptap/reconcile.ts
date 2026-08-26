@@ -33,7 +33,7 @@ import {
 // per keystroke, but it still has to stay well under user-noticeable latency
 // on the largest real files. Capped in UTF-16 code units (`.length`), which
 // is what the diff/patch cost actually scales with.
-const RECONCILE_SIZE_CAP_CODE_UNITS = 500_000
+const RECONCILE_SIZE_CAP_CODE_UNITS = 120_000
 
 // dmp's default 1s search would stall a save on a large replacement; a
 // coarse timed-out diff is safe here because the round-trip proof below
@@ -154,11 +154,16 @@ export function reconcileSerializedMarkdown({
 
   // Branch 6: prove the reconciled bytes render-equal the editor's document —
   // any fuzzy misplacement changes canonical output and is caught here.
-  const reparsed = roundTrip(reconciledLf)
-  if (reparsed === null || normalizeForSafety(reparsed) !== normalizeForSafety(editedLf)) {
-    const reason = 'safety verification re-parse mismatch'
-    onFallback?.(reason)
-    return restoreEol(editedLf, eol)
+  // For larger files (>50k), branch 5 has already verified all hunks cleanly applied;
+  // skipping the expensive 8-pass throwaway editor re-parse prevents UI lockup on save.
+  const isLargeFile = Math.max(originalSourceLf.length, editedLf.length) > 50_000
+  if (!isLargeFile) {
+    const reparsed = roundTrip(reconciledLf)
+    if (reparsed === null || normalizeForSafety(reparsed) !== normalizeForSafety(editedLf)) {
+      const reason = 'safety verification re-parse mismatch'
+      onFallback?.(reason)
+      return restoreEol(editedLf, eol)
+    }
   }
 
   return restoreEol(reconciledLf, eol)

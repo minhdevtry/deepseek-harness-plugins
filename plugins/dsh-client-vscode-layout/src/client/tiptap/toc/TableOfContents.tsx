@@ -94,6 +94,7 @@ export function TableOfContents({ editor, isOpen, onOpen, onClose }: TableOfCont
   const isProgrammaticScroll = useRef<boolean>(false)
   const isUserWheelingToc = useRef<boolean>(false)
   const lastWheelTimeRef = useRef<number>(0)
+  const tocWheelTimeoutRef = useRef<any>(null)
 
   const [headings, setHeadings] = useState<HeadingEntry[]>([])
   const [activePos, setActivePos] = useState<number | null>(null)
@@ -117,6 +118,11 @@ export function TableOfContents({ editor, isOpen, onOpen, onClose }: TableOfCont
   const [isDragging, setIsDragging] = useState(false)
   const dragStartX = useRef(0)
   const dragStartWidth = useRef(panelWidth)
+
+  // Clean up wheel timer on unmount
+  useEffect(() => () => {
+    if (tocWheelTimeoutRef.current) clearTimeout(tocWheelTimeoutRef.current)
+  }, [])
 
   // Parse Headings from Document AST
   useEffect(() => {
@@ -220,6 +226,7 @@ export function TableOfContents({ editor, isOpen, onOpen, onClose }: TableOfCont
 
     isUserWheelingToc.current = true
     isProgrammaticScroll.current = true
+    if (tocWheelTimeoutRef.current) clearTimeout(tocWheelTimeoutRef.current)
 
     const currentIndex = headings.findIndex(h => h.pos === activePos)
     const direction = e.deltaY > 0 ? 1 : -1
@@ -228,7 +235,7 @@ export function TableOfContents({ editor, isOpen, onOpen, onClose }: TableOfCont
 
     if (targetHeading && targetHeading.pos !== activePos) {
       setActivePos(targetHeading.pos)
-      scrollToHeading(targetHeading)
+      scrollToHeading(targetHeading, { moveCaret: false })
 
       if (tocListRef.current) {
         const itemEl = tocListRef.current.querySelector<HTMLElement>(`[data-toc-pos="${targetHeading.pos}"]`)
@@ -238,11 +245,27 @@ export function TableOfContents({ editor, isOpen, onOpen, onClose }: TableOfCont
       }
     }
 
-    setTimeout(() => {
+    tocWheelTimeoutRef.current = setTimeout(() => {
       isUserWheelingToc.current = false
       isProgrammaticScroll.current = false
-    }, 200)
+    }, 600)
   }
+
+  // Keyboard listener: Escape always closes panel (even when pinned)
+  useEffect(() => {
+    if (!isOpen) return
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose()
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [isOpen, onClose])
 
   // Outside click listener: close when unpinned and clicked outside
   useEffect(() => {
@@ -258,21 +281,13 @@ export function TableOfContents({ editor, isOpen, onOpen, onClose }: TableOfCont
       }
     }
 
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        onClose()
-      }
-    }
-
     const timer = setTimeout(() => {
       document.addEventListener('mousedown', handleOutsideClick)
-      document.addEventListener('keydown', handleKeyDown)
     }, 60)
 
     return () => {
       clearTimeout(timer)
       document.removeEventListener('mousedown', handleOutsideClick)
-      document.removeEventListener('keydown', handleKeyDown)
     }
   }, [isOpen, isPinned, onClose])
 
@@ -308,7 +323,11 @@ export function TableOfContents({ editor, isOpen, onOpen, onClose }: TableOfCont
   }
 
   // Scroll to heading position smoothly to TOP of canvas
-  const scrollToHeading = (entry: HeadingEntry) => {
+  const scrollToHeading = (
+    entry: HeadingEntry,
+    options: { moveCaret?: boolean } = {},
+  ) => {
+    const { moveCaret = true } = options
     setActivePos(entry.pos)
     isProgrammaticScroll.current = true
 
@@ -326,12 +345,14 @@ export function TableOfContents({ editor, isOpen, onOpen, onClose }: TableOfCont
         const top = el.getBoundingClientRect().top + window.scrollY - topbarH - 16
         window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' })
       }
-      try {
-        editor.commands.setTextSelection(entry.pos + 1)
-      } catch {
-        // ignore
+      if (moveCaret) {
+        try {
+          editor.commands.setTextSelection(entry.pos + 1)
+        } catch {
+          // ignore
+        }
       }
-    } else {
+    } else if (moveCaret) {
       editor.chain().focus().setTextSelection(entry.pos + 1).run()
     }
 

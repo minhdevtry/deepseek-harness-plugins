@@ -24,8 +24,18 @@ export function FindBar({ editor, isOpen, onClose }: FindBarProps) {
   const rangesRef = useRef<Range[]>([])
   const inputRef = useRef<HTMLInputElement | null>(null)
 
+  const currentIndexRef = useRef(0)
+  const debounceTimerRef = useRef<any>(null)
+
+  useEffect(() => {
+    currentIndexRef.current = currentIndex
+  }, [currentIndex])
+
   // Clean up CSS highlights on unmount
-  useEffect(() => () => { clearHighlights() }, [])
+  useEffect(() => () => {
+    clearHighlights()
+    if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current)
+  }, [])
 
   // Focus input when opened
   useEffect(() => {
@@ -42,13 +52,21 @@ export function FindBar({ editor, isOpen, onClose }: FindBarProps) {
     }
   }, [isOpen])
 
-  // Re-run search when editor content updates
+  // Re-run search when editor content updates (debounced by 200ms, no auto-scroll)
   useEffect(() => {
     if (!isOpen) return
-    const rerun = () => { performSearch(query, matchCase, currentIndex) }
+    const rerun = () => {
+      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current)
+      debounceTimerRef.current = setTimeout(() => {
+        performSearch(query, matchCase, currentIndexRef.current, false)
+      }, 200)
+    }
     editor.on('update', rerun)
-    return () => { editor.off('update', rerun) }
-  }, [editor, isOpen, query, matchCase, currentIndex])
+    return () => {
+      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current)
+      editor.off('update', rerun)
+    }
+  }, [editor, isOpen, query, matchCase])
 
   // Clear Highlights helper
   const clearHighlights = () => {
@@ -59,7 +77,12 @@ export function FindBar({ editor, isOpen, onClose }: FindBarProps) {
   }
 
   // Search and update highlights across editor DOM
-  const performSearch = (text: string, caseSensitive: boolean, activeIdx: number) => {
+  const performSearch = (
+    text: string,
+    caseSensitive: boolean,
+    activeIdx: number,
+    shouldScroll = false,
+  ) => {
     let editorDom: HTMLElement | null = null
     try {
       if (editor && !editor.isDestroyed && editor.view) {
@@ -83,7 +106,7 @@ export function FindBar({ editor, isOpen, onClose }: FindBarProps) {
     let node = treeWalker.nextNode()
     while (node) {
       const parent = node.parentElement
-      if (parent === null || parent.offsetParent === null) {
+      if (parent === null || parent.closest?.('.tiptap-folded-node')) {
         node = treeWalker.nextNode()
         continue
       }
@@ -123,40 +146,34 @@ export function FindBar({ editor, isOpen, onClose }: FindBarProps) {
       CSS.highlights.set('tiptap-find-highlight', new Highlight(...ranges))
       if (ranges[validIdx]) {
         CSS.highlights.set('tiptap-find-current', new Highlight(ranges[validIdx]))
-        // Scroll current match into view
-        const rect = ranges[validIdx].getBoundingClientRect()
-        if (rect && rect.top !== 0) {
-          const container = editorDom.parentElement || window
-          if (container instanceof HTMLElement) {
-            const containerRect = container.getBoundingClientRect()
-            if (rect.top < containerRect.top || rect.bottom > containerRect.bottom) {
-              ranges[validIdx].startContainer.parentElement?.scrollIntoView({
-                behavior: 'smooth',
-                block: 'center',
-              })
-            }
-          }
+        if (shouldScroll) {
+          // Scroll current match into view only when user explicitly navigates
+          const targetEl = ranges[validIdx].startContainer.parentElement
+          targetEl?.scrollIntoView({
+            behavior: 'smooth',
+            block: 'center',
+          })
         }
       }
     }
   }
 
-  // Trigger search on query or matchCase change
+  // Trigger search on query or matchCase change (scroll to first match)
   useEffect(() => {
     if (!isOpen) return
-    performSearch(query, matchCase, 0)
+    performSearch(query, matchCase, 0, false)
   }, [query, matchCase, isOpen])
 
   const handleNext = () => {
     if (matchCount === 0) return
     const nextIdx = (currentIndex + 1) % matchCount
-    performSearch(query, matchCase, nextIdx)
+    performSearch(query, matchCase, nextIdx, true)
   }
 
   const handlePrev = () => {
     if (matchCount === 0) return
     const prevIdx = (currentIndex - 1 + matchCount) % matchCount
-    performSearch(query, matchCase, prevIdx)
+    performSearch(query, matchCase, prevIdx, true)
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {

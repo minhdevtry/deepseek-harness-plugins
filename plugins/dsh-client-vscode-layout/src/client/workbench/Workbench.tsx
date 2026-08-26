@@ -219,16 +219,23 @@ export function Workbench({
    */
   const performSave = useCallback(async (path: string): Promise<boolean> => {
     setSaveState('saving')
+    let fallbackReason: string | undefined
     // Markdown is written from the tree, through the fixed-point serializer, so
     // what reaches disk regenerates to itself.
     const written = isMarkdown(path)
       ? projectMarkdown(path, true, (reason) => {
-          onNotify(`Markdown saved with full canonical rewrite: ${reason}`)
+          fallbackReason = reason
         })
       : undefined
     if (isMarkdown(path) && written === undefined) {
-      setSaveState({ error: 'document not ready' })
-      onNotify('Save skipped: the document is still opening')
+      const buffer = registry.status(path)
+      if (buffer?.kind === 'text' && buffer.truncated) {
+        setSaveState({ error: 'file too large (truncated)' })
+        onNotify('Save skipped: file is too large and was truncated for performance')
+      } else {
+        setSaveState({ error: 'document not ready' })
+        onNotify('Save skipped: the document is still opening')
+      }
       return false
     }
     // Snapshotted *before* the write's await, not after: writeFile yields to
@@ -244,6 +251,9 @@ export function Workbench({
       return false
     }
     if (written !== undefined) documents.markSaved(path, written, savedDoc)
+    if (fallbackReason) {
+      onNotify(`Markdown saved with full canonical rewrite: ${fallbackReason}`)
+    }
     setSaveState('saved')
     return true
   }, [documents, onNotify, projectMarkdown, registry])
@@ -541,7 +551,7 @@ export function Workbench({
                   )}
               </div>
             )
-            : isCsv && !isRaw && !diffOpen
+            : isCsv && !isRaw && !diffOpen && !isTruncated
               ? (
                 <div className={css.editor}>
                   <CsvPreview
@@ -553,7 +563,7 @@ export function Workbench({
                   />
                 </div>
               )
-              : isHtml && !isRaw && !diffOpen
+              : isHtml && !isRaw && !diffOpen && !isTruncated
                 ? (
                   <div className={css.editor}>
                     <HtmlPreview

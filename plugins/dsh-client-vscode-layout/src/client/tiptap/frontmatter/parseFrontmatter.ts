@@ -26,15 +26,15 @@ export function parseFrontmatter(markdown: string): FrontmatterResult {
       continue
     }
 
-    const kvMatch = trimmed.match(/^([a-zA-Z0-9_-]+):\s*(.*)$/)
-    if (kvMatch && kvMatch[1]) {
+    const kvMatch = trimmed.match(/^(?:(?:"([^"]*)")|(?:'([^']*)')|([a-zA-Z0-9_.-]+)):\s*(.*)$/)
+    if (kvMatch) {
       if (currentKey && currentList) {
         meta[currentKey] = currentList
         currentList = null
       }
 
-      currentKey = kvMatch[1]
-      const val = (kvMatch[2] ?? '').trim()
+      currentKey = kvMatch[1] ?? kvMatch[2] ?? kvMatch[3] ?? ''
+      const val = (kvMatch[4] ?? '').trim()
 
       if (val.startsWith('[') && val.endsWith(']')) {
         meta[currentKey] = val

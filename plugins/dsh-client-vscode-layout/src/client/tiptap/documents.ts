@@ -229,7 +229,10 @@ export class DocumentRegistry {
       diskDoc: editor.state.doc,
       source: markdown,
       frontmatter,
-      baseCanonical: stabilizedRoundTrip(markdown),
+      baseCanonical:
+        markdown.length > 120_000
+          ? ''
+          : joinFrontmatter(frontmatter, serializeStable(editor)),
       pendingCanonical: undefined,
       host: null,
     })
@@ -425,7 +428,9 @@ export class DocumentRegistry {
     // falling back to a fresh derivation only for a markSaved call with no
     // preceding markdown() call for this path, so this method stays correct
     // even if that stops being the only way it's reached.
-    doc.baseCanonical = doc.pendingCanonical ?? stabilizedRoundTrip(written)
+    doc.baseCanonical =
+      doc.pendingCanonical ??
+      (written.length > 120_000 ? '' : stabilizedRoundTrip(written))
     doc.pendingCanonical = undefined
     this.#bump(true)
   }

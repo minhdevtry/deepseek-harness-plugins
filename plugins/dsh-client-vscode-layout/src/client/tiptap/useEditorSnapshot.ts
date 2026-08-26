@@ -6,21 +6,25 @@
  * republishes when the *dirty set* changes (see documents.ts #bump), which is
  * once per document, not once per keystroke.
  */
-import { useSyncExternalStore } from 'react'
+import { useCallback, useRef, useSyncExternalStore } from 'react'
 import type { Editor } from '@tiptap/core'
 
 export function useEditorSnapshot(editor: Editor | null | undefined): number {
-  return useSyncExternalStore(
-    (listener) => {
+  const version = useRef(0)
+  const subscribe = useCallback(
+    (listener: () => void) => {
       if (!editor || editor.isDestroyed) return () => {}
-      editor.on('transaction', listener)
+      const bump = () => {
+        version.current += 1
+        listener()
+      }
+      editor.on('transaction', bump)
       return () => {
-        editor.off('transaction', listener)
+        editor.off('transaction', bump)
       }
     },
-    () =>
-      editor && !editor.isDestroyed
-        ? editor.state.doc.nodeSize + editor.state.selection.from
-        : 0,
+    [editor],
   )
+  return useSyncExternalStore(subscribe, () => version.current)
 }
+

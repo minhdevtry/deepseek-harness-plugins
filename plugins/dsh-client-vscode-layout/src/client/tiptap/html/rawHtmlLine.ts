@@ -36,6 +36,14 @@ const MARKER_END = '\u0002'
 // One or more complete tags back to back with nothing else on the line, e.g.
 // `<a id="x"></a>` (an anchor's open+close tag both land on one line) or
 // a lone `<br>`. Anything with real text alongside a tag isn't "line-only".
+function escapeRegex(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+const MARKER_REGEX = new RegExp(
+  `^[ \\t]*${escapeRegex(MARKER_START)}([^${escapeRegex(MARKER_END)}]*)${escapeRegex(MARKER_END)}`,
+)
+
 function isLineOnlyHtml(trimmed: string): boolean {
   if (!trimmed.startsWith('<')) {
     return false
@@ -49,17 +57,14 @@ function isLineOnlyHtml(trimmed: string): boolean {
 /** `[^id]: text` — a footnote definition. CommonMark has no footnotes, so the
  *  parser escapes the brackets and the reference is destroyed. */
 const FOOTNOTE_DEF = /^\[\^[^\]]+\]:/
-/** `[id]: url "title"` — a link reference definition. The parser inlines the
- *  target into every use and then drops this line entirely. */
-const LINK_REF_DEF = /^\[[^\]^]+\]:\s*\S/
 
 function isOpaqueLine(trimmed: string): boolean {
-  return isLineOnlyHtml(trimmed) || FOOTNOTE_DEF.test(trimmed) || LINK_REF_DEF.test(trimmed)
+  return isLineOnlyHtml(trimmed) || FOOTNOTE_DEF.test(trimmed)
 }
 
 /**
  * Replace every line outside a fenced code block whose trimmed content is a
- * single complete HTML comment, tag, footnote def, or link ref def with an opaque marker run. Call this on
+ * single complete HTML comment, tag, or footnote def with an opaque marker run. Call this on
  * raw source text before it reaches an editor built from `documentExtensions`
  * — `RawHtmlLineExtension`'s tokenizer decodes the marker back on parse.
  */
@@ -89,34 +94,19 @@ export function encodeRawHtmlLines(source: string): string {
     }
 
     const trimmed = line.trim()
-    if (trimmed === '' || !isOpaqueLine(trimmed)) {
+    // The `>` belongs to the blockquote, not to the opaque line: baking it into
+    // the node's value makes the serializer emit it twice.
+    const quote = /^>\s*/.exec(trimmed)
+    const payload = quote ? trimmed.slice(quote[0].length) : trimmed
+    if (payload === '' || !isOpaqueLine(payload)) {
       return line
     }
 
     const indent = line.slice(0, line.length - line.trimStart().length)
-    return `${indent}${MARKER_START}${encodeURIComponent(trimmed)}${MARKER_END}`
+    return `${indent}${quote?.[0] ?? ''}${MARKER_START}${encodeURIComponent(payload)}${MARKER_END}`
   })
 
   return encoded.join('\n')
-}
-
-function decodeMarker(src: string): { raw: string; value: string } | null {
-  if (!src.startsWith(MARKER_START)) {
-    return null
-  }
-  const endIndex = src.indexOf(MARKER_END, MARKER_START.length)
-  if (endIndex === -1) {
-    return null
-  }
-  const encoded = src.slice(MARKER_START.length, endIndex)
-  try {
-    return {
-      raw: src.slice(0, endIndex + MARKER_END.length),
-      value: decodeURIComponent(encoded),
-    }
-  } catch {
-    return null
-  }
 }
 
 export const RawHtmlLineExtension = Node.create({
@@ -147,6 +137,7 @@ export const RawHtmlLineExtension = Node.create({
         'data-raw-html-line': '',
         contenteditable: 'false',
         class: 'raw-html-line',
+        title: 'Khối định dạng đặc biệt (chỉ sửa được ở Raw view)',
       }),
       (node.attrs.value as string) || '',
     ]
@@ -162,17 +153,18 @@ export const RawHtmlLineExtension = Node.create({
       return index === -1 ? -1 : index
     },
     tokenize(src) {
-      if (!src.startsWith(MARKER_START)) {
+      const match = MARKER_REGEX.exec(src)
+      if (!match) {
         return undefined
       }
-      const decoded = decodeMarker(src)
-      if (!decoded) {
+      try {
+        return {
+          type: 'rawHtmlLine',
+          raw: match[0],
+          value: decodeURIComponent(match[1] ?? ''),
+        }
+      } catch {
         return undefined
-      }
-      return {
-        type: 'rawHtmlLine',
-        raw: decoded.raw,
-        value: decoded.value,
       }
     },
   },

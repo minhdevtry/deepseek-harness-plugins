@@ -12,9 +12,17 @@ export interface SplitMarkdown {
 
 const FRONTMATTER_RE = /^---[ \t]*\r?\n[\s\S]*?\r?\n---[ \t]*(?:\r?\n|$)/
 
+const YAML_LINE = /^\s*(?:#|-\s|(?:"[^"]*"|'[^']*'|[\w.$-]+)\s*:(?:\s|$))/
+
 export function splitFrontmatter(source: string): SplitMarkdown {
   const match = FRONTMATTER_RE.exec(source)
   if (match === null) return { frontmatter: '', body: source }
+  const lines = match[0].split(/\r?\n/)
+  const inner = lines.slice(1, -1)
+  // Frontmatter is a YAML mapping or sequence, so at least one line must be a
+  // `key:` (bare or quoted), a `- item`, or a `#` comment. A plain `---`
+  // divider followed by prose has none of those and must not be swallowed.
+  if (!inner.some((l) => YAML_LINE.test(l))) return { frontmatter: '', body: source }
   return { frontmatter: match[0], body: source.slice(match[0].length) }
 }
 

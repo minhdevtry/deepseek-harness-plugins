@@ -65,6 +65,7 @@ export function TipTapEditor({
   onSave,
   onViewRaw,
 }: TipTapEditorProps) {
+  const wrapperRef = useRef<HTMLDivElement | null>(null)
   const containerRef = useRef<HTMLDivElement | null>(null)
   const [editor, setEditor] = useState<Editor | null>(null)
   const [slashState, setSlashState] = useState<SlashState | null>(null)
@@ -319,10 +320,15 @@ export function TipTapEditor({
 
   /**
    * Document-scoped shortcuts that are not already bound inside the editor.
+   *
+   * Note: Mod-z (Undo) and Mod-y / Mod-Shift-z (Redo) are deliberately NOT bound here
+   * at the window level. ProseMirror's `history` plugin natively captures and processes
+   * undo/redo transactions when the editor is focused. Intercepting them globally would
+   * hijack focus or risk double-firing history actions across active components.
    */
   useEffect(() => {
     const insideThisEditor = (): boolean => {
-      const el = containerRef.current
+      const el = wrapperRef.current
       const active = document.activeElement
       return el !== null && active instanceof globalThis.Node && el.contains(active)
     }
@@ -353,7 +359,7 @@ export function TipTapEditor({
   }, [onSave, path, editor])
 
   return (
-    <div className={css.wrapper}>
+    <div ref={wrapperRef} className={css.wrapper}>
       {/* Top action bar */}
       <div className={css.topBar}>
         <Tooltip content="Ask AI / In-line AI Assistant (Ctrl+K)">
@@ -470,7 +476,7 @@ export function TipTapEditor({
 
         <span className={css.spacer} />
 
-        <Tooltip content="Copy clean Markdown to clipboard">
+        <Tooltip content="Copy Markdown (as saved)">
           <Button
             size="xs"
             variant="ghost"
