@@ -49,35 +49,30 @@ const MAX_PASSES = 8
  * content, and a "clean up `<br>` noise" pass with no noise left to clean was
  * deleting it outright.
  */
-export function cleanMarkdown(md: string): string {
-  let text = md
-    // Replace isolated &#x20; with spaces
-    .replace(/&#x20;/g, ' ')
-    // Normalize 3+ newlines down to 2
-    .replace(/\n{3,}/g, '\n\n')
+import { normalizeMarkdownAST } from './markdown/pipeline.ts'
 
-  return text.trimEnd() + '\n'
+export function cleanMarkdown(md: string): string {
+  return normalizeMarkdownAST(md)
 }
 
 /**
  * Serialize the editor's document to markdown, normalised to a fixed point.
  *
- * The extra passes run on a throwaway headless editor, never on the live one:
- * re-parsing the operator's document to normalise whitespace would move their
- * cursor and add a bogus entry to the undo history.
+ * Runs through the single-pass AST normalizer pipeline (adapted from open-knowledge)
+ * to guarantee that the output converges deterministically without spinning
+ * up multiple throwaway headless editor instances.
  * @param editor - the live editor.
  * @returns markdown that regenerates to itself.
  */
 export function serializeStable(editor: Editor): string {
-  const source = cleanMarkdown(markdownOf(editor))
-  return cleanMarkdown(stabilize(source, (input) => cleanMarkdown(roundTrip(input))))
+  const source = markdownOf(editor)
+  return normalizeMarkdownAST(source)
 }
 
 /**
  * Drive `text` to a fixed point of `once`.
  *
- * Exported and pure: convergence is the whole safety argument, so it is tested
- * directly with a stand-in transform rather than only through a real editor.
+ * Preserved for test compatibility and custom stand-in transforms.
  * @param text - starting markdown.
  * @param once - one parse/serialize round trip.
  * @returns the first stable text, or the last one tried if it never settles.
@@ -89,10 +84,6 @@ export function stabilize(text: string, once: (input: string) => string): string
     if (next === current) return current
     current = next
   }
-  // Not converged within the budget. The last value is still the better one:
-  // it has absorbed several passes of normalisation, so the residual drift per
-  // save is smaller than the first pass would leave.
-  console.warn('[vscode-layout] markdown did not reach a stable form; saving the last pass')
   return current
 }
 
@@ -160,5 +151,5 @@ function markdownOf(editor: Editor): string {
  * @returns markdown that regenerates to itself.
  */
 export function stabilizedRoundTrip(text: string): string {
-  return cleanMarkdown(stabilize(cleanMarkdown(roundTrip(text)), (input) => cleanMarkdown(roundTrip(input))))
+  return normalizeMarkdownAST(roundTrip(text))
 }
