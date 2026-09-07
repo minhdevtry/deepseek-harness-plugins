@@ -61,6 +61,31 @@ export function getBlocks(doc: ProseMirrorNode): BlockInfo[] {
 }
 
 /**
+ * Find where `target` text lives in `doc`, for TipTapEditor's `revealLine`:
+ * the tree has no source line numbers, so a search hit's target line is
+ * matched by its own text instead of an approximated line-to-block mapping.
+ *
+ * Pure and exported so this is assertable without mounting a component.
+ * Only checks leaf text blocks (paragraph, heading, code block, …) — a
+ * non-leaf ancestor's `textContent` also contains every descendant's text,
+ * which would report the same match at multiple, wrong granularities.
+ * @returns the document position just inside the first match, or `undefined`.
+ */
+export function findTextPosition(doc: ProseMirrorNode, target: string): number | undefined {
+  let matchPos: number | undefined
+  doc.descendants((node, pos) => {
+    if (matchPos !== undefined) return false
+    if (!node.isTextblock) return true
+    const idx = node.textContent.indexOf(target)
+    if (idx === -1) return true
+    // +1: position *inside* the text block, not on its opening boundary.
+    matchPos = pos + 1 + idx
+    return false
+  })
+  return matchPos
+}
+
+/**
  * Serialize a single ProseMirror top-level node to a canonical text representation for diffing.
  */
 export function serializeSingleBlock(node: ProseMirrorNode): string {

@@ -21,7 +21,7 @@ globalThis.cancelAnimationFrame = (id) => clearTimeout(id) as any
 
 import { Editor } from '@tiptap/core'
 import { documentExtensions } from '../src/client/tiptap/extensions.ts'
-import { getBlocks, diffBlockArrays, parseMarkdownToBlocks } from '../src/client/tiptap/blockMap.ts'
+import { getBlocks, diffBlockArrays, parseMarkdownToBlocks, findTextPosition } from '../src/client/tiptap/blockMap.ts'
 import { reviewPluginKey, acceptSingleHunk, rejectSingleHunk, rejectHunksBatch } from '../src/client/tiptap/TipTapReviewPlugin.ts'
 
 describe('TipTap Notion WYSIWYG AI Review (Phase 2)', () => {
@@ -341,6 +341,40 @@ describe('TipTap Notion WYSIWYG AI Review (Phase 2)', () => {
       const after = reviewPluginKey.getState(editor.state)!
       assert.equal(after.hunks.length, 0, 'every hunk must be reverted')
       assert.equal(editor.getText().includes('CHANGED'), false, 'the AI text must be fully reverted')
+    } finally {
+      editor.destroy()
+    }
+  })
+
+  test('findTextPosition locates a search hit\'s line text for revealLine', () => {
+    const md = `# Title\n\nFirst paragraph.\n\nSecond paragraph has the target phrase.\n\nThird paragraph.`
+    const editor = new Editor({
+      element: document.createElement('div'),
+      extensions: documentExtensions(),
+      content: md,
+      contentType: 'markdown',
+    })
+    try {
+      const pos = findTextPosition(editor.state.doc, 'Second paragraph has the target phrase.')
+      assert.notEqual(pos, undefined, 'must find the matching text block')
+      const resolved = editor.state.doc.resolve(pos!)
+      assert.equal(resolved.parent.textContent.includes('target phrase'), true,
+        'the resolved position must be inside the block containing the match')
+    } finally {
+      editor.destroy()
+    }
+  })
+
+  test('findTextPosition returns undefined for text that is not in the document', () => {
+    const md = `# Title\n\nFirst paragraph.`
+    const editor = new Editor({
+      element: document.createElement('div'),
+      extensions: documentExtensions(),
+      content: md,
+      contentType: 'markdown',
+    })
+    try {
+      assert.equal(findTextPosition(editor.state.doc, 'text that was never in this file'), undefined)
     } finally {
       editor.destroy()
     }

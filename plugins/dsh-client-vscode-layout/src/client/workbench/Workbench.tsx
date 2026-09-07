@@ -894,6 +894,7 @@ export function Workbench({
                       root={explorerRoot}
                       openTabs={tabs}
                       documents={documents}
+                      revealLine={activeLine}
                       diffBaseline={effectiveDiffMode.kind === 'ai-review' ? (typeof effectiveDiffMode.baseline === 'string' ? effectiveDiffMode.baseline : effectiveDiffMode.baseline.toString()) : undefined}
                       onReviewStatsChange={handleReviewStatsChange}
                       onSave={(p) => { void save(p) }}

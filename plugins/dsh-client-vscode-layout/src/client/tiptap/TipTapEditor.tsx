@@ -18,6 +18,7 @@ import type { Editor } from '@tiptap/core'
 import type { DocumentRegistry } from './documents.ts'
 import type { ReviewStats } from '../workbench/CodeEditor.tsx'
 import { reviewPluginKey, rejectHunksBatch } from './TipTapReviewPlugin.ts'
+import { findTextPosition } from './blockMap.ts'
 import { SlashMenu } from './SlashMenu.tsx'
 import { BubbleMenu } from './BubbleMenu.tsx'
 import { LinkBubble } from './LinkBubble.tsx'
@@ -59,6 +60,14 @@ export interface TipTapEditorProps {
    * document — so this is a viewer, not a second editor.
    */
   onViewRaw: () => void
+  /**
+   * A 1-based line number in the file's raw source to scroll to and select —
+   * a search hit's target line, same input CodeEditor's `revealLine` takes.
+   * The tree has no line numbers of its own (a WYSIWYG document, not text),
+   * so this maps the source line's own text to wherever that text landed in
+   * the parsed document, via `documents.source(path)`.
+   */
+  revealLine?: number | undefined
   /** Active baseline for Notion WYSIWYG AI review */
   diffBaseline?: string | undefined
   /** Notified on every transaction that could have changed review state. */
@@ -78,6 +87,7 @@ export const TipTapEditor = forwardRef(function TipTapEditor({
   documents,
   onSave,
   onViewRaw: _onViewRaw,
+  revealLine,
   diffBaseline,
   onReviewStatsChange,
 }: TipTapEditorProps, ref: ForwardedRef<TipTapEditorHandle>) {
@@ -457,6 +467,48 @@ export const TipTapEditor = forwardRef(function TipTapEditor({
       setEditor(null)
     }
   }, [documents, path])
+
+  // Own effect, not folded into the mount effect above, so a second search
+  // hit landing on an already-open file (same path, new `revealLine`) is
+  // not silently ignored — same reasoning as CodeEditor.tsx's own fix.
+  //
+  // No line-to-block mapping is built for this: the tree has no source line
+  // numbers of its own, and approximating one by splitting the raw source on
+  // blank lines would agree with the parsed document's actual block
+  // boundaries only some of the time (a nested list, a multi-line
+  // blockquote). Instead this reads that source line's own text out of
+  // `documents.source(path)` (the exact bytes the tree was parsed from) and
+  // finds *that text* in the live document — precise wherever the text
+  // survived parsing unchanged, and a silent no-op rather than a
+  // confidently-wrong jump everywhere else.
+  useEffect(() => {
+    if (!editor || revealLine === undefined || revealLine < 1) return
+    const source = documents.source(path)
+    if (source === undefined) return
+    const target = source.split('\n')[revealLine - 1]?.trim()
+    if (!target) return
+
+    const matchPos = findTextPosition(editor.state.doc, target)
+    if (matchPos === undefined) return
+
+    const clampedPos = Math.min(matchPos, editor.state.doc.content.size)
+    editor.commands.setTextSelection(clampedPos)
+    try {
+      const domNode = editor.view.domAtPos(clampedPos).node as Node | null
+      const el = domNode instanceof HTMLElement ? domNode : domNode?.parentElement
+      el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    } catch {}
+    // Unlike a mount's own focus (which cannot tell a user's click from an
+    // agent-initiated open), landing here always means a real click on a
+    // search hit — a ProseMirror selection set without focus updates state
+    // correctly (proven directly) but draws no visible cursor, since
+    // ProseMirror renders selection through the real contenteditable rather
+    // than an owned decoration the way CodeMirror does. Same composer guard
+    // as everywhere else that focuses on a gesture.
+    const activeElsewhere = typeof document !== 'undefined'
+      && document.activeElement?.closest('[data-dsh-chat-panel="true"]') != null
+    if (!activeElsewhere) editor.commands.focus()
+  }, [documents, editor, path, revealLine])
 
   /**
    * Document-scoped shortcuts that are not already bound inside the editor.
