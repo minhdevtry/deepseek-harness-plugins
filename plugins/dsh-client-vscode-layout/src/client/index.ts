@@ -366,10 +366,50 @@ export function apply(ctx: ClientContext): void {
        * the durable JSONL log verbatim (verified against two real captured
        * sessions, not inferred).
        */
-      const drainEvents = (eventWindow: any, running: boolean, opts?: { suppressReview?: boolean }) => {
+      const drainEvents = (eventWindow: any, running: boolean, opts?: { suppressReview?: boolean, onlyPopLatestDiff?: boolean }) => {
         const suppressReview = opts?.suppressReview ?? false
         if (!eventWindow) return
         const resolvePath = (raw: string) => resolveWorkspacePath(currentCwd, raw)
+
+        // A page load's one-time catch-up (see `rebind`) must not replay
+        // every diff-bearing tool/result the whole session ever produced —
+        // only the single most recent one, matching what the comment there
+        // actually promises. Without this, a session with N past edits popped
+        // N reviews on every reload, and every one but the last tried to
+        // reconstruct a baseline against content the file has long since
+        // moved past — the "không thể tái tạo chính xác" notification,
+        // repeated once per stale turn. A speculative pre-pass (mirroring
+        // the main loop's own call-info tracking, but without its side
+        // effects) finds that one callId; everything else this call
+        // processes is marked seen without popping a review, same as
+        // `suppressReview`.
+        let onlyPopCallId: string | undefined
+        if (opts?.onlyPopLatestDiff) {
+          const speculativeCallInfo = new Map<string, { name: string, argsRaw: string }>()
+          for (const entry of eventWindow.entries ?? []) {
+            if (entry?.type !== 'event') continue
+            const event = entry.event
+            if (event === undefined || event === null) continue
+            if (event.type === 'tool/call') {
+              const { callId, name, arguments: argsRaw } = event.data ?? {}
+              if (typeof callId === 'string' && typeof name === 'string' && typeof argsRaw === 'string') {
+                speculativeCallInfo.set(callId, { name, argsRaw })
+              }
+              continue
+            }
+            if (event.type !== 'tool/result') continue
+            const callId: unknown = event.data?.message?.source?.callId
+            if (typeof callId !== 'string') continue
+            const resultBlock = (event.data?.message?.content ?? []).find(
+              (block: any) => block?.type === 'tool-result',
+            )
+            const isError = resultBlock?.isError === true
+            const diffs = !isError
+              ? extractSettledDiffs({ isError, meta: event.data?.meta, call: speculativeCallInfo.get(callId) ?? null })
+              : null
+            if (diffs !== null) onlyPopCallId = callId
+          }
+        }
 
         for (const entry of eventWindow.entries ?? []) {
           if (entry?.type !== 'event') continue
@@ -424,6 +464,12 @@ export function apply(ctx: ClientContext): void {
             : null
           const hasDiffs = diffs !== null
 
+          // During the one-time page-load catch-up, every diff-bearing call
+          // except the single most recent one is suppressed exactly like
+          // pre-existing history normally is — see `onlyPopCallId` above.
+          const suppressThisOne = suppressReview
+            || (opts?.onlyPopLatestDiff === true && callId !== onlyPopCallId)
+
           // Only commit (mark processed, release the hold, consume the turn)
           // once there is somewhere real to hand a review off to. Marking
           // processed unconditionally used to mean: if this node settled
@@ -431,7 +477,7 @@ export function apply(ctx: ClientContext): void {
           // its write was silently dropped forever — a later snapshot would
           // never see it again to retry. A node with nothing to dispatch
           // (no diffs, or errored) has no such dependency and commits right away.
-          if (hasDiffs && !suppressReview && typeof (window as any).__dsh_start_ai_review !== 'function') continue
+          if (hasDiffs && !suppressThisOne && typeof (window as any).__dsh_start_ai_review !== 'function') continue
 
           processedCallIds.add(callId)
           const held = heldByCall.get(callId)
@@ -443,10 +489,11 @@ export function apply(ctx: ClientContext): void {
           turnByCall.delete(callId)
           callInfoByCall.delete(callId)
 
-          // `suppressReview` marks this node "seen" (above) without popping a
-          // review for it — used only for a session's pre-existing history at
-          // the moment this watcher first looks at it (see `rebind`).
-          if (!hasDiffs || suppressReview) continue
+          // `suppressThisOne` marks this node "seen" (above) without popping
+          // a review for it — either a session's pre-existing history at the
+          // moment this watcher first looks at it, or (page-load catch-up)
+          // every diff-bearing call but the single most recent one.
+          if (!hasDiffs || suppressThisOne) continue
 
           // A page reload (or window truncation) mid-turn can settle a call
           // whose running phase this watcher never observed — there is no
@@ -511,9 +558,14 @@ export function apply(ctx: ClientContext): void {
         // of this watcher's own lifetime (a page load): the active
         // session's most recent write may be a review the operator was
         // mid-way through before the reload, and that one should still
-        // reappear.
+        // reappear — but only that ONE, not the whole history (see
+        // `onlyPopLatestDiff` in `drainEvents`): every edit before it has
+        // long since been superseded on disk, and trying to reconstruct a
+        // baseline for each is exactly what produced the "không thể tái tạo
+        // chính xác" notification once per stale turn on every reload.
         const isFirstLookAtThisSession = !seenSessionIds.has(currentSessionId)
         seenSessionIds.add(currentSessionId)
+        const isPageLoadCatchUp = isFirstLookAtThisSession && isVeryFirstRebind
         const suppressReview = isFirstLookAtThisSession && !isVeryFirstRebind
         isVeryFirstRebind = false
 
@@ -527,7 +579,10 @@ export function apply(ctx: ClientContext): void {
         // revision in the same tick.
         const unsubSession = sessionFace.subscribe(drain)
         unsubscribeSession = () => { unsubEvents(); unsubSession() }
-        drainEvents(sessionFace.eventSource.getSnapshot(), sessionFace.getSnapshot().running, { suppressReview })
+        drainEvents(sessionFace.eventSource.getSnapshot(), sessionFace.getSnapshot().running, {
+          suppressReview,
+          onlyPopLatestDiff: isPageLoadCatchUp,
+        })
       }
 
       const offList = scope.sessions.list.subscribe(rebind)
