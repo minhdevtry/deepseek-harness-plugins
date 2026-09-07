@@ -28,7 +28,7 @@ import { MediaModal, type MediaModalType } from './MediaModal.tsx'
 import { TableOfContents } from './toc/TableOfContents.tsx'
 import { FindBar } from './findBar/FindBar.tsx'
 import { FrontmatterWidget } from './frontmatter/FrontmatterWidget.tsx'
-import { DragHandleMenu } from './dragHandle/DragHandleMenu.tsx'
+import { GutterControls } from './dragHandle/GutterControls.tsx'
 import { InlineAIPopover } from './ai/InlineAIPopover.tsx'
 import type { AIState, AIActionId } from './ai/types.ts'
 import { useEditorSnapshot } from './useEditorSnapshot.ts'
@@ -742,8 +742,8 @@ export const TipTapEditor = forwardRef(function TipTapEditor({
         />
       )}
 
-      {/* Block Drag Handle & Action Menu */}
-      {editor && <DragHandleMenu editor={editor} />}
+      {/* Notion-style Gutter Controls (+ to add block & trigger slash menu, grip to drag/menu) */}
+      {editor && <GutterControls editor={editor} />}
 
       {/* Upgraded Table of Contents / Outline Panel */}
       {editor && (

@@ -70,30 +70,76 @@
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 24px 32px 80px;
+  padding: 24px 0 80px;
+  scroll-padding-bottom: var(--ask-composer-height, 0px);
   cursor: text;
   position: relative;
   box-sizing: border-box;
 }
 
 .container {
+  --content-max-width: 1024px;
+  --margin-width: 3rem;
+  display: grid;
   width: 100%;
-  max-width: 720px;
+  grid-template-columns:
+    [full-start] minmax(var(--margin-left-width, var(--margin-width)), 1fr)
+    [content-start] minmax(0, min(var(--content-max-width), 100%))
+    [content-end] minmax(var(--margin-right-width, var(--margin-width)), 1fr)
+    [full-end];
   min-height: 100%;
   margin: 0 auto;
   box-sizing: border-box;
 }
 
+.container > * {
+  grid-column: content;
+  position: relative;
+  width: 100%;
+}
+
+.container > :global([data-breakout="full"]),
+.container > :global(.breakout-full),
+.container :global([data-breakout="full"]),
+.container :global(.breakout-full) {
+  grid-column: full;
+}
+
 /* ── TipTap ProseMirror Typography & Document Styling ── */
 .container :global(.ProseMirror) {
+  grid-column: full;
+  display: grid;
+  width: 100%;
+  grid-template-columns:
+    [full-start] minmax(var(--margin-left-width, var(--margin-width)), 1fr)
+    [content-start] minmax(0, min(var(--content-max-width), 100%))
+    [content-end] minmax(var(--margin-right-width, var(--margin-width)), 1fr)
+    [full-end];
   outline: none;
   font-size: 15px;
   line-height: 1.7;
   min-height: 500px;
+  padding-bottom: calc(var(--ask-composer-height, 0px) + 64px);
   color: var(--dsw-alias-label-primary, #1e293b);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   word-break: break-word;
   overflow-wrap: break-word;
+}
+
+.container :global(.ProseMirror > *) {
+  grid-column: content;
+}
+
+.container :global(.ProseMirror > [data-breakout="full"]),
+.container :global(.ProseMirror > .breakout-full) {
+  grid-column: full;
+}
+
+@media (max-width: 640px) {
+  .container,
+  .container :global(.ProseMirror) {
+    --margin-width: 1rem;
+  }
 }
 
 .container :global(.ProseMirror p.is-editor-empty:first-child::before) {
