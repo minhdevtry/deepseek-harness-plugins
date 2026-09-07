@@ -1,0 +1,118 @@
+/* ── 15-Type Obsidian / GFM Callout Styling ── */
+
+.callout {
+  position: relative;
+  margin: 16px 0;
+  padding: 14px 18px;
+  border-radius: 8px;
+  border-left: 4px solid var(--callout-type-color, #3b82f6);
+  background: var(--callout-type-bg, rgba(59, 130, 246, 0.06));
+  box-sizing: border-box;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.calloutHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--callout-type-color, #1e293b);
+  user-select: none;
+}
+
+.calloutSummary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  list-style: none;
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--callout-type-color, #1e293b);
+  user-select: none;
+  outline: none;
+}
+
+.calloutSummary::-webkit-details-marker {
+  display: none;
+}
+
+.calloutChevron {
+  margin-left: auto;
+  transition: transform 0.2s ease;
+  opacity: 0.7;
+}
+
+details[open] .calloutChevron {
+  transform: rotate(180deg);
+}
+
+.calloutBody {
+  margin-top: 6px;
+  color: var(--dsw-alias-label-primary, #1e293b);
+  line-height: 1.6;
+}
+
+/* 15 Semantic Type Palettes */
+.typeNote {
+  --callout-type-color: #3b82f6;
+  --callout-type-bg: rgba(59, 130, 246, 0.08);
+}
+.typeTip {
+  --callout-type-color: #10b981;
+  --callout-type-bg: rgba(16, 185, 129, 0.08);
+}
+.typeImportant {
+  --callout-type-color: #8b5cf6;
+  --callout-type-bg: rgba(139, 92, 246, 0.08);
+}
+.typeWarning {
+  --callout-type-color: #f59e0b;
+  --callout-type-bg: rgba(245, 158, 11, 0.08);
+}
+.typeCaution {
+  --callout-type-color: #ef4444;
+  --callout-type-bg: rgba(239, 68, 68, 0.08);
+}
+.typeAbstract {
+  --callout-type-color: #06b6d4;
+  --callout-type-bg: rgba(6, 182, 212, 0.08);
+}
+.typeInfo {
+  --callout-type-color: #0ea5e9;
+  --callout-type-bg: rgba(14, 165, 233, 0.08);
+}
+.typeTodo {
+  --callout-type-color: #6366f1;
+  --callout-type-bg: rgba(99, 102, 241, 0.08);
+}
+.typeSuccess {
+  --callout-type-color: #10b981;
+  --callout-type-bg: rgba(16, 185, 129, 0.08);
+}
+.typeQuestion {
+  --callout-type-color: #eab308;
+  --callout-type-bg: rgba(234, 179, 8, 0.08);
+}
+.typeFailure {
+  --callout-type-color: #f43f5e;
+  --callout-type-bg: rgba(244, 63, 94, 0.08);
+}
+.typeDanger {
+  --callout-type-color: #e11d48;
+  --callout-type-bg: rgba(225, 29, 72, 0.08);
+}
+.typeBug {
+  --callout-type-color: #ea580c;
+  --callout-type-bg: rgba(234, 88, 12, 0.08);
+}
+.typeExample {
+  --callout-type-color: #a855f7;
+  --callout-type-bg: rgba(168, 85, 247, 0.08);
+}
+.typeQuote {
+  --callout-type-color: #64748b;
+  --callout-type-bg: rgba(100, 116, 139, 0.08);
+}

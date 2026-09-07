@@ -225,37 +225,116 @@
   margin: 4px 0 !important;
 }
 
-/* ── Notion Callout Blocks ── */
+/* ── 15-Type Notion & Obsidian Callout Blocks ── */
 .container :global(.tiptap-callout) {
   display: flex;
   flex-direction: column;
   margin: 16px 0;
   padding: 14px 18px;
   border-radius: 8px;
-  border-left: 4px solid #3b82f6;
-  background: rgba(59, 130, 246, 0.06);
+  border-left: 4px solid var(--callout-type-color, #3b82f6);
+  background: var(--callout-type-bg, rgba(59, 130, 246, 0.06));
   position: relative;
+  box-sizing: border-box;
 }
 
-.container :global(.tiptap-callout-info) {
-  border-left-color: #3b82f6;
-  background: rgba(59, 130, 246, 0.06);
+.container :global(.tiptap-callout-header),
+.container :global(.tiptap-callout-summary) {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--callout-type-color, #1e293b);
+  margin-bottom: 6px;
+  user-select: none;
 }
 
-.container :global(.tiptap-callout-tip),
-.container :global(.tiptap-callout-success) {
-  border-left-color: #10b981;
-  background: rgba(16, 185, 129, 0.06);
+.container :global(.tiptap-callout-summary) {
+  cursor: pointer;
+  list-style: none;
+  outline: none;
 }
 
+.container :global(.tiptap-callout-summary::-webkit-details-marker) {
+  display: none;
+}
+
+.container :global(.tiptap-callout-chevron) {
+  margin-left: auto;
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(45deg);
+  transition: transform 0.2s ease;
+  opacity: 0.7;
+}
+
+.container :global(details[open] .tiptap-callout-chevron) {
+  transform: rotate(-135deg);
+}
+
+.container :global(.tiptap-callout-note) {
+  --callout-type-color: #3b82f6;
+  --callout-type-bg: rgba(59, 130, 246, 0.08);
+}
+.container :global(.tiptap-callout-tip) {
+  --callout-type-color: #10b981;
+  --callout-type-bg: rgba(16, 185, 129, 0.08);
+}
+.container :global(.tiptap-callout-important) {
+  --callout-type-color: #8b5cf6;
+  --callout-type-bg: rgba(139, 92, 246, 0.08);
+}
 .container :global(.tiptap-callout-warning) {
-  border-left-color: #f59e0b;
-  background: rgba(245, 158, 11, 0.07);
+  --callout-type-color: #f59e0b;
+  --callout-type-bg: rgba(245, 158, 11, 0.08);
 }
-
+.container :global(.tiptap-callout-caution) {
+  --callout-type-color: #ef4444;
+  --callout-type-bg: rgba(239, 68, 68, 0.08);
+}
+.container :global(.tiptap-callout-abstract) {
+  --callout-type-color: #06b6d4;
+  --callout-type-bg: rgba(6, 182, 212, 0.08);
+}
+.container :global(.tiptap-callout-info) {
+  --callout-type-color: #0ea5e9;
+  --callout-type-bg: rgba(14, 165, 233, 0.08);
+}
+.container :global(.tiptap-callout-todo) {
+  --callout-type-color: #6366f1;
+  --callout-type-bg: rgba(99, 102, 241, 0.08);
+}
+.container :global(.tiptap-callout-success) {
+  --callout-type-color: #10b981;
+  --callout-type-bg: rgba(16, 185, 129, 0.08);
+}
+.container :global(.tiptap-callout-question) {
+  --callout-type-color: #eab308;
+  --callout-type-bg: rgba(234, 179, 8, 0.08);
+}
+.container :global(.tiptap-callout-failure) {
+  --callout-type-color: #f43f5e;
+  --callout-type-bg: rgba(244, 63, 94, 0.08);
+}
 .container :global(.tiptap-callout-danger) {
-  border-left-color: #ef4444;
-  background: rgba(239, 68, 68, 0.06);
+  --callout-type-color: #e11d48;
+  --callout-type-bg: rgba(225, 29, 72, 0.08);
+}
+.container :global(.tiptap-callout-bug) {
+  --callout-type-color: #ea580c;
+  --callout-type-bg: rgba(234, 88, 12, 0.08);
+}
+.container :global(.tiptap-callout-example) {
+  --callout-type-color: #a855f7;
+  --callout-type-bg: rgba(168, 85, 247, 0.08);
+}
+.container :global(.tiptap-callout-quote) {
+  --callout-type-color: #64748b;
+  --callout-type-bg: rgba(100, 116, 139, 0.08);
 }
 
 /* ── Notion Independent Toggle / Details Block ── */
