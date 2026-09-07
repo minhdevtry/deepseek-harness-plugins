@@ -258,12 +258,29 @@ function gitStatusOf(root) {
 			const staged = [];
 			const unstaged = [];
 			let branch = "main";
+			let upstream;
+			let ahead = 0;
+			let behind = 0;
 			for (const line of stdout.split(/\r?\n/)) {
-				// --branch prepends one "## <name>...<upstream>" header line.
+				// --branch prepends one "## <name>...<upstream> [ahead N, behind M]" header line.
 				if (line.startsWith("## ")) {
-					const head = line.slice(3).split("...")[0].trim();
+					const headerBody = line.slice(3);
+					const bracket = headerBody.match(/ \[(.+)\]$/);
+					const base = bracket ? headerBody.slice(0, bracket.index).trim() : headerBody.trim();
+					if (bracket) {
+						const aheadMatch = bracket[1].match(/ahead (\d+)/);
+						const behindMatch = bracket[1].match(/behind (\d+)/);
+						if (aheadMatch) ahead = Number.parseInt(aheadMatch[1], 10);
+						if (behindMatch) behind = Number.parseInt(behindMatch[1], 10);
+					}
+					const [headPart, upstreamPart] = base.split("...");
+					let head = headPart.trim();
+					// A brand-new repo before its first commit reports "No commits yet on <name>".
+					const freshMatch = head.match(/^No commits yet on (.+)$/);
+					if (freshMatch) head = freshMatch[1];
 					// A detached HEAD reports "HEAD (no branch)".
 					branch = head.startsWith("HEAD ") ? "HEAD" : head;
+					if (upstreamPart) upstream = upstreamPart.trim();
 					continue;
 				}
 				if (line.length < 4) continue;
@@ -285,9 +302,59 @@ function gitStatusOf(root) {
 					unstaged.push({ path, status: x === "?" ? "U" : y });
 				}
 			}
-			resolve({ ok: true, repo: true, statuses, branch, staged, unstaged });
+			resolve({ ok: true, repo: true, statuses, branch, upstream, ahead, behind, staged, unstaged });
 		});
 	});
+}
+
+/** Record/unit separators unlikely to appear in commit metadata, used to delimit `git log` fields. */
+const GIT_LOG_FIELD_SEP = "\x1f";
+const GIT_LOG_RECORD_SEP = "\x1e";
+
+/**
+ * Run `git log`, returning commits newest-first with parent hashes and ref
+ * decorations (branch/tag names pointing at that commit) for the Graph view.
+ */
+function gitLogOf(root, limit) {
+	const format = ["%H", "%P", "%an", "%ad", "%D", "%s"].join(GIT_LOG_FIELD_SEP) + GIT_LOG_RECORD_SEP;
+	return new Promise((resolve) => {
+		execFile("git", [
+			"-C", root, "log",
+			`--max-count=${limit}`,
+			"--date=relative",
+			`--pretty=format:${format}`
+		], {
+			timeout: 8000,
+			maxBuffer: 8 * 1024 * 1024,
+			windowsHide: true
+		}, (error, stdout) => {
+			// A hard failure here (no commits yet, detached HEAD with nothing
+			// reachable) is a normal "empty graph" answer, not a request error.
+			if (error) {
+				resolve({ ok: true, commits: [] });
+				return;
+			}
+			resolve({ ok: true, commits: parseGitLog(stdout) });
+		});
+	});
+}
+
+function parseGitLog(stdout) {
+	return stdout
+		.split(GIT_LOG_RECORD_SEP)
+		.map((s) => s.replace(/^\r?\n/, "").trim())
+		.filter(Boolean)
+		.map((record) => {
+			const [hash, parents, author, date, refs, subject] = record.split(GIT_LOG_FIELD_SEP);
+			return {
+				hash,
+				parents: parents ? parents.split(" ").filter(Boolean) : [],
+				author: author ?? "",
+				date: date ?? "",
+				refs: refs ? refs.split(",").map((r) => r.trim()).filter(Boolean) : [],
+				subject: subject ?? ""
+			};
+		});
 }
 
 /** Execute a git command inside a repo root. */
@@ -483,7 +550,11 @@ function shikiLangOf(path) {
  * GET  /vscode-files/collab-info → { ok, wsPort, wsUrl }
  * GET  /vscode-files/list?path=<absPath> → { ok, path, dirs, files }
  * GET  /vscode-files/read?path=<absPath> → { ok, kind, content, size }
- * GET  /vscode-files/git?path=<repoRoot>  → { ok, statuses } or { ok:false, notRepo:true }
+ * GET  /vscode-files/git?path=<repoRoot>  → { ok, statuses, branch, upstream, ahead, behind } or { ok:false, notRepo:true }
+ * GET  /vscode-files/git/log?path=<repoRoot>&limit=<n> → { ok, commits: [{ hash, parents, author, date, refs, subject }] }
+ * POST /vscode-files/git/push  body { root } → { ok } (pushes; publishes with --set-upstream origin <branch> if untracked)
+ * POST /vscode-files/git/pull  body { root } → { ok }
+ * POST /vscode-files/git/fetch body { root } → { ok }
  * GET  /vscode-files/search?path=<root>&q=<keyword> → { ok, results: [{name, path, rel}] }
  * GET  /vscode-files/highlight?path=<absPath>&theme=<dark|light> → { ok, html } (shiki syntax highlight)
  * POST /vscode-files/write?path=<absPath> body { path, content } → { ok, size }
@@ -772,6 +843,44 @@ function apply(ctx) {
 						return sendJson(res, 500, { ok: false, error: err.message });
 					}
 				}
+				if (url.pathname === "/vscode-files/git/push") {
+					const root = body?.root || SANDBOX_ROOT;
+					try {
+						let hasUpstream = true;
+						try {
+							await gitExec(root, ["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"]);
+						} catch {
+							hasUpstream = false;
+						}
+						if (hasUpstream) {
+							await gitExec(root, ["push"]);
+						} else {
+							const branch = (await gitExec(root, ["rev-parse", "--abbrev-ref", "HEAD"])).trim();
+							await gitExec(root, ["push", "--set-upstream", "origin", branch]);
+						}
+						return sendJson(res, 200, { ok: true });
+					} catch (err) {
+						return sendJson(res, 500, { ok: false, error: err.message });
+					}
+				}
+				if (url.pathname === "/vscode-files/git/pull") {
+					const root = body?.root || SANDBOX_ROOT;
+					try {
+						await gitExec(root, ["pull"]);
+						return sendJson(res, 200, { ok: true });
+					} catch (err) {
+						return sendJson(res, 500, { ok: false, error: err.message });
+					}
+				}
+				if (url.pathname === "/vscode-files/git/fetch") {
+					const root = body?.root || SANDBOX_ROOT;
+					try {
+						await gitExec(root, ["fetch"]);
+						return sendJson(res, 200, { ok: true });
+					} catch (err) {
+						return sendJson(res, 500, { ok: false, error: err.message });
+					}
+				}
 				if (url.pathname === "/vscode-files/upload-image") {
 					const root = body?.root ? resolve(body.root) : SANDBOX_ROOT;
 					const storage = body?.storage || "local";
@@ -902,6 +1011,10 @@ function apply(ctx) {
 				}
 				if (url.pathname === "/vscode-files/git") {
 					return sendJson(res, 200, await gitStatusOf(target));
+				}
+				if (url.pathname === "/vscode-files/git/log") {
+					const limit = Math.min(Math.max(Number.parseInt(url.searchParams.get("limit") ?? "50", 10) || 50, 1), 200);
+					return sendJson(res, 200, await gitLogOf(target, limit));
 				}
 				if (url.pathname === "/vscode-files/search") {
 					const q = url.searchParams.get("q") ?? "";

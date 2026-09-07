@@ -12,6 +12,7 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react'
 import { EditorView, keymap } from '@codemirror/view'
 import { Compartment, EditorState, StateEffect, Transaction, type Extension, type Text, type TransactionSpec } from '@codemirror/state'
+import { undo, undoDepth, redo } from '@codemirror/commands'
 import {
   unifiedMergeView,
   getChunks,
@@ -94,6 +95,14 @@ export interface CodeEditorProps {
   onCursor: (info: CursorInfo) => void
   /** Notified on every transaction that could have changed review state. */
   onReviewStatsChange?: (stats: ReviewStats) => void
+  /**
+   * A per-hunk reject is a real content change made from inside the merge
+   * view's own button, bypassing every path Workbench otherwise saves
+   * through (acceptAll/rejectAll/undoReview go through its imperative
+   * handle) — without this, disk and buffer silently disagree the moment
+   * someone rejects a single hunk instead of using "Reject All".
+   */
+  onAutoSave?: () => void
 }
 
 /**
@@ -116,6 +125,7 @@ export interface CodeEditorHandle {
   acceptAll: () => void
   rejectAll: () => void
   undoReview: () => boolean
+  redoReview: () => boolean
   nextChunk: () => boolean
   prevChunk: () => boolean
   getChunkCount: () => number
@@ -123,7 +133,7 @@ export interface CodeEditorHandle {
 
 /** The editing surface (see module doc). */
 export const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(function CodeEditor(
-  { path, registry, revealLine, diffMode, diffOriginal, readOnly, onCursor, onReviewStatsChange }: CodeEditorProps,
+  { path, registry, revealLine, diffMode, diffOriginal, readOnly, onCursor, onReviewStatsChange, onAutoSave }: CodeEditorProps,
   ref,
 ) {
   const hostRef = useRef<HTMLDivElement | null>(null)
@@ -131,6 +141,11 @@ export const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(function
   const diffCompartment = useRef(new Compartment())
   const readOnlyCompartment = useRef(new Compartment())
   const baselineSnapshotsRef = useRef<string[]>([])
+  // Redo stack for an accept-undo — never persisted across a remount (unlike
+  // baselineSnapshotsRef, which has to survive one to avoid resurrecting an
+  // already-resolved hunk): losing "redo" on a tab switch is a minor rough
+  // edge, not a correctness bug, so it stays a plain local ref.
+  const redoSnapshotsRef = useRef<string[]>([])
 
   // Latest-callback ref: the update listener is baked into the view for its
   // whole lifetime, but must always reach the current handler.
@@ -139,6 +154,9 @@ export const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(function
 
   const statsCallbackRef = useRef(onReviewStatsChange)
   statsCallbackRef.current = onReviewStatsChange
+
+  const autoSaveRef = useRef(onAutoSave)
+  autoSaveRef.current = onAutoSave
 
   const updateStats = (view: EditorView | null) => {
     if (!view || !statsCallbackRef.current) return
@@ -153,7 +171,12 @@ export const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(function
     }
     statsCallbackRef.current({
       count,
-      canUndo: baselineSnapshotsRef.current.length > 0,
+      // A rejected hunk is a real, undoable transaction (unlike accept,
+      // which never touches the document) — CodeMirror's own history
+      // already tracks it, so "can undo" also has to look there, not only
+      // at the accept-baseline stack, or the "↺ Hoàn tác" button would stay
+      // disabled right after a reject.
+      canUndo: baselineSnapshotsRef.current.length > 0 || undoDepth(view.state) > 0,
       baseline,
       snapshots: baselineSnapshotsRef.current,
     })
@@ -165,9 +188,18 @@ export const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(function
     try {
       const orig = getOriginalDoc(view.state).toString()
       baselineSnapshotsRef.current.push(orig)
+      // A fresh action diverges from whatever redo branch was pending.
+      redoSnapshotsRef.current = []
     } catch {
       // Ignored if originalDoc field not yet attached
     }
+  }
+
+  // Reject doesn't touch the baseline stack (it's a real document edit, not
+  // a baseline swap), but it is still a fresh action — same redo-invalidation
+  // rule as accept.
+  const onBeforeReject = () => {
+    redoSnapshotsRef.current = []
   }
 
   const renderMergeControls = (type: 'reject' | 'accept', action: (e: MouseEvent) => void): HTMLElement => {
@@ -179,8 +211,16 @@ export const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(function
     btn.addEventListener('click', (e) => {
       if (type === 'accept') {
         onBeforeAccept()
+      } else {
+        onBeforeReject()
       }
       action(e)
+      // Reject is a real content change, and this button bypasses
+      // Workbench's onRejectAll entirely — save here or disk and buffer
+      // silently disagree from this hunk on.
+      if (type === 'reject') {
+        autoSaveRef.current?.()
+      }
     })
     return btn
   }
@@ -214,6 +254,7 @@ export const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(function
       if (!view) return
       const chunks = getChunks(view.state)?.chunks ?? []
       if (chunks.length === 0) return
+      onBeforeReject()
       for (let i = chunks.length - 1; i >= 0; i--) {
         const chunk = chunks[i]
         if (chunk) rejectChunk(view, chunk.fromB)
@@ -222,14 +263,49 @@ export const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(function
     },
     undoReview: () => {
       const view = viewRef.current
-      if (!view || baselineSnapshotsRef.current.length === 0) return false
-      const prevBaseline = baselineSnapshotsRef.current.pop()!
-      view.dispatch({
-        effects: diffCompartment.current.reconfigure(
-          buildDiffExtensions(prevBaseline, true)
-        ),
-      })
+      if (!view) return false
+      if (baselineSnapshotsRef.current.length > 0) {
+        const currentBaseline = getOriginalDoc(view.state).toString()
+        const prevBaseline = baselineSnapshotsRef.current.pop()!
+        redoSnapshotsRef.current.push(currentBaseline)
+        view.dispatch({
+          effects: diffCompartment.current.reconfigure(
+            buildDiffExtensions(prevBaseline, true)
+          ),
+        })
+        updateStats(view)
+        autoSaveRef.current?.()
+        return true
+      }
+      // Nothing on the accept-baseline stack to pop — the last review action
+      // was a reject (a real, tracked transaction), so fall back to
+      // CodeMirror's own history instead of a bespoke reject-undo stack.
+      if (!undo(view)) return false
       updateStats(view)
+      autoSaveRef.current?.()
+      return true
+    },
+    redoReview: () => {
+      const view = viewRef.current
+      if (!view) return false
+      if (redoSnapshotsRef.current.length > 0) {
+        const currentBaseline = getOriginalDoc(view.state).toString()
+        const nextBaseline = redoSnapshotsRef.current.pop()!
+        baselineSnapshotsRef.current.push(currentBaseline)
+        view.dispatch({
+          effects: diffCompartment.current.reconfigure(
+            buildDiffExtensions(nextBaseline, true)
+          ),
+        })
+        updateStats(view)
+        autoSaveRef.current?.()
+        return true
+      }
+      // Nothing on our own accept-redo stack — fall through to the editor's
+      // native redo, which correctly redoes a previously-undone reject.
+      if (!redo(view)) return false
+      updateStats(view)
+      autoSaveRef.current?.()
       return true
     },
     nextChunk: () => {

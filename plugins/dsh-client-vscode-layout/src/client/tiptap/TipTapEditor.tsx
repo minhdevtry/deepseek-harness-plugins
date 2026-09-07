@@ -40,6 +40,7 @@ export interface TipTapEditorHandle {
   acceptAll: () => void
   rejectAll: () => void
   undoReview: () => boolean
+  redoReview: () => boolean
   nextChunk: () => boolean
   prevChunk: () => boolean
   getChunkCount: () => number
@@ -122,6 +123,9 @@ export const TipTapEditor = forwardRef(function TipTapEditor({
   const [findBarOpen, setFindBarOpen] = useState(false)
   const [aiState, setAiState] = useState<AIState | null>(null)
 
+  const onSaveRef = useRef(onSave)
+  onSaveRef.current = onSave
+
   useEditorSnapshot(editor)
 
   // Keep the floating bar's stats in sync with EVERY plugin-state change —
@@ -142,7 +146,12 @@ export const TipTapEditor = forwardRef(function TipTapEditor({
       const pState = reviewPluginKey.getState(editor.state)
       onReviewStatsChange({
         count: pState?.hunks.length ?? 0,
-        canUndo: (pState?.snapshots.length ?? 0) > 0,
+        // A rejected hunk is a real, tracked ProseMirror transaction (unlike
+        // accept, which never touches the document) — the History extension
+        // already carries it, so "can undo" also has to look there, not
+        // only at the accept-snapshot stack, or the "↺ Hoàn tác" button
+        // would stay disabled right after a reject.
+        canUndo: (pState?.snapshots.length ?? 0) > 0 || editor.can().undo(),
         // The markdown baseline, not baselineBlocks/baseNodes — this is the
         // whole-file text Workbench needs to re-arm `diffBaseline` from on a
         // remount, so an already-resolved hunk does not come back.
@@ -153,6 +162,22 @@ export const TipTapEditor = forwardRef(function TipTapEditor({
     editor.on('transaction', report)
     return () => { editor.off('transaction', report) }
   }, [editor, onReviewStatsChange])
+
+  // Keep the review plugin's own save hook current — a per-hunk reject is
+  // dispatched from inside `renderHunkWidget`'s button, which only has
+  // `view` in scope, not this component's `onSave`/`path`. See
+  // `SET_ON_REJECT` in TipTapReviewPlugin.ts. Keyed on `[editor, path]`
+  // (not `onSave`, a fresh closure every Workbench render) via a ref so this
+  // dispatches once per mount rather than on every parent re-render.
+  useEffect(() => {
+    if (!editor) return
+    editor.view.dispatch(
+      editor.state.tr.setMeta(reviewPluginKey, {
+        type: 'SET_ON_REJECT',
+        onReject: () => { onSaveRef.current(path) },
+      })
+    )
+  }, [editor, path])
 
   // Synchronize AI Review Baseline. The transaction listener above reports
   // the resulting stats once this dispatches — no separate report call
@@ -206,12 +231,38 @@ export const TipTapEditor = forwardRef(function TipTapEditor({
     undoReview: () => {
       if (!editor) return false
       const pState = reviewPluginKey.getState(editor.state)
-      if (!pState || pState.snapshots.length === 0) return false
-      editor.view.dispatch(
-        editor.state.tr.setMeta(reviewPluginKey, {
-          type: 'POP_SNAPSHOT',
-        })
-      )
+      if (pState && pState.snapshots.length > 0) {
+        editor.view.dispatch(
+          editor.state.tr.setMeta(reviewPluginKey, {
+            type: 'POP_SNAPSHOT',
+          })
+        )
+        onSaveRef.current(path)
+        return true
+      }
+      // Nothing on the accept-snapshot stack to pop — the last review action
+      // was a reject (a real, history-tracked transaction), so fall back to
+      // the editor's own undo instead of a bespoke reject-undo stack.
+      if (!editor.commands.undo()) return false
+      onSaveRef.current(path)
+      return true
+    },
+    redoReview: () => {
+      if (!editor) return false
+      const pState = reviewPluginKey.getState(editor.state)
+      if (pState && pState.redoSnapshots.length > 0) {
+        editor.view.dispatch(
+          editor.state.tr.setMeta(reviewPluginKey, {
+            type: 'POP_REDO_SNAPSHOT',
+          })
+        )
+        onSaveRef.current(path)
+        return true
+      }
+      // Nothing on our own accept-redo stack — fall through to the editor's
+      // native redo, which correctly redoes a previously-undone reject.
+      if (!editor.commands.redo()) return false
+      onSaveRef.current(path)
       return true
     },
     // Both previously always jumped to hunks[0]/hunks[last] — a second press

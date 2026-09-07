@@ -69,10 +69,27 @@ export type GitStatus =
       repo: true
       statuses: GitStatuses
       branch?: string | undefined
+      /** Tracking ref (e.g. `origin/main`), absent when the branch has never been pushed. */
+      upstream?: string | undefined
+      ahead?: number | undefined
+      behind?: number | undefined
       staged?: GitFileChange[] | undefined
       unstaged?: GitFileChange[] | undefined
     }
   | { repo: false }
+
+/** One commit as reported by `git log`, for the Source Control Graph view. */
+export interface GitCommit {
+  hash: string
+  /** Parent commit hashes; more than one marks a merge commit. */
+  parents: string[]
+  author: string
+  /** Relative date string, e.g. "3 days ago" (from `git log --date=relative`). */
+  date: string
+  /** Ref decorations pointing at this commit, e.g. `["HEAD -> main", "origin/main"]`. */
+  refs: string[]
+  subject: string
+}
 
 /** A filename-search hit. */
 export interface NameHit {
@@ -268,6 +285,9 @@ export async function gitStatus(path: string): Promise<ApiResult<GitStatus>> {
   const body = result.value as {
     statuses?: GitStatuses
     branch?: string
+    upstream?: string
+    ahead?: number
+    behind?: number
     staged?: GitFileChange[]
     unstaged?: GitFileChange[]
   }
@@ -277,10 +297,42 @@ export async function gitStatus(path: string): Promise<ApiResult<GitStatus>> {
       repo: true,
       statuses: body.statuses ?? {},
       branch: body.branch,
+      upstream: body.upstream,
+      ahead: body.ahead ?? 0,
+      behind: body.behind ?? 0,
       staged: body.staged ?? [],
       unstaged: body.unstaged ?? [],
     },
   }
+}
+
+/** Read recent commit history for the Graph view. */
+export async function gitLog(root: string, limit = 50): Promise<ApiResult<GitCommit[]>> {
+  const result = await get('git/log', { path: root, limit: String(limit) })
+  if (!result.ok) return result
+  const body = result.value as { commits?: GitCommit[] }
+  return { ok: true, value: body.commits ?? [] }
+}
+
+/** Push the current branch, publishing it with `--set-upstream origin <branch>` if untracked. */
+export async function gitPush(root: string): Promise<ApiResult<void>> {
+  const result = await post('git/push', { root })
+  if (!result.ok) return result
+  return { ok: true, value: undefined }
+}
+
+/** Pull the current branch's upstream. */
+export async function gitPull(root: string): Promise<ApiResult<void>> {
+  const result = await post('git/pull', { root })
+  if (!result.ok) return result
+  return { ok: true, value: undefined }
+}
+
+/** Fetch from the remote without merging. */
+export async function gitFetch(root: string): Promise<ApiResult<void>> {
+  const result = await post('git/fetch', { root })
+  if (!result.ok) return result
+  return { ok: true, value: undefined }
 }
 
 /** Stage a file (git add). */

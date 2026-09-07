@@ -12,10 +12,10 @@ export interface TurnStepper {
 
 export interface FloatingReviewBarProps {
   chunkCount: number
-  canUndo: boolean
   onAcceptAll: () => void
   onRejectAll: () => void
   onUndo: () => void
+  onRedo: () => void
   onPrevChunk: () => void
   onNextChunk: () => void
   onClose: () => void
@@ -24,10 +24,10 @@ export interface FloatingReviewBarProps {
 
 export const FloatingReviewBar: FC<FloatingReviewBarProps> = ({
   chunkCount,
-  canUndo,
   onAcceptAll,
   onRejectAll,
   onUndo,
+  onRedo,
   onPrevChunk,
   onNextChunk,
   onClose,
@@ -60,6 +60,28 @@ export const FloatingReviewBar: FC<FloatingReviewBarProps> = ({
         return
       }
 
+      // Ctrl+Shift+Z / Cmd+Shift+Z (or Ctrl+Y): Redo — checked before plain
+      // Ctrl+Z below, since Shift is also down here.
+      if ((e.ctrlKey || e.metaKey) && ((e.shiftKey && (e.key === 'z' || e.key === 'Z')) || e.key === 'y')) {
+        e.preventDefault()
+        e.stopPropagation()
+        onRedo()
+        return
+      }
+
+      // Ctrl+Z or Cmd+Z: Undo — this is the review's own undo (accept-baseline
+      // swap first, falling back to the editor's native undo for a reject),
+      // not a separate "Hoàn tác" button; capturing it here at `window` in
+      // the capture phase means it runs before the editor's own internal
+      // undo keymap ever sees the keystroke, so this is the single owner of
+      // Ctrl+Z while a review is open.
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'z' || e.key === 'Z')) {
+        e.preventDefault()
+        e.stopPropagation()
+        onUndo()
+        return
+      }
+
       // Alt+K or Alt+Up: Previous Chunk
       if (e.altKey && (e.key === 'k' || e.key === 'ArrowUp' || e.key === 'K')) {
         e.preventDefault()
@@ -82,7 +104,7 @@ export const FloatingReviewBar: FC<FloatingReviewBarProps> = ({
     return () => {
       window.removeEventListener('keydown', handleKeyDown, { capture: true })
     }
-  }, [onAcceptAll, onRejectAll, onPrevChunk, onNextChunk, onUndo, canUndo])
+  }, [onAcceptAll, onRejectAll, onPrevChunk, onNextChunk, onUndo, onRedo])
 
   // At zero chunks there is nothing left to accept/reject/navigate — showing
   // those buttons anyway (merely inert) is exactly the "button doesn't turn
@@ -130,18 +152,6 @@ export const FloatingReviewBar: FC<FloatingReviewBarProps> = ({
       {done
         ? (
           <div className={css.actionsGroup}>
-            {canUndo && (
-              <button
-                type="button"
-                className={css.btnNav}
-                onClick={onUndo}
-                title="Hoàn tác thao tác review vừa làm (Ctrl+Z)"
-              >
-                <span>↺</span>
-                <span>Hoàn tác</span>
-              </button>
-            )}
-
             <button
               type="button"
               className={css.btnIcon}
@@ -174,18 +184,6 @@ export const FloatingReviewBar: FC<FloatingReviewBarProps> = ({
               <span>Bỏ tất cả trong file</span>
               <span className={`${css.kbd} ${css.kbdSubtle}`}>Ctrl+⌫</span>
             </button>
-
-            {canUndo && (
-              <button
-                type="button"
-                className={css.btnNav}
-                onClick={onUndo}
-                title="Hoàn tác thao tác review vừa làm (Ctrl+Z)"
-              >
-                <span>↺</span>
-                <span>Hoàn tác</span>
-              </button>
-            )}
 
             <div className={css.divider} />
 

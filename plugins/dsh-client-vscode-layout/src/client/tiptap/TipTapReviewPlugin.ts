@@ -9,6 +9,22 @@ export interface ReviewPluginState {
   baseNodes: ProseMirrorNode[]
   hunks: BlockHunk[]
   snapshots: string[]
+  /**
+   * Redo stack for an accept-undo — mirrors CodeEditor.tsx's
+   * `redoSnapshotsRef`. Not restored across a remount (unlike `snapshots`):
+   * losing "redo" on a tab switch is a minor rough edge, not the
+   * hunk-resurrection correctness bug `snapshots`'s remount-restore exists
+   * to prevent.
+   */
+  redoSnapshots: string[]
+  /**
+   * Called after a per-hunk reject, dispatched from `renderHunkWidget`'s own
+   * button — a path that bypasses TipTapEditor's imperative `rejectAll`
+   * (and with it, Workbench's post-rejectAll save) entirely. Kept in plugin
+   * state, synced from React via a `SET_ON_REJECT` meta, because the widget
+   * only has `view` in scope, not any component's props.
+   */
+  onReject: (() => void) | null
 }
 
 export const reviewPluginKey = new PluginKey<ReviewPluginState>('dsh-tiptap-review')
@@ -25,6 +41,8 @@ export function createTipTapReviewPlugin(options?: {
         baseNodes: [],
         hunks: [],
         snapshots: [],
+        redoSnapshots: [],
+        onReject: null,
       }),
       apply: (tr, value, _oldState, newState) => {
         const meta = tr.getMeta(reviewPluginKey)
@@ -43,6 +61,8 @@ export function createTipTapReviewPlugin(options?: {
                 baseNodes: [],
                 hunks: [],
                 snapshots: [],
+                redoSnapshots: [],
+                onReject: value.onReject,
               }
             } else {
               const { blocks, nodes } = parseMarkdownToBlocks(baselineMarkdown)
@@ -52,6 +72,8 @@ export function createTipTapReviewPlugin(options?: {
                 baseNodes: nodes,
                 hunks: [],
                 snapshots: meta.snapshots ?? value.snapshots,
+                redoSnapshots: value.redoSnapshots,
+                onReject: value.onReject,
               }
             }
           } else if (meta.type === 'SET_BASELINE_BLOCKS') {
@@ -71,7 +93,11 @@ export function createTipTapReviewPlugin(options?: {
             nextValue = {
               ...value,
               snapshots: [...value.snapshots, meta.snapshot],
+              // A fresh accept diverges from whatever redo branch was pending.
+              redoSnapshots: [],
             }
+          } else if (meta.type === 'SET_ON_REJECT') {
+            nextValue = { ...value, onReject: meta.onReject }
           } else if (meta.type === 'POP_SNAPSHOT') {
             const snaps = [...value.snapshots]
             const prev = snaps.pop()
@@ -83,9 +109,39 @@ export function createTipTapReviewPlugin(options?: {
                 baselineBlocks: blocks,
                 baseNodes: nodes,
                 snapshots: snaps,
+                // The baseline this undo is leaving becomes redoable.
+                redoSnapshots: value.baselineMarkdown !== null
+                  ? [...value.redoSnapshots, value.baselineMarkdown]
+                  : value.redoSnapshots,
+              }
+            }
+          } else if (meta.type === 'POP_REDO_SNAPSHOT') {
+            const redos = [...value.redoSnapshots]
+            const next = redos.pop()
+            if (next !== undefined) {
+              const { blocks, nodes } = parseMarkdownToBlocks(next)
+              nextValue = {
+                ...value,
+                baselineMarkdown: next,
+                baselineBlocks: blocks,
+                baseNodes: nodes,
+                redoSnapshots: redos,
+                // The baseline this redo is leaving becomes undoable again.
+                snapshots: value.baselineMarkdown !== null
+                  ? [...value.snapshots, value.baselineMarkdown]
+                  : value.snapshots,
               }
             }
           }
+        }
+
+        // Any real content change that wasn't itself a redo (a reject, or a
+        // plain user edit) diverges from whatever redo-an-accept branch was
+        // pending — same invalidation rule as a fresh accept above, but
+        // reject dispatches no review meta at all, so this is the only place
+        // that can catch it.
+        if (tr.docChanged && meta?.type !== 'POP_REDO_SNAPSHOT' && nextValue.redoSnapshots.length > 0) {
+          nextValue = { ...nextValue, redoSnapshots: [] }
         }
 
         // Recompute hunks against current doc
@@ -227,6 +283,10 @@ function renderHunkWidget(
     const current = state?.hunks.find((h) => h.id === hunkId)
     if (!state || !current) return
     rejectSingleHunk(view, current, state)
+    // Reject is a real content change, and this button never goes through
+    // TipTapEditor's rejectAll (the only path Workbench saves after) — save
+    // here or disk and buffer silently disagree from this hunk on.
+    reviewPluginKey.getState(view.state)?.onReject?.()
   }
   actionsGroup.appendChild(btnReject)
 

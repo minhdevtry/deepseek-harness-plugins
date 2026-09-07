@@ -98,7 +98,7 @@ export function Workbench({
   const [pendingClose, setPendingClose] = useState<PendingClose | undefined>(undefined)
   const [diffOpen, setDiffOpen] = useState(false)
   const [diffModes, setDiffModes] = useState<Record<string, DiffMode>>({})
-  const [reviewStats, setReviewStats] = useState<Record<string, { count: number; canUndo: boolean }>>({})
+  const [reviewStats, setReviewStats] = useState<Record<string, { count: number }>>({})
   const [branch, setBranch] = useState<string | undefined>(undefined)
   const [rawModes, setRawModes] = useState<Record<string, boolean>>({})
 
@@ -106,8 +106,8 @@ export function Workbench({
     if (!activePath) return
     setReviewStats(prev => {
       const current = prev[activePath]
-      if (current?.count === stats.count && current?.canUndo === stats.canUndo) return prev
-      return { ...prev, [activePath]: { count: stats.count, canUndo: stats.canUndo } }
+      if (current?.count === stats.count) return prev
+      return { ...prev, [activePath]: { count: stats.count } }
     })
     // Keep diffModes' baseline/snapshots current so a remount (a tab switch,
     // T0-7's now-working reconfigure) re-arms from wherever the review
@@ -674,9 +674,15 @@ export function Workbench({
   // tracked review state actually changes — summaryForTurn reads
   // diffModesRef fresh on every call, so this only needs to trigger a
   // re-render, not carry any data itself.
+  //
+  // Also keyed on `reviewStats`, not just `diffModes`: a reject changes
+  // neither a diffMode's baseline nor its snapshots (it pushes no snapshot —
+  // see CodeEditor/TipTapReviewPlugin), so `diffModes` never changes from a
+  // reject alone. Without this, the in-chat card's +N/-M count went stale
+  // the moment someone rejected a hunk instead of accepting it.
   useEffect(() => {
     notifyReviewCommandsChanged()
-  }, [diffModes])
+  }, [diffModes, reviewStats])
 
   /** Throw away a tab's unsaved edits and go back to what is on disk. */
   const discard = useCallback((path: string) => {
@@ -812,7 +818,6 @@ export function Workbench({
       {activePath !== undefined && effectiveDiffMode.kind === 'ai-review' && (
         <FloatingReviewBar
           chunkCount={reviewStats[activePath]?.count ?? 0}
-          canUndo={reviewStats[activePath]?.canUndo ?? false}
           onAcceptAll={() => {
             if (usingTipTap) tipTapRef.current?.acceptAll()
             else editorRef.current?.acceptAll()
@@ -828,6 +833,10 @@ export function Workbench({
           onUndo={() => {
             if (usingTipTap) tipTapRef.current?.undoReview()
             else editorRef.current?.undoReview()
+          }}
+          onRedo={() => {
+            if (usingTipTap) tipTapRef.current?.redoReview()
+            else editorRef.current?.redoReview()
           }}
           onPrevChunk={() => {
             if (usingTipTap) tipTapRef.current?.prevChunk()
@@ -1034,6 +1043,7 @@ export function Workbench({
                         readOnly={mdTextReadOnly}
                         onCursor={setCursor}
                         onReviewStatsChange={handleReviewStatsChange}
+                        onAutoSave={() => { void save(activePath) }}
                       />
                     </div>
                   </div>

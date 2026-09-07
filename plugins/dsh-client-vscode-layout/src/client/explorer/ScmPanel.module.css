@@ -5,39 +5,7 @@
   background: var(--dsw-specific-sidebar-fill, #181818);
   color: var(--dsw-alias-label-primary, #cccccc);
   font-size: 13px;
-  overflow: hidden;
-}
-
-.topBar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  border-bottom: 1px solid var(--dsw-alias-border-l1, #2d2d2d);
-  font-size: 12px;
-}
-
-.branch {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  font-weight: 600;
-  color: var(--dsw-alias-label-primary, #ffffff);
-}
-
-.refreshBtn {
-  margin-left: auto;
-  background: transparent;
-  border: none;
-  color: var(--dsw-alias-label-secondary, #888888);
-  cursor: pointer;
-  padding: 2px 6px;
-  border-radius: 4px;
-}
-
-.refreshBtn:hover {
-  color: var(--dsw-alias-label-primary, #ffffff);
-  background: var(--dsw-alias-interactive-bg-hover, rgba(255, 255, 255, 0.08));
+  position: relative;
 }
 
 .commitBox {
@@ -48,15 +16,27 @@
   border-bottom: 1px solid var(--dsw-alias-border-l1, #2d2d2d);
 }
 
+.inputRow {
+  position: relative;
+}
+
 .commitInput {
   width: 100%;
   min-height: 48px;
+  /* No global border-box reset in this codebase — without this, padding adds
+     onto the 100% width instead of carving into it, so the gap reserved for
+     .generateBtnSlot below is never actually subtracted from the text's
+     available width and the button can still sit on top of real text. */
+  box-sizing: border-box;
   background: var(--dsw-alias-bg-base, #1e1e1e);
   border: 1px solid var(--dsw-alias-border-l2, #3c3c3c);
   border-radius: 4px;
   color: inherit;
   font-size: 12px;
-  padding: 6px 8px;
+  /* Reserves room for the icon-only .generateBtn overlaid in the corner —
+     a fixed 20x20 IconButton, unlike a labeled pill, never grows wider
+     than this regardless of locale or font metrics. */
+  padding: 6px 30px 6px 8px;
   font-family: inherit;
   resize: vertical;
   outline: none;
@@ -66,28 +46,105 @@
   border-color: var(--dsw-alias-state-business-primary, #2563eb);
 }
 
-.commitBtn {
+/*
+ * A plain wrapper, not the IconButton itself, carries the absolute
+ * positioning. Tooltip renders its own `position: relative` wrapper around
+ * whatever's passed as children — closer in the tree than .inputRow — so
+ * positioning the button directly resolves against that tiny, flow-collapsed
+ * box instead of the input, landing wherever the broken math points.
+ */
+.generateBtnSlot {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+}
+
+.commitRow {
+  display: flex;
+  gap: 1px;
+}
+
+.commitMainBtn {
+  flex: 1;
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.commitMenuBtn {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  border: none;
   background: var(--dsw-alias-state-business-primary, #2563eb);
   color: #ffffff;
+  font-size: 11px;
+  cursor: pointer;
+  border-left: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.commitMenuBtn:hover {
+  opacity: 0.92;
+}
+
+.fullWidthBtn {
+  width: 100%;
+}
+
+.btnIcon {
+  display: inline-flex;
+  align-items: center;
+}
+
+.menuBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 45;
+}
+
+.menu {
+  position: absolute;
+  top: 34px;
+  right: 8px;
+  min-width: 170px;
+  background: var(--dsw-alias-bg-elevated, #252526);
+  border: 1px solid var(--dsw-alias-border-l1, #3c3c3c);
+  border-radius: 6px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4), 0 4px 6px -2px rgba(0, 0, 0, 0.2);
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  padding: 4px;
+  gap: 1px;
+}
+
+.menuItem {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 6px 10px;
   border: none;
   border-radius: 4px;
-  padding: 6px 12px;
-  font-size: 12px;
-  font-weight: 600;
+  background: transparent;
+  color: var(--dsw-alias-label-primary, #cccccc);
+  font-size: 12.5px;
   cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
 }
 
-.commitBtn:hover:not(:disabled) {
-  background: #1d4ed8;
+.menuItem:hover:not(:disabled) {
+  background: var(--dsw-alias-interactive-bg-hover, rgba(255, 255, 255, 0.08));
 }
 
-.commitBtn:disabled {
-  opacity: 0.5;
+.menuItem:disabled {
+  opacity: 0.4;
   cursor: not-allowed;
+}
+
+.menuDivider {
+  height: 1px;
+  background: var(--dsw-alias-border-l1, #3c3c3c);
+  margin: 4px 2px;
 }
 
 .lists {
@@ -110,6 +167,42 @@
   background: var(--dsw-alias-bg-elevated, rgba(255, 255, 255, 0.02));
   border-top: 1px solid var(--dsw-alias-border-l1, #2d2d2d);
   border-bottom: 1px solid var(--dsw-alias-border-l1, #2d2d2d);
+  cursor: pointer;
+  user-select: none;
+}
+
+.chevron {
+  display: inline-block;
+  font-size: 10px;
+  line-height: 1;
+  transform: rotate(-90deg);
+  transition: transform 0.1s ease;
+  flex: none;
+}
+
+.chevron[data-expanded] {
+  transform: rotate(0deg);
+}
+
+.autoToggle {
+  background: transparent;
+  border: none;
+  color: var(--dsw-alias-label-tertiary, #666666);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 4px;
+}
+
+.autoToggle:hover {
+  background: var(--dsw-alias-interactive-bg-hover, rgba(255, 255, 255, 0.1));
+}
+
+.autoToggle[data-on] {
+  color: #f59e0b;
 }
 
 .badgeCount {
@@ -126,21 +219,6 @@
   gap: 4px;
 }
 
-.iconBtn {
-  background: transparent;
-  border: none;
-  color: var(--dsw-alias-label-secondary, #888888);
-  cursor: pointer;
-  padding: 2px 4px;
-  border-radius: 4px;
-  font-size: 12px;
-}
-
-.iconBtn:hover {
-  color: var(--dsw-alias-label-primary, #ffffff);
-  background: var(--dsw-alias-interactive-bg-hover, rgba(255, 255, 255, 0.1));
-}
-
 .fileItem {
   display: flex;
   align-items: center;
@@ -148,24 +226,39 @@
   padding: 4px 12px;
   cursor: pointer;
   font-size: 12.5px;
+  min-width: 0;
 }
 
 .fileItem:hover {
   background: var(--dsw-alias-interactive-bg-hover, rgba(255, 255, 255, 0.05));
 }
 
+/* Long repo-relative paths must stay on one line and ellipsize instead of
+   wrapping — a wrapped .fileDir grows the row tall and shoves .fileBadge
+   out of view since nothing here scrolls horizontally. */
 .fileName {
   font-weight: 500;
+  flex: none;
+  max-width: 60%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .fileDir {
   font-size: 11px;
   color: var(--dsw-alias-label-tertiary, #666666);
   margin-left: 4px;
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .fileBadge {
   margin-left: auto;
+  flex: none;
   font-size: 11px;
   font-weight: 700;
   padding: 1px 4px;
@@ -204,4 +297,123 @@
   text-align: center;
   font-size: 12px;
   color: var(--dsw-alias-label-tertiary, #666666);
+}
+
+.graphList {
+  display: flex;
+  flex-direction: column;
+  padding-bottom: 4px;
+}
+
+.graphRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+  height: 26px;
+  font-size: 12.5px;
+  cursor: default;
+}
+
+.graphRow:hover {
+  background: var(--dsw-alias-interactive-bg-hover, rgba(255, 255, 255, 0.05));
+}
+
+.graphRail {
+  position: relative;
+  width: 10px;
+  height: 100%;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.graphDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--dsw-alias-label-tertiary, #6b7280);
+  z-index: 1;
+  flex: none;
+}
+
+.graphDot[data-head] {
+  background: var(--dsw-alias-state-business-primary, #3b82f6);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25);
+}
+
+.railLine {
+  position: absolute;
+  left: 50%;
+  width: 1px;
+  background: var(--dsw-alias-border-l2, #3c3c3c);
+  transform: translateX(-50%);
+}
+
+.railLine[data-pos='top'] {
+  top: 0;
+  height: 50%;
+}
+
+.railLine[data-pos='bottom'] {
+  bottom: 0;
+  height: 50%;
+}
+
+.graphContent {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  flex: 1;
+}
+
+.graphSubject {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--dsw-alias-label-primary, #cccccc);
+}
+
+.graphAuthor {
+  flex: none;
+  font-size: 11px;
+  color: var(--dsw-alias-label-tertiary, #6b7280);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 96px;
+}
+
+.graphBadges {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+}
+
+.branchPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex: none;
+  padding: 1px 6px 1px 4px;
+  border-radius: 10px;
+  font-size: 10.5px;
+  font-weight: 600;
+  background: rgba(59, 130, 246, 0.15);
+  color: #60a5fa;
+  border: 1px solid rgba(59, 130, 246, 0.35);
+}
+
+.branchPillDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  border: 1.5px solid currentColor;
+  flex: none;
 }
