@@ -32,29 +32,24 @@ import { transform } from 'lightningcss'
 
 /**
  * The module specifiers the shell shares into the frozen module table.
- * Kept in sync with `.ref/deepseek-harness/packages/client/web/src/platform.ts`
- * — a specifier missing here inlines a duplicate runtime instance instead of
- * sharing the shell's, which breaks React and cordis identity.
+ * Kept in sync with `~/deepseek-harness/packages/client/web/src/platform.ts`
+ * (the retired `@deepseek-ai/dsh-client-runtime` package used to carry this
+ * list plus a separate "runtime store exemption" for `defineStore` — that
+ * package is gone as of dsh 0.1.2+, and its snapshot-store engine is now
+ * `@deepseek-ai/dsh-client-store`, a first-class entry in this same list
+ * upstream, no exemption needed) — a specifier missing here inlines a
+ * duplicate runtime instance instead of sharing the shell's, which breaks
+ * React and cordis identity.
  */
 export const PLATFORM_MODULES = [
   'react', 'react/jsx-runtime', 'react-dom', 'react-dom/client', '@deepseek-ai/cordis',
+  '@deepseek-ai/dsh-client-store',
   '@deepseek-ai/dsh-client-ui-slots',
-  '@deepseek-ai/dsh-client-web-react',
   '@deepseek-ai/dsh-client-ui-primitives',
-  '@deepseek-ai/dsh-client-ui-attachment',
-  '@deepseek-ai/dsh-client-schema-form',
 ] as const
 
-/**
- * The snapshot-store engine (`defineStore`, `createSnapshotStore`) lives in the
- * runtime package and is answered natively by the lazy CJS table: runtime is an
- * `immediately`-tier row, so its factory is registered before any dependent
- * bundle materializes. Upstream carries the same documented exemption.
- */
-const RUNTIME_STORE_EXEMPTION = '@deepseek-ai/dsh-client-runtime/client'
-
 /** Externals resolved from the loader module table. */
-export const CLIENT_EXTERNALS: readonly string[] = [...PLATFORM_MODULES, RUNTIME_STORE_EXEMPTION]
+export const CLIENT_EXTERNALS: readonly string[] = [...PLATFORM_MODULES]
 
 /**
  * Virtual-id wrapper keeping module CSS away from tsdown's own css pipeline
