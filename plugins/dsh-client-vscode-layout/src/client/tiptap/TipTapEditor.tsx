@@ -13,7 +13,7 @@
  *
  * Nothing here serialises markdown. The registry projects it at save time.
  */
-import { useEffect, useRef, useState, useImperativeHandle, forwardRef, type ForwardedRef } from 'react'
+import { useEffect, useRef, useState, useCallback, useImperativeHandle, forwardRef, type ForwardedRef } from 'react'
 import type { Editor } from '@tiptap/core'
 import type { DocumentRegistry } from './documents.ts'
 import type { ReviewStats } from '../workbench/CodeEditor.tsx'
@@ -34,6 +34,7 @@ import type { AIState, AIActionId } from './ai/types.ts'
 import { useEditorSnapshot } from './useEditorSnapshot.ts'
 import { resolveRelativePath } from '../utils/path.ts'
 import { openInWorkbench } from '../fileOpener.ts'
+import { createModeSwitchPositionResolver, type BlockAnchor } from '../workbench/modeSwitchPositionResolver.ts'
 import css from './TipTapEditor.module.css'
 
 export interface TipTapEditorHandle {
@@ -44,6 +45,7 @@ export interface TipTapEditorHandle {
   nextChunk: () => boolean
   prevChunk: () => boolean
   getChunkCount: () => number
+  captureBlockAnchor: () => BlockAnchor | null
 }
 
 export interface TipTapEditorProps {
@@ -55,12 +57,9 @@ export interface TipTapEditorProps {
   onSave: (path: string) => void
   /**
    * Show the markdown source instead of this editor.
-   *
-   * The counterpart of the raw view's "Switch to Notion WYSIWYG" button, which
-   * had no way in from this side. Read-only over there — the tree is the
-   * document — so this is a viewer, not a second editor.
+   * Optionally accepts a targetLine in the raw source.
    */
-  onViewRaw: () => void
+  onViewRaw?: (targetLine?: number) => void
   /**
    * A 1-based line number in the file's raw source to scroll to and select —
    * a search hit's target line, same input CodeEditor's `revealLine` takes.
@@ -307,6 +306,14 @@ export const TipTapEditor = forwardRef(function TipTapEditor({
       if (!editor) return 0
       const pState = reviewPluginKey.getState(editor.state)
       return pState?.hunks.length ?? 0
+    },
+    captureBlockAnchor: () => {
+      if (!editor) return null
+      return createModeSwitchPositionResolver().captureFromWysiwyg(
+        editor.state.doc,
+        editor.state.selection.from,
+        { refine: true }
+      )
     },
   }), [editor, onReviewStatsChange])
 
@@ -620,6 +627,22 @@ export const TipTapEditor = forwardRef(function TipTapEditor({
       window.removeEventListener('keydown', handleKeyDown)
     }
   }, [onSave, path, editor])
+  const handleViewInSource = useCallback(() => {
+    if (!_onViewRaw) return
+    if (editor) {
+      const resolver = createModeSwitchPositionResolver()
+      const anchor = resolver.captureFromWysiwyg(editor.state.doc, editor.state.selection.from, { refine: true })
+      if (anchor) {
+        const mdText = documents.preview(path) ?? ''
+        const resolved = resolver.resolveInSource(anchor, { source: mdText, doc: editor.state.doc })
+        if (resolved?.line) {
+          _onViewRaw(resolved.line)
+          return
+        }
+      }
+    }
+    _onViewRaw()
+  }, [editor, documents, path, _onViewRaw])
 
   return (
     <div ref={wrapperRef} className={css.wrapper}>
@@ -687,7 +710,15 @@ export const TipTapEditor = forwardRef(function TipTapEditor({
       {editor && <LinkBubble editor={editor} currentPath={path} />}
 
       {/* Floating Bubble Menu on Selection */}
-      {editor && <BubbleMenu editor={editor} path={path} markdown={() => documents.preview(path) ?? ''} onOpenAI={openAI} />}
+      {editor && (
+        <BubbleMenu
+          editor={editor}
+          path={path}
+          markdown={() => documents.preview(path) ?? ''}
+          onOpenAI={openAI}
+          onViewInSource={handleViewInSource}
+        />
+      )}
 
       {/* In-Editor FindBar */}
       {editor && (

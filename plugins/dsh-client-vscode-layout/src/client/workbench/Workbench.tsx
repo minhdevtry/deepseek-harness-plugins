@@ -101,6 +101,12 @@ export function Workbench({
   const [reviewStats, setReviewStats] = useState<Record<string, { count: number }>>({})
   const [branch, setBranch] = useState<string | undefined>(undefined)
   const [rawModes, setRawModes] = useState<Record<string, boolean>>({})
+  const [targetRevealLine, setTargetRevealLine] = useState<number | undefined>(undefined)
+  const effectiveRevealLine = targetRevealLine ?? activeLine
+
+  useEffect(() => {
+    setTargetRevealLine(undefined)
+  }, [activePath])
 
   const handleReviewStatsChange = useCallback((stats: ReviewStats) => {
     if (!activePath) return
@@ -916,7 +922,7 @@ export function Workbench({
                       root={explorerRoot}
                       openTabs={tabs}
                       documents={documents}
-                      revealLine={activeLine}
+                      revealLine={effectiveRevealLine}
                       diffBaseline={effectiveDiffMode.kind === 'ai-review' ? (typeof effectiveDiffMode.baseline === 'string' ? effectiveDiffMode.baseline : effectiveDiffMode.baseline.toString()) : undefined}
                       frontmatterBaseline={effectiveDiffMode.kind === 'ai-review' ? effectiveDiffMode.frontmatterBaseline : undefined}
                       onAcceptFrontmatter={() => {
@@ -940,7 +946,7 @@ export function Workbench({
                       }}
                       onReviewStatsChange={handleReviewStatsChange}
                       onSave={(p) => { void save(p) }}
-                      onViewRaw={() => {
+                      onViewRaw={(targetLine?: number) => {
                         // The raw view is a read-only CodeMirror projection of
                         // the tree, refreshed from it on every save/view-flip
                         // (projectMarkdown). A per-hunk reject there edits
@@ -954,6 +960,9 @@ export function Workbench({
                         if (effectiveDiffMode.kind === 'ai-review') {
                           onNotify('Không thể xem bản thô khi đang review — hãy Accept/Reject xong trước.')
                           return
+                        }
+                        if (targetLine !== undefined) {
+                          setTargetRevealLine(targetLine)
                         }
                         showTextView(() => {
                           setRawModes(prev => ({ ...prev, [activePath]: true }))
@@ -1025,6 +1034,7 @@ export function Workbench({
                             boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
                           }}
                           onClick={() => {
+                            if (cursor?.line) setTargetRevealLine(cursor.line)
                             setRawModes(prev => ({ ...prev, [activePath]: false }))
                           }}
                         >
@@ -1038,7 +1048,7 @@ export function Workbench({
                         key={activePath}
                         path={activePath}
                         registry={registry}
-                        revealLine={activeLine}
+                        revealLine={effectiveRevealLine}
                         diffMode={effectiveDiffMode}
                         readOnly={mdTextReadOnly}
                         onCursor={setCursor}

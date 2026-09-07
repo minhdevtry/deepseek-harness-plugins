@@ -36,9 +36,10 @@ import {
   NotionIconNumberedList,
   NotionIconTodoList,
   NotionIconQuote,
-  NotionIconCallout,
   NotionIconToggle,
+  NotionIconCallout,
 } from './ui/TipTapIcons.tsx'
+import { ViewInSourceBubbleButton } from './bubble/ViewInSourceBubbleButton.tsx'
 import css from './BubbleMenu.module.css'
 
 export interface BubbleMenuProps {
@@ -46,6 +47,7 @@ export interface BubbleMenuProps {
   path?: string
   markdown?: () => string
   onOpenAI?: (customInitialPrompt?: string, actionId?: AIActionId, executeNow?: boolean) => void
+  onViewInSource?: () => void
 }
 
 interface BlockTypeOption {
@@ -86,7 +88,7 @@ const AI_SKILLS: AISkillOption[] = [
   { id: 'table', label: 'Convert to table', hint: 'Chuyển thành bảng' },
 ]
 
-export function BubbleMenu({ editor, path, markdown, onOpenAI }: BubbleMenuProps) {
+export function BubbleMenu({ editor, path, markdown, onOpenAI, onViewInSource }: BubbleMenuProps) {
   const menuRef = useRef<HTMLDivElement | null>(null)
   const [mounted, setMounted] = useState(false)
   const [revealed, setRevealed] = useState(false)
@@ -587,6 +589,9 @@ export function BubbleMenu({ editor, path, markdown, onOpenAI }: BubbleMenuProps
                 >
                   <NotionIconComment size={16} />
                 </button>
+
+                {/* View in Source Markdown */}
+                <ViewInSourceBubbleButton editor={editor} onViewInSource={onViewInSource} />
               </div>
             </div>
 
