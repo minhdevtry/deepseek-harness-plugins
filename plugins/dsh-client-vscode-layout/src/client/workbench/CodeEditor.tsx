@@ -206,8 +206,8 @@ export const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(function
     const btn = document.createElement('button')
     btn.type = 'button'
     btn.className = type === 'accept' ? 'dsh-review-accept' : 'dsh-review-reject'
-    btn.textContent = type === 'accept' ? '✓ Giữ' : '✕ Bỏ'
-    btn.title = type === 'accept' ? 'Chấp nhận thay đổi này (Giữ)' : 'Từ chối thay đổi này (Bỏ)'
+    btn.textContent = type === 'accept' ? '✓ Accept' : '✕ Reject'
+    btn.title = type === 'accept' ? 'Accept this change' : 'Reject this change'
     btn.addEventListener('click', (e) => {
       if (type === 'accept') {
         onBeforeAccept()

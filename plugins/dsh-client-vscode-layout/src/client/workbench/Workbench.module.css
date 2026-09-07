@@ -4,6 +4,10 @@
   height: 100%;
   min-width: 0;
   background: var(--dsw-alias-bg-base);
+  /* The single containing block FloatingReviewBar.module.css's .bar floats
+     against — consistent across the CodeEditor and TipTap branches, since
+     this wraps both regardless of which one is active. */
+  position: relative;
 }
 
 .body {

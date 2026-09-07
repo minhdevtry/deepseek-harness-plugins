@@ -1,39 +1,50 @@
 /*
- * Docked beneath Breadcrumb, in normal flow — not floating. A previous
- * version absolutely-positioned this against its nearest positioned
- * ancestor; the markdown branch's container had none, so it rendered
- * unpositioned wherever the box model put it (often over the chat panel).
- * Docking removes the containing-block question entirely, and rendering it
- * once (Workbench.tsx, right after Breadcrumb) removes the two-copies-
- * diverging bug that came with having a separate instance per branch.
+ * A floating pill anchored to the bottom-center of the editor pane, matching
+ * Antigravity's review bar — not a full-width banner docked under Breadcrumb.
+ * It's positioned absolute against `.column` in Workbench.module.css (the
+ * one container common to both the CodeEditor and TipTap branches), which
+ * is what a previous absolutely-positioned attempt got wrong: it floated
+ * against whatever ancestor happened to be positioned per-branch, and the
+ * markdown branch had none, so it rendered wherever the box model put it
+ * (often over the chat panel). Rendering it once here at the Workbench
+ * level — not per-branch — is what makes one consistent containing block
+ * possible at all.
  */
 .bar {
+  position: absolute;
+  left: 50%;
+  bottom: 14px;
+  transform: translateX(-50%);
+  z-index: 30;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  width: 100%;
+  gap: 6px;
+  width: max-content;
+  max-width: calc(100% - 32px);
   box-sizing: border-box;
-  padding: 6px 14px;
-  background: var(--dsw-alias-bg-surface-secondary, rgba(241, 245, 249, 0.92));
-  border-bottom: 1px solid var(--dsw-alias-border-l1, rgba(226, 232, 240, 0.9));
+  padding: 4px 8px;
+  border-radius: 10px;
+  background: var(--dsw-alias-bg-surface-secondary, rgba(241, 245, 249, 0.96));
+  border: 1px solid var(--dsw-alias-border-l1, rgba(226, 232, 240, 0.9));
+  box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.18), 0 2px 8px -2px rgba(0, 0, 0, 0.08);
+  backdrop-filter: blur(8px);
   user-select: none;
-  animation: slideDown 0.18s ease;
+  animation: slideUp 0.18s ease;
 }
 
 :global(body[data-ds-dark-theme]) .bar {
-  background: rgba(15, 23, 42, 0.85);
+  background: rgba(30, 41, 59, 0.9);
   border-color: rgba(255, 255, 255, 0.12);
 }
 
-@keyframes slideDown {
+@keyframes slideUp {
   from {
     opacity: 0;
-    transform: translateY(-6px);
+    transform: translate(-50%, 6px);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: translate(-50%, 0);
   }
 }
 
@@ -48,11 +59,11 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 2px 7px;
-  border-radius: 12px;
+  padding: 1px 6px;
+  border-radius: 10px;
   background: rgba(37, 99, 235, 0.12);
   color: var(--dsw-alias-state-business-primary, #2563eb);
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
 }
 
@@ -62,7 +73,7 @@
 }
 
 .countText {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
   color: var(--dsw-alias-label-primary, #0f172a);
 }
@@ -80,13 +91,13 @@
 .btnPrimary {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 5px 14px;
+  gap: 5px;
+  padding: 4px 11px;
   border-radius: 9999px;
   border: 1px solid #1d4ed8;
   background: #2563eb;
   color: #ffffff;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
   cursor: pointer;
   box-shadow: 0 2px 6px rgba(37, 99, 235, 0.35);
@@ -102,13 +113,13 @@
 .btnDanger {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 5px 12px;
+  gap: 5px;
+  padding: 4px 10px;
   border-radius: 9999px;
   border: 1px solid var(--dsw-alias-border-l1, #cbd5e1);
   background: var(--dsw-alias-bg-elevated, #ffffff);
   color: #ef4444;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
   cursor: pointer;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
@@ -156,17 +167,50 @@
   color: #ffffff;
 }
 
+/*
+ * The prev/next-change buttons read as loud, bordered pills at .btnNav's
+ * size — Antigravity shows these as plain inline hint text instead. Same
+ * click target, no button chrome until hover.
+ */
+.btnNavSubtle {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 4px;
+  border-radius: 5px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--dsw-alias-label-tertiary, #94a3b8);
+  font-size: 10px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+:global(body[data-ds-dark-theme]) .btnNavSubtle {
+  color: #64748b;
+}
+
+.btnNavSubtle:hover:not(:disabled) {
+  background: var(--dsw-alias-bg-hover, rgba(0, 0, 0, 0.05));
+  color: var(--dsw-alias-label-primary, #0f172a);
+}
+
+:global(body[data-ds-dark-theme]) .btnNavSubtle:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+  color: #e2e8f0;
+}
+
 .btnIcon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
+  width: 20px;
+  height: 20px;
   border-radius: 50%;
   border: none;
   background: transparent;
   color: var(--dsw-alias-label-tertiary, #94a3b8);
-  font-size: 13px;
+  font-size: 12px;
   cursor: pointer;
   transition: all 0.15s ease;
   margin-left: 2px;
@@ -208,11 +252,20 @@
   color: #cbd5e1;
 }
 
+/* Plain text, no key-cap box — pairs with .btnNavSubtle's de-emphasized look. */
+.kbdGhost {
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  color: inherit;
+  opacity: 0.75;
+}
+
 .divider {
   width: 1px;
-  height: 16px;
+  height: 14px;
   background: var(--dsw-alias-border-l1, #e2e8f0);
-  margin: 0 4px;
+  margin: 0 3px;
 }
 
 :global(body[data-ds-dark-theme]) .divider {

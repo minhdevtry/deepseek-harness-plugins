@@ -20,7 +20,16 @@ def tinh_trung_binh(numbers: list[float]) -> float:
 
 def dinh_dang_ket_qua(nhan: str, gia_tri: float) -> str:
     """Tao chuoi ket qua de de doc tren terminal."""
-    return f"{nhan}: {gia_tri:.2f}"
+    return f"{nhan:<16}: {gia_tri:>8.2f}"
+
+
+def tao_bao_cao(numbers: list[float]) -> list[str]:
+    """Tao vai dong bao cao ngan de test phan diff nhieu dong."""
+    return [
+        dinh_dang_ket_qua("So phan tu", float(len(numbers))),
+        dinh_dang_ket_qua("Trung binh", tinh_trung_binh(numbers)),
+        dinh_dang_ket_qua("Tong du lieu", sum(numbers)),
+    ]
 
 
 def tim_gia_tri_lon_nhat(numbers: list[float]) -> float | None:

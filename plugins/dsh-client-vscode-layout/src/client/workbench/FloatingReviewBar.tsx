@@ -117,7 +117,7 @@ export const FloatingReviewBar: FC<FloatingReviewBarProps> = ({
       <div className={css.statusGroup}>
         <span className={css.badge}>🤖 Review</span>
         <span className={css.countText}>
-          {done ? '✓ Đã duyệt xong' : `${chunkCount} thay đổi`}
+          {done ? '✓ All reviewed' : `${chunkCount} change${chunkCount === 1 ? '' : 's'}`}
         </span>
         {turnStepper && (
           <>
@@ -126,8 +126,8 @@ export const FloatingReviewBar: FC<FloatingReviewBarProps> = ({
               type="button"
               className={css.btnNav}
               onClick={turnStepper.onPrevFile}
-              title="File trước trong lượt này"
-              aria-label="File trước trong lượt này"
+              title="Previous file in this turn"
+              aria-label="Previous file in this turn"
             >
               ⟨
             </button>
@@ -138,8 +138,8 @@ export const FloatingReviewBar: FC<FloatingReviewBarProps> = ({
               type="button"
               className={css.btnNav}
               onClick={turnStepper.onNextFile}
-              title="File sau trong lượt này"
-              aria-label="File sau trong lượt này"
+              title="Next file in this turn"
+              aria-label="Next file in this turn"
             >
               ⟩
             </button>
@@ -156,8 +156,8 @@ export const FloatingReviewBar: FC<FloatingReviewBarProps> = ({
               type="button"
               className={css.btnIcon}
               onClick={onClose}
-              title="Đóng thanh Review (Esc)"
-              aria-label="Đóng thanh Review"
+              title="Close Review Bar (Esc)"
+              aria-label="Close Review Bar"
             >
               ✕
             </button>
@@ -169,9 +169,9 @@ export const FloatingReviewBar: FC<FloatingReviewBarProps> = ({
               type="button"
               className={css.btnPrimary}
               onClick={onAcceptAll}
-              title="Chấp nhận tất cả thay đổi (Ctrl+Enter)"
+              title="Accept all changes (Ctrl+Enter)"
             >
-              <span>Giữ tất cả trong file</span>
+              <span>Accept Changes</span>
               <span className={css.kbd}>Ctrl+↵</span>
             </button>
 
@@ -179,9 +179,9 @@ export const FloatingReviewBar: FC<FloatingReviewBarProps> = ({
               type="button"
               className={css.btnDanger}
               onClick={onRejectAll}
-              title="Từ chối tất cả thay đổi (Ctrl+Backspace)"
+              title="Reject all changes (Ctrl+Backspace)"
             >
-              <span>Bỏ tất cả trong file</span>
+              <span>Reject</span>
               <span className={`${css.kbd} ${css.kbdSubtle}`}>Ctrl+⌫</span>
             </button>
 
@@ -189,24 +189,24 @@ export const FloatingReviewBar: FC<FloatingReviewBarProps> = ({
 
             <button
               type="button"
-              className={css.btnNav}
+              className={css.btnNavSubtle}
               onClick={onPrevChunk}
-              title="Nhảy tới thay đổi trước (Alt+K hoặc Alt+↑)"
-              aria-label="Nhảy tới thay đổi trước"
+              title="Previous change (Alt+K or Alt+↑)"
+              aria-label="Previous change"
             >
               <span>↑</span>
-              <span className={`${css.kbd} ${css.kbdSubtle}`}>Alt+K</span>
+              <span className={css.kbdGhost}>Alt+K</span>
             </button>
 
             <button
               type="button"
-              className={css.btnNav}
+              className={css.btnNavSubtle}
               onClick={onNextChunk}
-              title="Nhảy tới thay đổi sau (Alt+J hoặc Alt+↓)"
-              aria-label="Nhảy tới thay đổi sau"
+              title="Next change (Alt+J or Alt+↓)"
+              aria-label="Next change"
             >
               <span>↓</span>
-              <span className={`${css.kbd} ${css.kbdSubtle}`}>Alt+J</span>
+              <span className={css.kbdGhost}>Alt+J</span>
             </button>
 
             <div className={css.divider} />
@@ -215,8 +215,8 @@ export const FloatingReviewBar: FC<FloatingReviewBarProps> = ({
               type="button"
               className={css.btnIcon}
               onClick={onClose}
-              title="Đóng thanh Review (Esc)"
-              aria-label="Đóng thanh Review"
+              title="Close Review Bar (Esc)"
+              aria-label="Close Review Bar"
             >
               ✕
             </button>
