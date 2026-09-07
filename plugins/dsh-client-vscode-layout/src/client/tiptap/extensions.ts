@@ -98,6 +98,15 @@ const RichHighlight = Highlight.extend({
 import { Extension } from '@tiptap/core'
 import { createTipTapReviewPlugin } from './TipTapReviewPlugin.ts'
 
+import { createClipboardPastePlugin } from './clipboard/handlePaste.ts'
+
+export const ClipboardRouterExtension = Extension.create({
+  name: 'clipboardRouter',
+  addProseMirrorPlugins() {
+    return [createClipboardPastePlugin(this.editor)]
+  },
+})
+
 export const TipTapReviewExtension = Extension.create({
   name: 'tiptapReview',
   addProseMirrorPlugins() {
@@ -165,6 +174,7 @@ export function documentExtensions(): Extensions {
     TextAlign.configure({ types: ['heading', 'paragraph'] }),
     Typography,
     TipTapReviewExtension,
+    ClipboardRouterExtension,
     Markdown,
   ]
 }
