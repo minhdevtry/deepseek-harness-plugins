@@ -52,6 +52,8 @@ import { TipTapEditor, type TipTapEditorHandle } from '../tiptap/TipTapEditor.ts
 import { ImagePreview } from './previews/ImagePreview.tsx'
 import { CsvPreview } from './previews/CsvPreview.tsx'
 import { HtmlPreview } from './previews/HtmlPreview.tsx'
+import { ExcalidrawPreview } from '../excalidraw/ExcalidrawPreview.tsx'
+import { RenderedDiffView } from '../diff/RenderedDiffView.tsx'
 import { KnowledgeGraphView } from '../graph/KnowledgeGraphView.tsx'
 import * as tabModel from './model/tabs.ts'
 import { Spinner } from '../ui/primitives/index.ts'
@@ -103,6 +105,7 @@ export function Workbench({
   const [branch, setBranch] = useState<string | undefined>(undefined)
   const [rawModes, setRawModes] = useState<Record<string, boolean>>({})
   const [graphOpen, setGraphOpen] = useState(false)
+  const [diffRendered, setDiffRendered] = useState(false)
   const [targetRevealLine, setTargetRevealLine] = useState<number | undefined>(undefined)
   const effectiveRevealLine = targetRevealLine ?? activeLine
 
@@ -732,6 +735,7 @@ export function Workbench({
   const isCsv = activePath !== undefined && /\.(csv|tsv)$/i.test(activePath)
   const isHtml = activePath !== undefined && /\.(html|htm)$/i.test(activePath)
   const isMd = activePath !== undefined && isMarkdown(activePath)
+  const isExcalidraw = activePath !== undefined && (activePath.endsWith('.excalidraw') || activePath.endsWith('.excalidraw.json'))
 
   const isRaw = activePath !== undefined && (rawModes[activePath] ?? false)
   const isTruncated = status?.kind === 'text' && Boolean(status.truncated)
@@ -776,11 +780,12 @@ export function Workbench({
   const language = useMemo(() => {
     if (activePath === undefined) return undefined
     if (isImage) return 'Image Preview'
+    if (isExcalidraw) return isRaw ? 'Excalidraw (JSON)' : 'Excalidraw (Whiteboard)'
     if (isMd) return isRaw ? 'Markdown' : 'Markdown (TipTap)'
     if (isCsv) return isRaw ? 'CSV (Raw)' : 'CSV (Table)'
     if (isHtml) return isRaw ? 'HTML (Raw)' : 'HTML (Preview)'
     return languageName(activePath)
-  }, [activePath, isCsv, isHtml, isImage, isMd, isRaw])
+  }, [activePath, isCsv, isExcalidraw, isHtml, isImage, isMd, isRaw])
 
   // Every other path still under review from the same agent turn as the
   // active file — without this, accepting/dismissing the active file's
@@ -1042,63 +1047,87 @@ export function Workbench({
                     />
                   </div>
                 )
-                : (
-                  <div className={css.editor} style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0, position: 'relative' }}>
-                    {isTruncated && (
-                      <div className={css.notice} data-error style={{ borderRadius: 0, borderTop: 'none', borderLeft: 'none', borderRight: 'none', margin: 0 }}>
-                        File quá lớn ({status.size.toLocaleString()} bytes) — chỉ hiển thị phần đầu, chế độ chỉ đọc.
-                      </div>
-                    )}
-                    {diffOpen && (
-                      <DiffView
+                : isExcalidraw && !isRaw && !diffOpen && !isTruncated
+                  ? (
+                    <div className={css.editor}>
+                      <ExcalidrawPreview
+                        content={status.state.doc.toString()}
                         path={activePath}
-                        diskDoc={status.diskDoc}
-                        currentDoc={status.state.doc}
-                        onAccept={() => { void save(activePath).then(ok => { if (ok) setDiffOpen(false) }) }}
-                        onDiscard={() => { discard(activePath); setDiffOpen(false) }}
-                        onClose={() => { setDiffOpen(false) }}
-                      />
-                    )}
-                    {(isMd || isCsv || isHtml) && !diffOpen && !isTruncated && (
-                      <div style={{ position: 'absolute', top: 6, right: 16, zIndex: 20 }}>
-                        <button
-                          type="button"
-                          style={{
-                            background: 'var(--dsw-alias-bg-elevated, #ffffff)',
-                            border: '1px solid var(--dsw-alias-border-l1, #cbd5e1)',
-                            borderRadius: 4,
-                            padding: '2px 8px',
-                            fontSize: 11,
-                            fontWeight: 600,
-                            cursor: 'pointer',
-                            color: 'var(--dsw-alias-state-business-primary, #2563eb)',
-                            boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
-                          }}
-                          onClick={() => {
-                            if (cursor?.line) setTargetRevealLine(cursor.line)
-                            setRawModes(prev => ({ ...prev, [activePath]: false }))
-                          }}
-                        >
-                          {isMd ? '📝 Switch to Notion WYSIWYG' : isCsv ? '📊 Switch to Table' : '🌐 Switch to Preview'}
-                        </button>
-                      </div>
-                    )}
-                    <div style={{ flex: 1, minHeight: 0, height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-                      <CodeEditor
-                        ref={editorRef}
-                        key={activePath}
-                        path={activePath}
-                        registry={registry}
-                        revealLine={effectiveRevealLine}
-                        diffMode={effectiveDiffMode}
-                        readOnly={mdTextReadOnly}
-                        onCursor={setCursor}
-                        onReviewStatsChange={handleReviewStatsChange}
-                        onAutoSave={() => { void save(activePath) }}
+                        onToggleRaw={() => {
+                          setRawModes(prev => ({ ...prev, [activePath]: true }))
+                        }}
                       />
                     </div>
-                  </div>
-                )
+                  )
+                  : (
+                    <div className={css.editor} style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0, position: 'relative' }}>
+                      {isTruncated && (
+                        <div className={css.notice} data-error style={{ borderRadius: 0, borderTop: 'none', borderLeft: 'none', borderRight: 'none', margin: 0 }}>
+                          File quá lớn ({status.size.toLocaleString()} bytes) — chỉ hiển thị phần đầu, chế độ chỉ đọc.
+                        </div>
+                      )}
+                      {diffOpen && (
+                        <DiffView
+                          path={activePath}
+                          diskDoc={status.diskDoc}
+                          currentDoc={status.state.doc}
+                          isRendered={diffRendered}
+                          onToggleRendered={() => setDiffRendered(r => !r)}
+                          onAccept={() => { void save(activePath).then(ok => { if (ok) setDiffOpen(false) }) }}
+                          onDiscard={() => { discard(activePath); setDiffOpen(false) }}
+                          onClose={() => { setDiffOpen(false) }}
+                        />
+                      )}
+                      {(isMd || isCsv || isHtml || isExcalidraw) && !diffOpen && !isTruncated && (
+                        <div style={{ position: 'absolute', top: 6, right: 16, zIndex: 20 }}>
+                          <button
+                            type="button"
+                            style={{
+                              background: 'var(--dsw-alias-bg-elevated, #ffffff)',
+                              border: '1px solid var(--dsw-alias-border-l1, #cbd5e1)',
+                              borderRadius: 4,
+                              padding: '2px 8px',
+                              fontSize: 11,
+                              fontWeight: 600,
+                              cursor: 'pointer',
+                              color: 'var(--dsw-alias-state-business-primary, #2563eb)',
+                              boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
+                            }}
+                            onClick={() => {
+                              if (cursor?.line) setTargetRevealLine(cursor.line)
+                              setRawModes(prev => ({ ...prev, [activePath]: false }))
+                            }}
+                          >
+                            {isMd ? '📝 Switch to Notion WYSIWYG' : isCsv ? '📊 Switch to Table' : isExcalidraw ? '🎨 Switch to Whiteboard' : '🌐 Switch to Preview'}
+                          </button>
+                        </div>
+                      )}
+                      {diffOpen && diffRendered ? (
+                        <div style={{ flex: 1, minHeight: 0, overflow: 'auto' }}>
+                          <RenderedDiffView
+                            beforeText={status.diskDoc.toString()}
+                            afterText={status.state.doc.toString()}
+                            path={activePath}
+                          />
+                        </div>
+                      ) : (
+                        <div style={{ flex: 1, minHeight: 0, height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                          <CodeEditor
+                            ref={editorRef}
+                            key={activePath}
+                            path={activePath}
+                            registry={registry}
+                            revealLine={effectiveRevealLine}
+                            diffMode={effectiveDiffMode}
+                            readOnly={mdTextReadOnly}
+                            onCursor={setCursor}
+                            onReviewStatsChange={handleReviewStatsChange}
+                            onAutoSave={() => { void save(activePath) }}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  )
         )}
           </>
         )}

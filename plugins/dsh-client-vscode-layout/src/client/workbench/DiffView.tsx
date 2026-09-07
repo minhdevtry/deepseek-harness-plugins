@@ -19,6 +19,10 @@ export interface DiffViewProps {
   /** Restore the disk text into the buffer (undoable in the editor). */
   onDiscard: () => void
   onClose: () => void
+  /** Whether visual rendered diff mode is currently active */
+  isRendered?: boolean
+  /** Toggle between visual rendered diff and code diff */
+  onToggleRendered?: () => void
 }
 
 /** Added and removed line counts between two documents. */
@@ -41,8 +45,9 @@ export function countChanges(diskDoc: Text, currentDoc: Text): { added: number; 
 }
 
 /** The diff banner surface. */
-export function DiffView({ diskDoc, currentDoc, onAccept, onDiscard, onClose }: DiffViewProps) {
+export function DiffView({ diskDoc, currentDoc, onAccept, onDiscard, onClose, isRendered, onToggleRendered }: DiffViewProps) {
   const { added, removed } = countChanges(diskDoc, currentDoc)
+  const isMd = diskDoc.toString().length > 0 || currentDoc.toString().length > 0
 
   return (
     <div className={css.header}>
@@ -50,6 +55,11 @@ export function DiffView({ diskDoc, currentDoc, onAccept, onDiscard, onClose }: 
       <span className={css.added}>+{added}</span>
       <span className={css.removed}>−{removed}</span>
       <span className={css.spacer} />
+      {onToggleRendered && isMd && (
+        <button type="button" className={css.toggleBtn} onClick={onToggleRendered}>
+          {isRendered ? '💻 Source Diff' : '👁️ Visual Diff'}
+        </button>
+      )}
       <button type="button" className={css.accept} onClick={onAccept}>Save changes</button>
       <button type="button" className={css.discard} onClick={onDiscard}>Discard</button>
       <button type="button" className={css.close} aria-label="Close diff" onClick={onClose}>✕</button>
