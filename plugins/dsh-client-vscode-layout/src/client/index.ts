@@ -327,71 +327,101 @@ export function apply(ctx: ClientContext): void {
       const heldByCall = new Map<string, Set<string>>()
       // The agent turn each callId belongs to, so a review can be grouped
       // with every other file the same turn touched (the in-chat review
-      // card's whole reason for existing). A settled `ToolResultNode` has
-      // no `turn` field of its own — only `RunningToolCall` does — so this
-      // is captured while the call is still running and carried forward.
+      // card's whole reason for existing). Only the `tool/call` event
+      // carries `turn` — the paired `tool/result` does not — so this is
+      // captured when the call event is first seen and carried forward.
       const turnByCall = new Map<string, number>()
+      // `tool/result`'s `meta` carries the diff for `edit`; a `write`'s own
+      // fallback (extractSettledDiffs) needs the ORIGINAL call's name and
+      // raw arguments, which likewise live only on the `tool/call` event.
+      const callInfoByCall = new Map<string, { name: string, argsRaw: string }>()
       // Sessions whose history this watcher has already caught up on once —
       // see `rebind`'s `suppressReview` for why this exists.
       const seenSessionIds = new Set<string>()
       let isVeryFirstRebind = true
       let unsubscribeSession: (() => void) | undefined
+      let currentCwd: string | undefined
 
       const releaseHeld = (paths: Iterable<string>) => {
         for (const p of paths) (window as any).__dsh_release_autosave?.(p)
       }
 
-      const drainSnapshot = (snap: any, opts?: { suppressReview?: boolean }) => {
+      /**
+       * Walk a session's raw event window and act on `tool/call`/`tool/result`.
+       *
+       * Not `sessionFace.getSnapshot()` — `SessionSnapshot`'s real type (read
+       * directly from `@deepseek-ai/dsh-api-session-controller`'s source, not
+       * guessed) has no node list and no running-call list at all; measured
+       * live, `.getSnapshot().nodes` is consistently `undefined`. Every prior
+       * version of this function read `snap.nodes`/`snap.runningCalls`,
+       * fields that do not exist on that type, so this watcher never
+       * reliably fired for a real agent turn.
+       *
+       * The actual raw event stream is `sessionFace.eventSource` — present
+       * on the concrete `Session` class and exported as a public type
+       * (`SessionEventWindow`/`SessionEventLikeEntry`) from the same
+       * package, but not declared on the narrower `SessionFace` alias
+       * `sessionOf()` returns, hence the cast below. `.getSnapshot().entries`
+       * are `{type: 'event', event: SessionEvent}` in append order, matching
+       * the durable JSONL log verbatim (verified against two real captured
+       * sessions, not inferred).
+       */
+      const drainEvents = (eventWindow: any, running: boolean, opts?: { suppressReview?: boolean }) => {
         const suppressReview = opts?.suppressReview ?? false
-        if (!snap) return
-        const cwd = scope.sessions.list.getSnapshot().byId[snap.sessionId]?.cwd
-        const resolvePath = (raw: string) => resolveWorkspacePath(cwd, raw)
+        if (!eventWindow) return
+        const resolvePath = (raw: string) => resolveWorkspacePath(currentCwd, raw)
 
-        // 1. Hold autosave for running tool calls that touch files, and
-        // remember which paths this callId is holding so they can be
-        // released together once it settles — however it settles.
-        //
-        // `RunningToolCall` is a FLAT shape (`{callId, name, argsRaw, ...}`),
-        // never a nested `{call: {argsRaw}}` — that shape belongs to a
-        // *settled* `ToolResultNode` only (step 2, below). Reading
-        // `running.call?.argsRaw` here always misses, which is why holds
-        // never actually engaged.
-        for (const running of snap.runningCalls ?? []) {
-          if (typeof running.turn === 'number') turnByCall.set(running.callId, running.turn)
-          try {
-            const raw = running.argsRaw
-            if (!raw) continue
-            const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw
-            const target = parsed.path || parsed.file_path || parsed.target_file || parsed.filePath || parsed.TargetFile
-            if (typeof target === 'string') {
-              const absPath = resolvePath(target)
-              ;(window as any).__dsh_hold_autosave?.(absPath)
-              let held = heldByCall.get(running.callId)
-              if (held === undefined) { held = new Set(); heldByCall.set(running.callId, held) }
-              held.add(absPath)
-            }
-          } catch {}
-        }
+        for (const entry of eventWindow.entries ?? []) {
+          if (entry?.type !== 'event') continue
+          const event = entry.event
+          if (event === undefined || event === null) continue
 
-        // 2. Inspect settled tool results: release any hold this call took,
-        // then — if it actually mutated files and did not error out — start
-        // a review.
-        for (const node of snap.nodes ?? []) {
-          if (node.kind !== 'tool-result') continue
-          if (processedCallIds.has(node.callId)) continue
+          // 1. A running or just-settled call: remember its turn and its
+          // own name/arguments (for extractSettledDiffs's write fallback),
+          // and hold autosave for any path-shaped argument — released
+          // below once this same callId's tool/result appears, however it
+          // settles.
+          if (event.type === 'tool/call') {
+            const { callId, name, arguments: argsRaw, turn } = event.data ?? {}
+            if (typeof callId !== 'string') continue
+            if (typeof turn === 'number') turnByCall.set(callId, turn)
+            if (typeof name !== 'string' || typeof argsRaw !== 'string') continue
+            callInfoByCall.set(callId, { name, argsRaw })
+            try {
+              const parsed = JSON.parse(argsRaw)
+              const target = parsed.path || parsed.file_path || parsed.target_file || parsed.filePath || parsed.TargetFile
+              if (typeof target === 'string') {
+                const absPath = resolvePath(target)
+                ;(window as any).__dsh_hold_autosave?.(absPath)
+                let held = heldByCall.get(callId)
+                if (held === undefined) { held = new Set(); heldByCall.set(callId, held) }
+                held.add(absPath)
+              }
+            } catch {}
+            continue
+          }
+
+          if (event.type !== 'tool/result') continue
+          const callId: unknown = event.data?.message?.source?.callId
+          if (typeof callId !== 'string') continue
+          if (processedCallIds.has(callId)) continue
 
           // An interrupted or failed call mutated nothing this plugin should
           // act on — the arguments it carries describe what was ASKED, not
           // what happened, and (for an interrupted `edit`) may be a fragment
-          // the agent never actually wrote.
-          //
+          // the agent never actually wrote. `isError` lives on the
+          // tool-result content block, not the event data itself.
+          const resultBlock = (event.data?.message?.content ?? []).find(
+            (block: any) => block?.type === 'tool-result',
+          )
+          const isError = resultBlock?.isError === true
+
           // The host's own "this call changed files" signal: settled
           // reconciliation metadata (or, for a write, its own arguments),
-          // never a name-substring guess. Each hunk names the FileDiff the
-          // underlying tool computed at execute time — real contextual
-          // fragments for an edit or an overwrite of an existing file, or a
-          // single whole-file hunk (oldText: null) for a genuine create.
-          const diffs = !node.isError ? extractSettledDiffs(node) : null
+          // never a name-substring guess.
+          const diffs = !isError
+            ? extractSettledDiffs({ isError, meta: event.data?.meta, call: callInfoByCall.get(callId) ?? null })
+            : null
           const hasDiffs = diffs !== null
 
           // Only commit (mark processed, release the hold, consume the turn)
@@ -403,14 +433,15 @@ export function apply(ctx: ClientContext): void {
           // (no diffs, or errored) has no such dependency and commits right away.
           if (hasDiffs && !suppressReview && typeof (window as any).__dsh_start_ai_review !== 'function') continue
 
-          processedCallIds.add(node.callId)
-          const held = heldByCall.get(node.callId)
+          processedCallIds.add(callId)
+          const held = heldByCall.get(callId)
           if (held !== undefined) {
             releaseHeld(held)
-            heldByCall.delete(node.callId)
+            heldByCall.delete(callId)
           }
-          const turn = turnByCall.get(node.callId)
-          turnByCall.delete(node.callId)
+          const turn = turnByCall.get(callId)
+          turnByCall.delete(callId)
+          callInfoByCall.delete(callId)
 
           // `suppressReview` marks this node "seen" (above) without popping a
           // review for it — used only for a session's pre-existing history at
@@ -422,7 +453,7 @@ export function apply(ctx: ClientContext): void {
           // turn number to attribute it to. Falling back to the callId keeps
           // it out of every real turn's grouping rather than merging it into
           // whichever turn happens to be numbered the same as `undefined`.
-          const turnId = turn !== undefined ? String(turn) : `unattributed-${node.callId}`
+          const turnId = turn !== undefined ? String(turn) : `unattributed-${callId}`
 
           // Group by path first: a multi-hunk edit reports one FileDiff per
           // hunk, and each must reach the review as one call carrying every
@@ -444,7 +475,7 @@ export function apply(ctx: ClientContext): void {
         // Backstop: the turn ended (or was interrupted) with a call whose
         // settlement never arrived in this window. Release everything rather
         // than freeze autosave on those paths for the rest of the session.
-        if (snap.running === false && heldByCall.size > 0) {
+        if (running === false && heldByCall.size > 0) {
           for (const held of heldByCall.values()) releaseHeld(held)
           heldByCall.clear()
         }
@@ -462,31 +493,41 @@ export function apply(ctx: ClientContext): void {
           unsubscribeSession = undefined
           return
         }
-        const sessionFace = scope.sessions.sessionOf(actx)
+        const sessionFace = scope.sessions.sessionOf(actx) as any
         if (sessionFace === undefined) {
           unsubscribeSession = undefined
           return
         }
 
-        // A session's full node history is whatever `getSnapshot()` returns
-        // right after subscribing — there is no server-side "only what's
-        // new" filter. Without suppressing this first catch-up, switching to
-        // (or resuming) a session with a long history popped a review for
-        // every past diff in it, all at once, as if the agent had just
-        // written every one of those files this instant. The exception is
-        // the very first rebind of this watcher's own lifetime (a page
-        // load): the active session's most recent write may be a review the
-        // operator was mid-way through before the reload, and that one
-        // should still reappear.
+        currentCwd = scope.sessions.list.getSnapshot().byId[currentSessionId]?.cwd
+
+        // A session's full event history is whatever
+        // `eventSource.getSnapshot()` returns right after subscribing —
+        // there is no server-side "only what's new" filter. Without
+        // suppressing this first catch-up, switching to (or resuming) a
+        // session with a long history popped a review for every past diff
+        // in it, all at once, as if the agent had just written every one of
+        // those files this instant. The exception is the very first rebind
+        // of this watcher's own lifetime (a page load): the active
+        // session's most recent write may be a review the operator was
+        // mid-way through before the reload, and that one should still
+        // reappear.
         const isFirstLookAtThisSession = !seenSessionIds.has(currentSessionId)
         seenSessionIds.add(currentSessionId)
         const suppressReview = isFirstLookAtThisSession && !isVeryFirstRebind
         isVeryFirstRebind = false
 
-        unsubscribeSession = sessionFace.subscribe(() => {
-          drainSnapshot(sessionFace.getSnapshot())
-        })
-        drainSnapshot(sessionFace.getSnapshot(), { suppressReview })
+        const drain = () => {
+          drainEvents(sessionFace.eventSource.getSnapshot(), sessionFace.getSnapshot().running)
+        }
+        const unsubEvents = sessionFace.eventSource.subscribe(drain)
+        // Also watch the session's own snapshot: `.running` flipping false is
+        // this function's only cue to run the held-path backstop, and a run
+        // can settle without necessarily publishing a new event-window
+        // revision in the same tick.
+        const unsubSession = sessionFace.subscribe(drain)
+        unsubscribeSession = () => { unsubEvents(); unsubSession() }
+        drainEvents(sessionFace.eventSource.getSnapshot(), sessionFace.getSnapshot().running, { suppressReview })
       }
 
       const offList = scope.sessions.list.subscribe(rebind)
@@ -499,6 +540,7 @@ export function apply(ctx: ClientContext): void {
         for (const held of heldByCall.values()) releaseHeld(held)
         heldByCall.clear()
         turnByCall.clear()
+        callInfoByCall.clear()
       }
     }, 'vscode-layout: watch agent file writes')
   })
