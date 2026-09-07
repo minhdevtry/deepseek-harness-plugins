@@ -1,0 +1,117 @@
+.handleLayer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  z-index: 30;
+}
+
+.handleButton {
+  position: fixed;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--dsw-alias-bg-elevated, #f1f5f9);
+  border: 1px solid var(--dsw-alias-border-l1, #cbd5e1);
+  border-radius: 9999px;
+  color: var(--dsw-alias-text-secondary, #64748b);
+  cursor: grab;
+  pointer-events: auto;
+  user-select: none;
+  transition: background 0.15s ease, color 0.15s ease, transform 0.15s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  z-index: 40;
+}
+
+.handleButton:hover {
+  background: var(--dsw-alias-state-business-primary, #2563eb);
+  color: #ffffff;
+  border-color: var(--dsw-alias-state-business-primary, #2563eb);
+}
+
+.handleButton:active {
+  cursor: grabbing;
+}
+
+.columnHandle {
+  width: 28px;
+  height: 14px;
+  transform: translateX(-50%);
+}
+
+.rowHandle {
+  width: 14px;
+  height: 28px;
+  transform: translateY(-50%);
+}
+
+.dragIndicator {
+  position: fixed;
+  pointer-events: none;
+  z-index: 999;
+  background: var(--dsw-alias-state-business-primary, #2563eb);
+  box-shadow: 0 0 4px rgba(37, 99, 235, 0.5);
+  border-radius: 1px;
+}
+
+.menuPopover {
+  position: fixed;
+  background: var(--dsw-alias-bg-elevated, #ffffff);
+  border: 1px solid var(--dsw-alias-border-l1, #e2e8f0);
+  border-radius: 8px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+  padding: 4px;
+  min-width: 180px;
+  z-index: 1000;
+  pointer-events: auto;
+  font-family: inherit;
+  animation: popoverFadeIn 0.12s ease-out;
+}
+
+@keyframes popoverFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.menuItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 10px;
+  border: none;
+  background: transparent;
+  color: var(--dsw-alias-text-primary, #1e293b);
+  font-size: 12px;
+  font-weight: 500;
+  text-align: left;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+
+.menuItem:hover {
+  background: var(--dsw-alias-bg-hover, #f1f5f9);
+  color: var(--dsw-alias-state-business-primary, #2563eb);
+}
+
+.menuItemDanger {
+  color: #ef4444;
+}
+
+.menuItemDanger:hover {
+  background: rgba(239, 68, 68, 0.1);
+  color: #dc2626;
+}
+
+.menuDivider {
+  height: 1px;
+  background: var(--dsw-alias-border-l2, #e2e8f0);
+  margin: 4px 0;
+}

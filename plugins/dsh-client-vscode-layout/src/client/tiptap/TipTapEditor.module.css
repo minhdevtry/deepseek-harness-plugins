@@ -506,11 +506,20 @@
   position: relative !important;
 }
 
+.container :global(.tableWrapper) {
+  overflow-x: auto;
+  margin: 20px 0;
+}
+
 .container :global(.ProseMirror th) {
-  background: var(--dsw-alias-bg-hover, #f8fafc) !important;
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 5 !important;
+  background: var(--dsw-alias-bg-elevated, #f8fafc) !important;
   font-weight: 700 !important;
   color: var(--dsw-alias-label-primary, #1e293b) !important;
   border-bottom: 2px solid var(--dsw-alias-border-l2, #cbd5e1) !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06) !important;
 }
 
 .container :global(.ProseMirror tr:last-child td) {

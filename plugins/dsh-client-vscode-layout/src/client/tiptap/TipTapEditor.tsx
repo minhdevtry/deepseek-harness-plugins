@@ -24,6 +24,7 @@ import { BubbleMenu } from './BubbleMenu.tsx'
 import { LinkBubble } from './LinkBubble.tsx'
 import { DocLinkMenu, type DocLinkState } from './DocLinkMenu.tsx'
 import { TableControls } from './TableControls.tsx'
+import { TableCellHandles } from './table/TableCellHandles.tsx'
 import { MediaModal, type MediaModalType } from './MediaModal.tsx'
 import { TableOfContents } from './toc/TableOfContents.tsx'
 import { FindBar } from './findBar/FindBar.tsx'
@@ -646,8 +647,9 @@ export const TipTapEditor = forwardRef(function TipTapEditor({
 
   return (
     <div ref={wrapperRef} className={css.wrapper}>
-      {/* Contextual Table Controls */}
+      {/* Contextual Table Controls & Drag Reorder Handles */}
       {editor && <TableControls editor={editor} />}
+      {editor && <TableCellHandles editor={editor} />}
 
       {/* Main Document Canvas with Frontmatter Widget */}
       <div
