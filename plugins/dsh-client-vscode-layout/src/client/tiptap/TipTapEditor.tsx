@@ -16,7 +16,8 @@
 import { useEffect, useRef, useState, useImperativeHandle, forwardRef, type ForwardedRef } from 'react'
 import type { Editor } from '@tiptap/core'
 import type { DocumentRegistry } from './documents.ts'
-import { reviewPluginKey, rejectSingleHunk } from './TipTapReviewPlugin.ts'
+import type { ReviewStats } from '../workbench/CodeEditor.tsx'
+import { reviewPluginKey, rejectHunksBatch } from './TipTapReviewPlugin.ts'
 import { SlashMenu } from './SlashMenu.tsx'
 import { BubbleMenu } from './BubbleMenu.tsx'
 import { LinkBubble } from './LinkBubble.tsx'
@@ -60,8 +61,8 @@ export interface TipTapEditorProps {
   onViewRaw: () => void
   /** Active baseline for Notion WYSIWYG AI review */
   diffBaseline?: string | undefined
-  /** Callback notifying live review chunk statistics */
-  onReviewStatsChange?: ((count: number, canUndo: boolean) => void) | undefined
+  /** Notified on every transaction that could have changed review state. */
+  onReviewStatsChange?: ((stats: ReviewStats) => void) | undefined
 }
 
 interface SlashState {
@@ -98,20 +99,51 @@ export const TipTapEditor = forwardRef(function TipTapEditor({
 
   useEditorSnapshot(editor)
 
-  // Synchronize AI Review Baseline
+  // Keep the floating bar's stats in sync with EVERY plugin-state change —
+  // not only the ones this component's own imperative handle triggers. A
+  // per-hunk accept/reject clicked from the in-document widget
+  // (TipTapReviewPlugin's renderHunkWidget) dispatches straight into the
+  // plugin and never goes through acceptAll/rejectAll/undoReview below, so
+  // without this the bar's count and Undo availability never moved for it —
+  // the count would read "4 changes" forever after accepting all 4 by hand.
+  //
+  // `'transaction'` fires for every dispatched transaction, including a
+  // meta-only one that carries no document change (an accept, per the
+  // measured invariant that accept never touches the document) — `'update'`
+  // is gated on `docChanged` and would miss exactly that case.
+  useEffect(() => {
+    if (!editor || !onReviewStatsChange) return
+    const report = () => {
+      const pState = reviewPluginKey.getState(editor.state)
+      onReviewStatsChange({
+        count: pState?.hunks.length ?? 0,
+        canUndo: (pState?.snapshots.length ?? 0) > 0,
+        // The markdown baseline, not baselineBlocks/baseNodes — this is the
+        // whole-file text Workbench needs to re-arm `diffBaseline` from on a
+        // remount, so an already-resolved hunk does not come back.
+        baseline: pState?.baselineMarkdown ?? '',
+        snapshots: pState?.snapshots ?? [],
+      })
+    }
+    editor.on('transaction', report)
+    return () => { editor.off('transaction', report) }
+  }, [editor, onReviewStatsChange])
+
+  // Synchronize AI Review Baseline. The transaction listener above reports
+  // the resulting stats once this dispatches — no separate report call
+  // needed here.
   useEffect(() => {
     if (!editor) return
     editor.view.dispatch(
       editor.state.tr.setMeta(reviewPluginKey, {
         type: 'SET_BASELINE',
-        baseline: diffBaseline || null,
+        // `??`, not `||`: a genuine create's baseline is the empty string,
+        // which must still arm the review (as "the whole file is new") —
+        // `||` collapses it to `null`, which disarms instead.
+        baseline: diffBaseline ?? null,
       })
     )
-    if (onReviewStatsChange) {
-      const pState = reviewPluginKey.getState(editor.state)
-      onReviewStatsChange(pState?.hunks.length ?? 0, (pState?.snapshots.length ?? 0) > 0)
-    }
-  }, [editor, diffBaseline, onReviewStatsChange])
+  }, [editor, diffBaseline])
 
   // Expose Review Actions to Workbench Toolbar
   useImperativeHandle(ref, () => ({
@@ -134,18 +166,17 @@ export const TipTapEditor = forwardRef(function TipTapEditor({
           baseline: editor.getMarkdown(),
         })
       )
-      onReviewStatsChange?.(0, true)
+      // The transaction listener above reports the resulting stats — this
+      // dispatch already triggered it synchronously.
     },
     rejectAll: () => {
       if (!editor) return
       const pState = reviewPluginKey.getState(editor.state)
       if (!pState || pState.hunks.length === 0) return
-      const hunks = [...pState.hunks]
-      for (let i = hunks.length - 1; i >= 0; i--) {
-        const h = hunks[i]
-        if (h) rejectSingleHunk(editor.view, h, pState)
-      }
-      onReviewStatsChange?.(0, false)
+      // One transaction for every hunk, not N — see rejectHunksBatch's doc:
+      // fewer freezes on a large review, and an accidental Ctrl+Z undoes the
+      // whole Reject All in one step instead of only its last hunk.
+      rejectHunksBatch(editor.view, pState.hunks, pState)
     },
     undoReview: () => {
       if (!editor) return false
@@ -156,32 +187,44 @@ export const TipTapEditor = forwardRef(function TipTapEditor({
           type: 'POP_SNAPSHOT',
         })
       )
-      const nextState = reviewPluginKey.getState(editor.state)
-      onReviewStatsChange?.(nextState?.hunks.length ?? 0, (nextState?.snapshots.length ?? 0) > 0)
       return true
     },
+    // Both previously always jumped to hunks[0]/hunks[last] — a second press
+    // of "next" landed on the exact same hunk instead of advancing, because
+    // neither read where the caret actually was. Using the live selection as
+    // the cursor (CodeMirror's goToNextChunk/goToPreviousChunk do the same,
+    // relative to `view.state.selection`) makes repeated presses walk the
+    // list, and it self-corrects after an accept/reject reindexes `hunks`.
     nextChunk: () => {
       if (!editor) return false
       const pState = reviewPluginKey.getState(editor.state)
       if (!pState || pState.hunks.length === 0) return false
-      const firstHunk = pState.hunks[0]
-      if (!firstHunk) return false
+      const pos = editor.state.selection.from
+      const target = pState.hunks.find(h => h.fromPos > pos) ?? pState.hunks[0]
+      if (!target) return false
       try {
-        const domNode = editor.view.nodeDOM(firstHunk.fromPos) as HTMLElement | null
+        const domNode = editor.view.nodeDOM(target.fromPos) as HTMLElement | null
         domNode?.scrollIntoView({ behavior: 'smooth', block: 'center' })
       } catch {}
+      editor.commands.setTextSelection(Math.min(target.fromPos, editor.state.doc.content.size))
       return true
     },
     prevChunk: () => {
       if (!editor) return false
       const pState = reviewPluginKey.getState(editor.state)
       if (!pState || pState.hunks.length === 0) return false
-      const lastHunk = pState.hunks[pState.hunks.length - 1]
-      if (!lastHunk) return false
+      const pos = editor.state.selection.from
+      let target = pState.hunks[pState.hunks.length - 1]
+      for (let i = pState.hunks.length - 1; i >= 0; i--) {
+        const h = pState.hunks[i]
+        if (h && h.fromPos < pos) { target = h; break }
+      }
+      if (!target) return false
       try {
-        const domNode = editor.view.nodeDOM(lastHunk.fromPos) as HTMLElement | null
+        const domNode = editor.view.nodeDOM(target.fromPos) as HTMLElement | null
         domNode?.scrollIntoView({ behavior: 'smooth', block: 'center' })
       } catch {}
+      editor.commands.setTextSelection(Math.min(target.fromPos, editor.state.doc.content.size))
       return true
     },
     getChunkCount: () => {
@@ -436,6 +479,11 @@ export const TipTapEditor = forwardRef(function TipTapEditor({
       // event and must never be the second to act on it.
       if (e.defaultPrevented) return
       if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        // Unlike Ctrl+F/Ctrl+K below, this one used to fire unconditionally —
+        // pressing Ctrl+S while typing in the chat composer saved this
+        // markdown tab, a surprising side effect of typing somewhere else
+        // entirely.
+        if (!insideThisEditor()) return
         e.preventDefault()
         onSave(path)
       } else if ((e.ctrlKey || e.metaKey) && (e.key === 'f' || e.key === 'F')) {

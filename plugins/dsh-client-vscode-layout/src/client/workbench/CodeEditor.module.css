@@ -70,6 +70,19 @@
 :global(.cm-deletedChunk) {
   background: rgba(239, 68, 68, 0.12) !important;
   border-left: 3px solid rgba(239, 68, 68, 0.6) !important;
+  /*
+   * This widget hosts .cm-chunkButtons and is the only :hover target that
+   * reveals them (.cm-changedLine never contains .cm-chunkButtons in the
+   * actual DOM, so that half of the selector below never matches). For a
+   * pure-insertion hunk there's no removed text to render, so CodeMirror
+   * gives this widget zero natural height — with overflow:visible the
+   * button bar still paints (absolutely positioned), but a zero-height box
+   * has no hit-test area, so it can never receive the hover that would
+   * flip .cm-chunkButtons out of pointer-events:none. Buttons render but
+   * are permanently unclickable. min-height keeps a real hover/hit target
+   * regardless of how much (if any) removed text this chunk has.
+   */
+  min-height: 28px;
 }
 
 :global(.cm-deletedLine) {
@@ -77,17 +90,23 @@
   opacity: 0.85;
 }
 
-/* Inline hover action buttons for CodeMirror merge */
+/*
+ * Per-hunk action buttons. Previously `opacity: 0; pointer-events: none` by
+ * default, revealed only on `:hover` — invisible and entirely inert for
+ * keyboard users (Tab can focus a `pointer-events: none` element, landing on
+ * something unclickable and unseen) and for touch (no hover state at all, so
+ * these were permanently out of reach on a tablet/phone). Always-visible-
+ * but-quiet, full on hover *or* focus, is reachable by every input method.
+ */
 :global(.cm-chunkButtons) {
   display: inline-flex;
   align-items: center;
   gap: 4px;
   position: absolute;
   right: 16px;
-  opacity: 0;
-  pointer-events: none;
-  transform: translateY(-2px);
-  transition: opacity 0.15s ease, transform 0.15s ease;
+  opacity: 0.6;
+  pointer-events: auto;
+  transition: opacity 0.15s ease;
   background: var(--dsw-alias-bg-surface-secondary, rgba(255, 255, 255, 0.9));
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
@@ -104,12 +123,10 @@
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
 }
 
-:global(.cm-deletedChunk:hover .cm-chunkButtons),
-:global(.cm-changedLine:hover .cm-chunkButtons),
-:global(.cm-chunkButtons:hover) {
+:global(.cm-deletedChunk:hover) :global(.cm-chunkButtons),
+:global(.cm-chunkButtons:hover),
+:global(.cm-chunkButtons:focus-within) {
   opacity: 1;
-  pointer-events: auto;
-  transform: translateY(0);
 }
 
 :global(.dsh-review-accept),

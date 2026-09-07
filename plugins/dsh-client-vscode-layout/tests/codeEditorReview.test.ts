@@ -23,8 +23,9 @@ for (const k of [
   ;(globalThis as any)[k] = (dom.window as any)[k]
 }
 
-import { EditorState, Compartment } from '@codemirror/state'
+import { EditorState, Compartment, StateEffect } from '@codemirror/state'
 import { EditorView } from '@codemirror/view'
+import { history } from '@codemirror/commands'
 import {
   unifiedMergeView,
   getChunks,
@@ -230,6 +231,134 @@ describe('Phase 1 AI Review: @codemirror/merge integration', () => {
     view.destroy()
   })
 })
+
+describe('Compartment lifecycle across a simulated remount (T0-7)', () => {
+  // CodeEditor persists its EditorState into BufferRegistry on unmount and
+  // rebuilds an EditorView from it on the next mount (see buffers.ts's
+  // module doc: "the state object IS the tab's memory"). A merge-view
+  // compartment appended fresh on every mount, instead of a stable per-path
+  // one that is reconfigured after the first mount, corrupts that memory:
+  // this reproduces the bug directly against the mount effect's OLD shape,
+  // then proves the NEW shape (BufferRegistry.mergeCompartments +
+  // isMergeArmed) avoids it.
+
+  test('BUG (fixed shape): appending a fresh compartment on every mount permanently shadows the first', () => {
+    const baseline = 'a\nb\nc\nd\n'
+    const aiText = 'A\nb\nc\nD\n'
+
+    // Mount 1: a brand-new compartment, exactly what a per-mount `useRef(new
+    // Compartment())` produced before the fix.
+    const compartment1 = new Compartment()
+    let state = EditorState.create({
+      doc: aiText,
+      extensions: [history(), compartment1.of(unifiedMergeView({ original: baseline, mergeControls: true }))],
+    })
+    const host = document.createElement('div')
+    let view = new EditorView({ state, parent: host })
+    assert.equal(getChunks(view.state)?.chunks.length, 2)
+
+    // Unmount: the state (carrying compartment1's config) is handed back to
+    // the registry, exactly like `registry.sync(path, view.state)`.
+    const persisted = view.state
+    view.destroy()
+
+    // Mount 2 (a remount of the same path): a SECOND fresh compartment is
+    // appended via appendConfig, which is additive — compartment1's config
+    // is still present underneath.
+    const compartment2 = new Compartment()
+    state = persisted.update({
+      effects: StateEffect.appendConfig.of([compartment2.of(unifiedMergeView({ original: baseline, mergeControls: true }))]),
+    }).state
+    view = new EditorView({ state, parent: host })
+
+    // Reconfiguring compartment2 — the ONLY compartment this new mount knows
+    // about — can never reach the field compartment1's `.init()` still owns.
+    view.dispatch({ effects: compartment2.reconfigure([]) })
+    assert.equal(getChunks(view.state)?.chunks.length, 2, 'disarming the second compartment does not disarm the view')
+
+    view.dispatch({
+      effects: compartment2.reconfigure(unifiedMergeView({ original: 'TOTALLY DIFFERENT\n', mergeControls: true })),
+    })
+    assert.equal(getOriginalDoc(view.state).toString(), baseline, 'the second compartment cannot move the baseline either')
+
+    view.destroy()
+  })
+
+  test('FIX: reusing the same compartment pair across mounts, appended only once, lets reconfigure work after a remount', () => {
+    const baseline = 'a\nb\nc\nd\n'
+    const aiText = 'A\nb\nc\nD\n'
+
+    // One BufferRegistry, one path — mergeCompartments/isMergeArmed give the
+    // stable identity + arm-once tracking CodeEditor now relies on.
+    const registry = new BufferRegistryForTest()
+    registry.seed('/a.ts', EditorState.create({ doc: aiText, extensions: [history()] }))
+
+    const host = document.createElement('div')
+
+    const mount = (): EditorView => {
+      const buffer = registry.textState('/a.ts')
+      const { diff } = registry.mergeCompartments('/a.ts')!
+      const armed = registry.isMergeArmed('/a.ts')
+      let initial = buffer
+      if (!armed) {
+        initial = buffer.update({
+          effects: StateEffect.appendConfig.of([diff.of(unifiedMergeView({ original: baseline, mergeControls: true }))]),
+        }).state
+        registry.markMergeArmed('/a.ts')
+      }
+      const v = new EditorView({ state: initial, parent: host })
+      if (armed) {
+        v.dispatch({ effects: diff.reconfigure(unifiedMergeView({ original: baseline, mergeControls: true })) })
+      }
+      return v
+    }
+
+    // Mount 1 (first ever): appends.
+    let view = mount()
+    assert.equal(getChunks(view.state)?.chunks.length, 2)
+    registry.persist('/a.ts', view.state)
+    view.destroy()
+
+    // Mount 2 (remount): reconfigures the SAME compartment — no second
+    // append, so nothing is left shadowed.
+    view = mount()
+    assert.equal(getChunks(view.state)?.chunks.length, 2, 'the remount still sees the correct baseline')
+
+    const { diff } = registry.mergeCompartments('/a.ts')!
+    view.dispatch({ effects: diff.reconfigure([]) })
+    assert.equal(getChunks(view.state), null, 'disarming after a remount actually disarms')
+
+    view.dispatch({
+      effects: diff.reconfigure(unifiedMergeView({ original: 'TOTALLY DIFFERENT\n', mergeControls: true })),
+    })
+    assert.equal(getOriginalDoc(view.state).toString(), 'TOTALLY DIFFERENT\n', 're-arming after a remount actually moves the baseline')
+
+    view.destroy()
+  })
+})
+
+/** Minimal stand-in exercising the exact BufferRegistry methods CodeEditor's mount effect calls, without a network-backed load(). */
+class BufferRegistryForTest {
+  #states = new Map<string, EditorState>()
+  #compartments = new Map<string, { diff: Compartment; readOnly: Compartment }>()
+  #armed = new Set<string>()
+
+  seed(path: string, state: EditorState): void { this.#states.set(path, state) }
+  textState(path: string): EditorState {
+    const s = this.#states.get(path)
+    if (!s) throw new Error(`not seeded: ${path}`)
+    return s
+  }
+  persist(path: string, state: EditorState): void { this.#states.set(path, state) }
+  mergeCompartments(path: string): { diff: Compartment; readOnly: Compartment } | undefined {
+    if (!this.#states.has(path)) return undefined
+    let c = this.#compartments.get(path)
+    if (!c) { c = { diff: new Compartment(), readOnly: new Compartment() }; this.#compartments.set(path, c) }
+    return c
+  }
+  isMergeArmed(path: string): boolean { return this.#armed.has(path) }
+  markMergeArmed(path: string): void { this.#armed.add(path) }
+}
 
 describe('Phase 2 Pre-verification: diff vs presentableDiff on block array encoding', () => {
   test('diff() preserves distinct hunks for block-encoded characters, while presentableDiff collapses them', () => {

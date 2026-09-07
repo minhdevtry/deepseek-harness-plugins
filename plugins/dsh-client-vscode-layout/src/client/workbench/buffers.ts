@@ -15,7 +15,7 @@
  * short-circuits on shared structure, so the check stays cheap on every
  * keystroke where `toString()` on a large file would not.
  */
-import { EditorState, Transaction, type Extension, type Text } from '@codemirror/state'
+import { Compartment, EditorState, Transaction, type Extension, type Text } from '@codemirror/state'
 import { readFile, writeFile, type ApiResult } from '../api/files.ts'
 
 /** What the registry knows about one path. */
@@ -38,6 +38,14 @@ export type BufferStatus =
     truncated: boolean
     /** Size on disk in bytes. */
     size: number
+    /**
+     * The path's merge-view / read-only `Compartment` pair, created lazily on
+     * a `CodeEditor`'s first mount and reused by every mount after that. See
+     * {@link BufferRegistry.mergeCompartments}.
+     */
+    mergeCompartments?: { diff: Compartment; readOnly: Compartment }
+    /** Whether {@link mergeCompartments} has ever been appended into `state`. */
+    mergeArmed?: boolean
   }
 
 /** Observable facts a renderer needs; identity is stable between changes. */
@@ -192,6 +200,68 @@ export class BufferRegistry {
   getText(path: string): string | undefined {
     const buffer = this.#buffers.get(path)
     return buffer?.kind === 'text' ? buffer.state.doc.toString() : undefined
+  }
+
+  /**
+   * Rebase the disk baseline to `text` without writing anything.
+   *
+   * For adopting content an external write (an AI edit, a future disk
+   * watcher) already put on disk — {@link save} would write it a second
+   * time and is also the wrong side of the comparison (its "written" text is
+   * this buffer's own state, not an external one). Recomputes dirtiness
+   * against the *current* buffer state exactly as {@link save} does, so a
+   * buffer that already holds the same text as `text` reads clean.
+   */
+  rebaseDisk(path: string, text: string): void {
+    const buffer = this.#buffers.get(path)
+    if (buffer?.kind !== 'text') return
+    const nextDisk = EditorState.create({ doc: text }).doc
+    buffer.diskDoc = nextDisk
+    const dirty = !buffer.state.doc.eq(nextDisk)
+    if (dirty === buffer.dirty) return
+    buffer.dirty = dirty
+    this.#bump()
+  }
+
+  /**
+   * Stable per-path `Compartment` pair for a text buffer's merge-view and
+   * read-only extensions. Created lazily on first use and identical on every
+   * subsequent call for the same path — this is what a `CodeEditor` remount
+   * must reconfigure against, never append a fresh pair for.
+   *
+   * The registry-held `EditorState` outlives the view (see module doc), and
+   * `StateEffect.appendConfig` is additive: appending a *second* compartment
+   * for the same concern leaves the first one — and whatever content it was
+   * last reconfigured to — in permanent control. CodeMirror resolves a
+   * `StateField`'s reinitialisation to the first-registered `.init()`, so a
+   * later mount's compartment can `reconfigure()` all it wants and never
+   * reach the field the first mount's compartment still owns. One stable
+   * pair per path, appended exactly once (see {@link isMergeArmed}), is what
+   * keeps `reconfigure` working after the first mount.
+   */
+  mergeCompartments(path: string): { diff: Compartment; readOnly: Compartment } | undefined {
+    const buffer = this.#buffers.get(path)
+    if (buffer?.kind !== 'text') return undefined
+    buffer.mergeCompartments ??= { diff: new Compartment(), readOnly: new Compartment() }
+    return buffer.mergeCompartments
+  }
+
+  /**
+   * Whether {@link mergeCompartments} has ever been appended into this
+   * path's state. False exactly once, for a path's very first `CodeEditor`
+   * mount; true for every mount after that and forever after — a path never
+   * needs its compartments un-appended, only reconfigured (see
+   * {@link mergeCompartments}).
+   */
+  isMergeArmed(path: string): boolean {
+    const buffer = this.#buffers.get(path)
+    return buffer?.kind === 'text' && buffer.mergeArmed === true
+  }
+
+  /** Mark a path's merge compartments as appended. See {@link isMergeArmed}. */
+  markMergeArmed(path: string): void {
+    const buffer = this.#buffers.get(path)
+    if (buffer?.kind === 'text') buffer.mergeArmed = true
   }
 
   /**

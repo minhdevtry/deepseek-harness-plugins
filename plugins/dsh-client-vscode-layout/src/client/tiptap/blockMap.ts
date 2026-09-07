@@ -84,6 +84,19 @@ export function parseMarkdownToBlocks(markdown: string): { blocks: string[]; nod
   })
 
   try {
+    // Must match `documents.ts#open`'s own normalization exactly: it appends
+    // an empty trailing paragraph whenever the parsed doc ends on a
+    // non-paragraph block (table, code block, …), to pre-empt ProseMirror's
+    // own DOM-schema repair doing the same thing invisibly later. This
+    // parse feeds every review baseline — skipping the same append here
+    // means any file not ending in a paragraph diffed one block short
+    // against the live (already-normalized) doc, showing a spurious
+    // "✨ MỚI" insertion hunk for a paragraph nobody actually added.
+    const lastNode = editor.state.doc.lastChild
+    if (lastNode && lastNode.type.name !== 'paragraph') {
+      editor.commands.insertContentAt(editor.state.doc.content.size, { type: 'paragraph' })
+    }
+
     const doc = editor.state.doc
     const blocks: string[] = []
     const nodes: ProseMirrorNode[] = []

@@ -352,3 +352,60 @@ describe('setText and getText', () => {
     assert.equal(reg.getText('/missing.md'), undefined)
   })
 })
+
+describe('rebaseDisk', () => {
+  it('rebases the disk comparison without writing, and recomputes dirtiness', async () => {
+    stubFetch(() => ({ ok: true, kind: 'text', content: 'const x = 1', size: 11 }))
+    const reg = registry()
+    await reg.load('/a.ts')
+
+    // The AI already wrote this externally; adopt its text into the buffer
+    // the way __dsh_start_ai_review does, then rebase.
+    reg.setText('/a.ts', 'const x = 2', { addToHistory: false })
+    assert.equal(reg.isDirty('/a.ts'), true)
+
+    reg.rebaseDisk('/a.ts', 'const x = 2')
+    assert.equal(reg.isDirty('/a.ts'), false, 'adopted AI content must not read as unsaved')
+
+    // A later operator edit is still tracked against the NEW disk baseline.
+    reg.setText('/a.ts', 'const x = 2 // operator edit')
+    assert.equal(reg.isDirty('/a.ts'), true)
+  })
+
+  it('is a no-op for a path with no text buffer', () => {
+    const reg = registry()
+    assert.doesNotThrow(() => { reg.rebaseDisk('/missing.md', 'anything') })
+  })
+})
+
+describe('mergeCompartments / isMergeArmed / markMergeArmed', () => {
+  it('creates one stable compartment pair per path, lazily and idempotently', async () => {
+    stubFetch(() => ({ ok: true, kind: 'text', content: 'x', size: 1 }))
+    const reg = registry()
+    await reg.load('/a.ts')
+
+    const first = reg.mergeCompartments('/a.ts')
+    const second = reg.mergeCompartments('/a.ts')
+    assert.ok(first)
+    // Same identity across calls — a CodeEditor remount must reconfigure
+    // this exact pair, never append a fresh one (see the module doc).
+    assert.equal(first, second)
+    assert.equal(first?.diff, second?.diff)
+    assert.equal(first?.readOnly, second?.readOnly)
+  })
+
+  it('returns undefined for a path with no text buffer', () => {
+    const reg = registry()
+    assert.equal(reg.mergeCompartments('/missing.md'), undefined)
+  })
+
+  it('is unarmed until markMergeArmed is called, and stays armed after', async () => {
+    stubFetch(() => ({ ok: true, kind: 'text', content: 'x', size: 1 }))
+    const reg = registry()
+    await reg.load('/a.ts')
+
+    assert.equal(reg.isMergeArmed('/a.ts'), false)
+    reg.markMergeArmed('/a.ts')
+    assert.equal(reg.isMergeArmed('/a.ts'), true)
+  })
+})

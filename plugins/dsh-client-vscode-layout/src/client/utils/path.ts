@@ -17,6 +17,41 @@ export function basename(path: string): string {
 }
 
 /**
+ * Resolve an agent-reported path (bare relative, `./`/`../`-relative, or
+ * already absolute — POSIX or a Windows drive letter) against a session's
+ * cwd into one canonical absolute string.
+ *
+ * The single canonical implementation, so it can be the one thing every
+ * review/hold/autosave map key goes through — `./src/a.ts`, `src/a.ts`, and
+ * the cwd-joined absolute form for the same file must produce the identical
+ * string, or two spellings of one file silently become two unrelated map
+ * entries (a review registered under one key that a later command, spelling
+ * the same path differently, can never find again).
+ */
+export function resolveWorkspacePath(cwd: string | undefined, target: string): string {
+  const normalizedTarget = target.replace(/\\/g, '/')
+  const isAbsolute = normalizedTarget.startsWith('/') || /^[a-zA-Z]:\//.test(normalizedTarget)
+  if (isAbsolute) return collapseDotSegments(normalizedTarget)
+  if (!cwd) return normalizedTarget
+  const normalizedCwd = cwd.replace(/\\/g, '/').replace(/\/+$/, '')
+  return collapseDotSegments(`${normalizedCwd}/${normalizedTarget}`)
+}
+
+/** Resolve `.`/`..` segments in an already-absolute (POSIX or drive-letter) path. */
+function collapseDotSegments(path: string): string {
+  const isWindowsAbsolute = /^[a-zA-Z]:\//.test(path)
+  const prefix = isWindowsAbsolute ? path.slice(0, 3) : '/'
+  const rest = isWindowsAbsolute ? path.slice(3) : path.slice(1)
+  const parts: string[] = []
+  for (const part of rest.split('/')) {
+    if (part === '' || part === '.') continue
+    if (part === '..') { parts.pop(); continue }
+    parts.push(part)
+  }
+  return prefix + parts.join('/')
+}
+
+/**
  * Last file extension of a path, lowercased; empty string when there is none.
  * A leading dot is treated as part of the filename (e.g. `.gitignore`), not an extension marker.
  */

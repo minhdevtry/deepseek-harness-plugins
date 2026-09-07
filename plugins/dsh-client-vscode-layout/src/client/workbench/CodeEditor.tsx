@@ -11,7 +11,7 @@
  */
 import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react'
 import { EditorView, keymap } from '@codemirror/view'
-import { Compartment, EditorState, StateEffect, type Extension, type Text, type TransactionSpec } from '@codemirror/state'
+import { Compartment, EditorState, StateEffect, Transaction, type Extension, type Text, type TransactionSpec } from '@codemirror/state'
 import {
   unifiedMergeView,
   getChunks,
@@ -39,8 +39,32 @@ export type DiffMode =
   | { kind: 'none' }
   /** Save preview: what is on disk vs what is in the buffer. */
   | { kind: 'unsaved'; baseline: Text | string }
-  /** AI review: the pre-AI text vs current buffer, with baseline undo stack. */
-  | { kind: 'ai-review'; baseline: Text | string; snapshots?: string[] }
+  /**
+   * AI review: the pre-AI text vs current buffer, with baseline undo stack.
+   * `turnId` groups this entry with every other file the same agent turn
+   * touched, for a per-turn surface (the in-chat review card) that has no
+   * other way to know which files belong together.
+   */
+  | { kind: 'ai-review'; baseline: Text | string; snapshots?: string[]; turnId?: string | undefined }
+
+/**
+ * Live review stats, reported on every transaction (see `onReviewStatsChange`).
+ *
+ * `baseline`/`snapshots` exist so a REMOUNT can re-arm from wherever the
+ * review actually is, not from the value React was handed when the review
+ * started: accept advances the merge view's internal baseline directly
+ * (never through React), so without an echo channel back to the owner, a
+ * tab switch would silently reconfigure from the ORIGINAL pre-accept
+ * baseline and every already-resolved hunk would reappear.
+ */
+export interface ReviewStats {
+  count: number
+  canUndo: boolean
+  /** The live merge view's current baseline text, or `''` when disarmed. */
+  baseline: string
+  /** The live undo-snapshot stack. */
+  snapshots: readonly string[]
+}
 
 /** Editor props. */
 export interface CodeEditorProps {
@@ -56,8 +80,8 @@ export interface CodeEditorProps {
   /** Lock the document against editing. */
   readOnly?: boolean | undefined
   onCursor: (info: CursorInfo) => void
-  /** Notified when review chunk count or undo availability changes. */
-  onReviewStatsChange?: (chunkCount: number, canUndo: boolean) => void
+  /** Notified on every transaction that could have changed review state. */
+  onReviewStatsChange?: (stats: ReviewStats) => void
 }
 
 /**
@@ -67,6 +91,16 @@ export interface CodeEditorHandle {
   /** Apply a transaction — the revert path, which stays undoable this way. */
   dispatch: (spec: TransactionSpec) => void
   focus: () => void
+  /**
+   * Replace the whole document with externally-supplied text — e.g. adopting
+   * an AI write into this already-mounted view — without recording it in
+   * this buffer's own undo history: the change did not originate as an edit
+   * made through this view, the same reasoning `BufferRegistry.setText`'s
+   * `addToHistory: false` documents for a tree projection. Unlike
+   * `registry.setText`, this reaches the live view directly, so it cannot be
+   * silently reverted by the view's own next transaction.
+   */
+  applyExternalText: (text: string) => void
   acceptAll: () => void
   rejectAll: () => void
   undoReview: () => boolean
@@ -97,7 +131,20 @@ export const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(function
   const updateStats = (view: EditorView | null) => {
     if (!view || !statsCallbackRef.current) return
     const count = getChunks(view.state)?.chunks.length ?? 0
-    statsCallbackRef.current(count, baselineSnapshotsRef.current.length > 0)
+    let baseline = ''
+    try {
+      baseline = getOriginalDoc(view.state).toString()
+    } catch {
+      // originalDoc isn't part of the current config — the merge view is
+      // disarmed (diffMode isn't 'ai-review' right now). The caller only
+      // acts on this while it still believes the review is live.
+    }
+    statsCallbackRef.current({
+      count,
+      canUndo: baselineSnapshotsRef.current.length > 0,
+      baseline,
+      snapshots: baselineSnapshotsRef.current,
+    })
   }
 
   const onBeforeAccept = () => {
@@ -129,6 +176,15 @@ export const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(function
   useImperativeHandle(ref, () => ({
     dispatch: (spec) => { viewRef.current?.dispatch(spec) },
     focus: () => { viewRef.current?.focus() },
+    applyExternalText: (text) => {
+      const view = viewRef.current
+      if (!view) return
+      if (view.state.doc.toString() === text) return
+      view.dispatch({
+        changes: { from: 0, to: view.state.doc.length, insert: text },
+        annotations: Transaction.addToHistory.of(false),
+      })
+    },
     acceptAll: () => {
       const view = viewRef.current
       if (!view) return
@@ -208,21 +264,42 @@ export const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(function
     const buffer = registry.status(path)
     if (host === null || buffer?.kind !== 'text') return
 
+    // Stable per-path pair, not a fresh one per mount — see
+    // BufferRegistry.mergeCompartments. A remount reassigns these refs to the
+    // SAME objects a previous mount used, which is what makes reconfigure
+    // (below, and in the effects further down) actually reach the live state
+    // instead of being permanently shadowed by the first mount's compartment.
+    const compartments = registry.mergeCompartments(path)
+    if (compartments === undefined) return
+    diffCompartment.current = compartments.diff
+    readOnlyCompartment.current = compartments.readOnly
+
     if (diffMode?.kind === 'ai-review' && diffMode.snapshots) {
       baselineSnapshotsRef.current = [...diffMode.snapshots]
     } else if (diffMode?.kind !== 'ai-review') {
       baselineSnapshotsRef.current = []
     }
 
-    const initialDiff = buildDiffExtensions(activeBaseline, diffMode?.kind === 'ai-review')
+    const wantedDiff = buildDiffExtensions(activeBaseline, diffMode?.kind === 'ai-review')
+    const wantedReadOnly = lockExtension(readOnly === true)
+    // True for every mount after this path's very first one. Appending the
+    // compartments again on a later mount is exactly the bug this fixes —
+    // reconfigure the existing pair instead (right after construction, below).
+    const alreadyArmed = registry.isMergeArmed(path)
+
+    let initialState = buffer.state
+    if (!alreadyArmed) {
+      initialState = buffer.state.update({
+        effects: StateEffect.appendConfig.of([
+          compartments.diff.of(wantedDiff),
+          compartments.readOnly.of(wantedReadOnly),
+        ]),
+      }).state
+      registry.markMergeArmed(path)
+    }
 
     const view = new EditorView({
-      state: buffer.state.update({
-        effects: StateEffect.appendConfig.of([
-          diffCompartment.current.of(initialDiff),
-          readOnlyCompartment.current.of(lockExtension(readOnly === true)),
-        ]),
-      }).state,
+      state: initialState,
       parent: host,
       dispatchTransactions: (transactions, instance) => {
         instance.update(transactions)
@@ -259,14 +336,26 @@ export const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(function
 
     viewRef.current = view
 
-    if (revealLine !== undefined && revealLine >= 1 && revealLine <= view.state.doc.lines) {
-      const target = view.state.doc.line(revealLine)
+    // A remount's state came from the registry as it was left by whichever
+    // mount came before — reconfigure onto what THIS mount actually wants
+    // (a different baseline, a disarmed review, a different readOnly flag).
+    if (alreadyArmed) {
       view.dispatch({
-        selection: { anchor: target.from },
-        effects: EditorView.scrollIntoView(target.from, { y: 'center' }),
+        effects: [
+          compartments.diff.reconfigure(wantedDiff),
+          compartments.readOnly.reconfigure(wantedReadOnly),
+        ],
       })
     }
-    view.focus()
+
+    // Never pull focus out of the chat composer — a mount can be caused by an
+    // agent-initiated background open just as easily as by the operator
+    // clicking a tab, and this component cannot tell the two apart. Defense
+    // in depth: the primary fix is that an agent-initiated open never
+    // activates a tab at all (see Workbench's use of onOpenFileBackground).
+    const activeElsewhere = typeof document !== 'undefined'
+      && document.activeElement?.closest('[data-dsh-chat-panel="true"]') != null
+    if (!activeElsewhere) view.focus()
     updateStats(view)
 
     return () => {
@@ -275,6 +364,20 @@ export const CodeEditor = forwardRef<CodeEditorHandle, CodeEditorProps>(function
       viewRef.current = null
     }
   }, [path, registry])
+
+  // Its own effect, not folded into the mount effect above: that one only
+  // re-runs when `path`/`registry` change, so a second search hit landing on
+  // an already-open file (same path, new `revealLine`) was silently ignored.
+  useEffect(() => {
+    const view = viewRef.current
+    if (!view) return
+    if (revealLine === undefined || revealLine < 1 || revealLine > view.state.doc.lines) return
+    const target = view.state.doc.line(revealLine)
+    view.dispatch({
+      selection: { anchor: target.from },
+      effects: EditorView.scrollIntoView(target.from, { y: 'center' }),
+    })
+  }, [revealLine])
 
   // Dynamically reconfigure inline diff without tearing down view
   useEffect(() => {

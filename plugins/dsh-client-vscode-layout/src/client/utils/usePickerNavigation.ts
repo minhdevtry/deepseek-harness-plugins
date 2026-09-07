@@ -44,6 +44,16 @@ export function usePickerNavigation({
   }, [open, autoFocusDelay])
 
   const handleKeyDown = (e: React.KeyboardEvent | KeyboardEvent) => {
+    // An IME candidate window (Vietnamese Telex/VNI, CJK input methods, …)
+    // sends its own Enter/Arrow keydowns to confirm/cycle candidates before
+    // the composed character ever lands in the input. Without this guard,
+    // confirming a candidate with Enter was instead read as "select the
+    // highlighted picker item" — swallowing the keystroke and leaving the
+    // candidate window stuck open. `keyCode === 229` covers browsers that
+    // don't set `isComposing` on the specific event that ends composition.
+    const imeEvent = e as unknown as { isComposing?: boolean, keyCode?: number }
+    if (imeEvent.isComposing || imeEvent.keyCode === 229) return
+
     if (itemCount === 0 && e.key !== 'Escape') return
 
     if (e.key === 'ArrowDown') {

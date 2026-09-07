@@ -30,6 +30,7 @@ import { getLineRangeForSelection } from './utils/chatComposer.ts'
 import { basename } from './utils/path.ts'
 import { appendToComposer, appendMentionToComposer, focusComposer } from './composer.ts'
 import { installWorkbenchOpener } from './fileOpener.ts'
+import { requestCloseCommand } from './workbench/closeCommands.ts'
 import css from './AppFrame.module.css'
 
 /**
@@ -75,6 +76,12 @@ export function AppFrame({
   useStore, useSessions, actions, renderSlot, notify,
   openWorkspace, pickDirectory, listWorkspaces,
   useExplorerView, setExplorerView,
+  // `'details'` is declared scope: 'session' (a real, non-blank current
+  // session) in contract/slots.ts, which is what makes PropsRenderSlots
+  // compose this in — the framework injects it because a session-scope
+  // child exists, not because we import it from anywhere. Rendering
+  // 'details' without this wrapper throws "rendered without a scope binding".
+  SessionProvider,
 }: AppFrameProps) {
   const panels = useStore(s => s)
 
@@ -226,11 +233,11 @@ export function AppFrame({
         setQuickOpen(prev => !prev)
       } else if (mod && e.key.toLowerCase() === 'w') {
         e.preventDefault()
-        if (panels.activePath) {
-          const remaining = panels.tabs.filter(t => t !== panels.activePath)
-          const nextActive = remaining.length > 0 ? remaining[remaining.length - 1] : undefined
-          actions.setTabs(remaining, nextActive)
-        }
+        // Routed through Workbench's own requestClose (closeCommands.ts) so
+        // an unsaved tab prompts before closing, same as clicking its ✕ —
+        // this used to remove the tab from the store directly, silently
+        // discarding any dirty buffer/tree with no confirmation at all.
+        if (panels.activePath) requestCloseCommand(panels.activePath)
       } else if (mod && (e.key === 'Tab' || e.key === 'PageDown' || e.key === 'PageUp')) {
         if (panels.tabs.length > 1 && panels.activePath) {
           e.preventDefault()
@@ -414,7 +421,7 @@ export function AppFrame({
         </div>
 
         <div className={css.detailsCol} style={{ width: 0, display: 'none' }}>
-          {renderSlot('details', {})}
+          <SessionProvider>{renderSlot('details', {})}</SessionProvider>
         </div>
 
         <div className={css.overlayLayer} data-shell-overlay>
@@ -470,6 +477,7 @@ export function AppFrame({
           autoSave={panels.autoSave}
           explorerRoot={panels.explorerRoot}
           onOpenFile={actions.openFile}
+          onOpenFileBackground={actions.openFileBackground}
           onSetTabs={actions.setTabs}
           onMoveTab={actions.moveTab}
           onToggleAutoSave={actions.toggleAutoSave}
@@ -487,7 +495,7 @@ export function AppFrame({
         onTab={actions.setRightTab}
         onClose={actions.closeRight}
         chat={renderSlot('conversation', {})}
-        details={renderSlot('details', {})}
+        details={<SessionProvider>{renderSlot('details', {})}</SessionProvider>}
       />
 
       <div className={css.overlayLayer} data-shell-overlay>

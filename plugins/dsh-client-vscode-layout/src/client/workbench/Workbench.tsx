@@ -35,7 +35,11 @@ import { SaveQueue } from './saveQueue.ts'
 import { isMarkdown } from './language.ts'
 import { languageExtension, languageName } from './language.ts'
 import { editorTheme } from './theme.ts'
-import { CodeEditor, type CodeEditorHandle, type CursorInfo, type DiffMode } from './CodeEditor.tsx'
+import { CodeEditor, type CodeEditorHandle, type CursorInfo, type DiffMode, type ReviewStats } from './CodeEditor.tsx'
+import { reconstructBaseline } from './reconstructBaseline.ts'
+import { computeLineSummary } from './lineSummary.ts'
+import { installReviewCommands, notifyReviewCommandsChanged, type ReviewFileSummary } from './reviewCommands.ts'
+import { installCloseCommand } from './closeCommands.ts'
 import { FloatingReviewBar } from './FloatingReviewBar.tsx'
 import { TabStrip } from './TabStrip.tsx'
 import { Breadcrumb } from './Breadcrumb.tsx'
@@ -67,6 +71,12 @@ export interface WorkbenchProps {
   /** Directory the explorer is showing; the breadcrumb navigates it. */
   explorerRoot: string | undefined
   onOpenFile: (path: string, line?: number) => void
+  /**
+   * Open a tab without activating it or moving keyboard focus — for a write
+   * the agent made, never for something the operator clicked. See the
+   * `__dsh_start_ai_review` global below.
+   */
+  onOpenFileBackground: (path: string) => void
   onSetTabs: (tabs: string[], active: string | undefined) => void
   onMoveTab: (from: number, to: number) => void
   onToggleAutoSave: () => void
@@ -80,7 +90,7 @@ type PendingClose = { path: string; busy: boolean; error?: string }
 /** The editor column (see module doc). */
 export function Workbench({
   tabs, activePath, activeLine, autoSave, explorerRoot,
-  onOpenFile, onSetTabs, onMoveTab, onToggleAutoSave, onRevealDir, onNotify,
+  onOpenFile, onOpenFileBackground, onSetTabs, onMoveTab, onToggleAutoSave, onRevealDir, onNotify,
 }: WorkbenchProps) {
   const [cursor, setCursor] = useState<CursorInfo | undefined>(undefined)
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | { error: string }>('idle')
@@ -91,12 +101,29 @@ export function Workbench({
   const [branch, setBranch] = useState<string | undefined>(undefined)
   const [rawModes, setRawModes] = useState<Record<string, boolean>>({})
 
-  const handleReviewStatsChange = useCallback((count: number, canUndo: boolean) => {
+  const handleReviewStatsChange = useCallback((stats: ReviewStats) => {
     if (!activePath) return
     setReviewStats(prev => {
       const current = prev[activePath]
-      if (current?.count === count && current?.canUndo === canUndo) return prev
-      return { ...prev, [activePath]: { count, canUndo } }
+      if (current?.count === stats.count && current?.canUndo === stats.canUndo) return prev
+      return { ...prev, [activePath]: { count: stats.count, canUndo: stats.canUndo } }
+    })
+    // Keep diffModes' baseline/snapshots current so a remount (a tab switch,
+    // T0-7's now-working reconfigure) re-arms from wherever the review
+    // actually is, not from the value it started at. Accept advances the
+    // live engine's baseline directly, never through React state, so
+    // without this echo every already-resolved hunk would reappear the
+    // moment the view remounts.
+    setDiffModes(prev => {
+      const entry = prev[activePath]
+      if (!entry || entry.kind !== 'ai-review') return prev
+      const entryBaseline = typeof entry.baseline === 'string' ? entry.baseline : entry.baseline.toString()
+      const sameBaseline = entryBaseline === stats.baseline
+      const entrySnapshots = entry.snapshots ?? []
+      const sameSnapshots = entrySnapshots.length === stats.snapshots.length
+        && entrySnapshots.every((s, i) => s === stats.snapshots[i])
+      if (sameBaseline && sameSnapshots) return prev
+      return { ...prev, [activePath]: { ...entry, baseline: stats.baseline, snapshots: [...stats.snapshots] } }
     })
   }, [activePath])
 
@@ -106,6 +133,18 @@ export function Workbench({
   const saveRef = useRef<(path: string) => void>(() => {})
   const editorRef = useRef<CodeEditorHandle | null>(null)
   const tipTapRef = useRef<TipTapEditorHandle | null>(null)
+
+  // Latest-value ref: __dsh_start_ai_review needs to know which path is
+  // *currently* mounted at call time, but re-installing the window globals on
+  // every activePath change would be wasteful — same reasoning as saveRef.
+  const activePathRef = useRef(activePath)
+  activePathRef.current = activePath
+
+  // Latest-value ref: reviewCommands.ts's implementation is installed once
+  // (see below) but must always read the CURRENT review state, not whatever
+  // existed when it was installed.
+  const diffModesRef = useRef<Record<string, DiffMode>>({})
+  diffModesRef.current = diffModes
 
   // One registry for the component's lifetime. Built lazily so the extension
   // factory closes over the ref above rather than a render-scoped value.
@@ -307,6 +346,15 @@ export function Workbench({
     return all
   }, [buffers.dirty, docs.dirty])
 
+  /** Paths under AI review, whether or not they are the active tab (see TabStrip). */
+  const reviewingPaths = useMemo(() => {
+    const paths = new Set<string>()
+    for (const [path, mode] of Object.entries(diffModes)) {
+      if (mode.kind === 'ai-review') paths.add(path)
+    }
+    return paths
+  }, [diffModes])
+
   const [statsTick, setStatsTick] = useState(0)
   useEffect(() => {
     if (activePath === undefined || !isMarkdown(activePath)) return
@@ -358,12 +406,31 @@ export function Workbench({
     return () => { live = false }
   }, [explorerRoot])
 
-  /** Drop a path from both registries — closing a tab ends its document. */
+  /**
+   * Drop a path from both registries — closing a tab ends its document.
+   *
+   * Also ends any review on it: without this, `diffModes`/`reviewStats`
+   * outlived the tab, so reopening the same path later resurrected review
+   * chrome against a baseline from whenever it was last touched, not the
+   * file's actual current state.
+   */
   const forget = useCallback((path: string) => {
     registry.forget(path)
     documents.forget(path)
     const sel = (window as any).__dsh_active_selection
     if (sel?.path === path) (window as any).__dsh_active_selection = null
+    setDiffModes(prev => {
+      if (!(path in prev)) return prev
+      const next = { ...prev }
+      delete next[path]
+      return next
+    })
+    setReviewStats(prev => {
+      if (!(path in prev)) return prev
+      const next = { ...prev }
+      delete next[path]
+      return next
+    })
   }, [documents, registry])
 
   // Registries must not outlive their tab. `requestClose`/`closeNow`/`applyBulk`
@@ -412,58 +479,97 @@ export function Workbench({
 
   // Global hooks for starting / stopping AI Code Reviews
   useEffect(() => {
-    (window as any).__dsh_start_ai_review = async (targetPath: string, baseline?: string, newContent?: string) => {
-      // 1. Ensure tab is opened
-      if (!tabs.includes(targetPath)) {
-        onOpenFile(targetPath)
+    (window as any).__dsh_start_ai_review = async (
+      targetPath: string,
+      hunks: readonly { oldText: string | null; newText: string }[],
+      turnId?: string,
+    ) => {
+      if (!Array.isArray(hunks) || hunks.length === 0) return
+
+      // Snapshot whatever this path held BEFORE anything below touches it.
+      // For a path that was already open, this is the exact pre-write text —
+      // no reconstruction needed — and it is also the only place a conflict
+      // with the operator's own unsaved edits can still be seen: once step 2
+      // reads the (already post-write) disk, that information is gone.
+      const preWriteBuffer = registry.status(targetPath)
+      const preWriteMarkdownDirty = isMarkdown(targetPath) && documents.isDirty(targetPath)
+      if ((preWriteBuffer?.kind === 'text' && preWriteBuffer.dirty) || preWriteMarkdownDirty) {
+        onNotify(`AI đã sửa "${basename(targetPath)}", nhưng bạn có thay đổi chưa lưu ở đó — bản của AI chưa được áp dụng.`)
+        return
       }
 
-      // 2. Resolve baseline before updating buffer
-      let effectiveBaseline = baseline
-      if (effectiveBaseline === undefined || effectiveBaseline === '') {
-        const currentStatus = registry.status(targetPath)
-        if (currentStatus?.kind === 'text') {
-          effectiveBaseline = currentStatus.state.doc.toString()
-        } else {
-          const diskRes = await readFile(targetPath)
-          effectiveBaseline = diskRes.ok ? diskRes.value.content : ''
-        }
+      // 1. Read the file's actual current content. Disk already holds the
+      // AI's write by the time this runs, so it is the one reliable source
+      // of the whole file — whether the supplied hunks are whole-file (a
+      // create) or context-only fragments (an edit, or an overwrite of an
+      // existing file, which produces fragments exactly like an edit does).
+      const diskRes = await readFile(targetPath)
+      if (!diskRes.ok) {
+        onNotify(`AI review: không đọc được "${basename(targetPath)}" sau khi ghi`)
+        return
       }
+      const newContent = diskRes.value.content
 
-      // 3. Adopt new content into buffer registry
-      if (typeof newContent === 'string' && newContent.length > 0) {
-        registry.setText(targetPath, newContent, { addToHistory: false })
+      // 2. Resolve the pre-write baseline. The exact pre-write buffer when
+      // this path was already open; otherwise reverse the hunks against the
+      // post-write content one at a time (never derive it from any single
+      // hunk's newText alone — for a create hunk that IS the whole file, but
+      // for an edit/overwrite fragment it is not).
+      let effectiveBaseline: string
+      if (preWriteBuffer?.kind === 'text') {
+        effectiveBaseline = preWriteBuffer.state.doc.toString()
       } else {
-        await registry.reload(targetPath)
+        const reconstructed = reconstructBaseline(newContent, hunks)
+        if (!reconstructed.ok) {
+          onNotify(`AI review: không thể tái tạo chính xác bản trước khi sửa của "${basename(targetPath)}"`)
+        }
+        effectiveBaseline = reconstructed.text
       }
 
-      // 4. If markdown document, update TipTap document as well
+      // 3. Ensure the tab exists, without activating it or moving focus —
+      // this is an agent-initiated open, never a user gesture.
+      if (!tabs.includes(targetPath)) {
+        onOpenFileBackground(targetPath)
+      }
+      if (registry.status(targetPath) === undefined) {
+        await registry.load(targetPath)
+      }
+
+      // 4. Adopt the AI's content. The active tab's mounted view owns its
+      // own copy of the document — its dispatchTransactions writes it back
+      // into the registry on every transaction (including the reconfigure
+      // this same review triggers) — so a plain registry.setText here would
+      // be silently reverted the moment that happens. Go through the live
+      // view for the active tab; registry.setText is correct for a
+      // background tab, which has no mounted view to revert it.
+      if (targetPath === activePathRef.current && editorRef.current) {
+        editorRef.current.applyExternalText(newContent)
+      } else {
+        registry.setText(targetPath, newContent, { addToHistory: false })
+      }
+      // Disk already holds newContent — rebase the comparison so this
+      // adoption does not itself flag the file as unsaved (that would ask
+      // the operator to "save" text already on disk, and would let a
+      // reject-to-baseline compute clean against the wrong document).
+      registry.rebaseDisk(targetPath, newContent)
+
+      // 5. If markdown document, update TipTap document as well
       if (isMarkdown(targetPath)) {
-        const freshBuffer = registry.status(targetPath)
-        if (freshBuffer?.kind === 'text') {
-          documents.reopen(targetPath, freshBuffer.state.doc.toString())
-        }
+        documents.reopen(targetPath, newContent)
+        // Force the tree view: the raw view is read-only projection that
+        // reject cannot write through (see onViewRaw's comment in the render
+        // below), so a review must not open — or be left — showing it.
+        setRawModes(prev => ({ ...prev, [targetPath]: false }))
       } else {
         // Non-markdown files switch to code editor view
         setRawModes(prev => ({ ...prev, [targetPath]: true }))
       }
 
-      // 5. Activate AI review mode
+      // 6. Activate AI review mode
       setDiffModes(prev => ({
         ...prev,
-        [targetPath]: { kind: 'ai-review', baseline: effectiveBaseline || '', snapshots: [] },
+        [targetPath]: { kind: 'ai-review', baseline: effectiveBaseline, snapshots: [], turnId },
       }))
-    }
-
-    (window as any).__dsh_stop_ai_review = (targetPath: string) => {
-      setDiffModes(prev => {
-        const next = { ...prev }
-        delete next[targetPath]
-        return next
-      })
-      if (dirty.has(targetPath)) {
-        void save(targetPath)
-      }
     }
 
     (window as any).__dsh_hold_autosave = (targetPath: string) => {
@@ -474,23 +580,90 @@ export function Workbench({
       saveQueue.release(targetPath)
     }
 
-    (window as any).__dsh_revert_turn_file = (targetPath: string) => {
-      discard(targetPath)
-      setDiffModes(prev => {
-        const next = { ...prev }
-        delete next[targetPath]
-        return next
-      })
-    }
-
     return () => {
       delete (window as any).__dsh_start_ai_review
-      delete (window as any).__dsh_stop_ai_review
-      delete (window as any).__dsh_revert_turn_file
       delete (window as any).__dsh_hold_autosave
       delete (window as any).__dsh_release_autosave
     }
-  }, [tabs, onOpenFile, dirty, save, registry, documents, saveQueue])
+  }, [tabs, onOpenFileBackground, onNotify, registry, documents, saveQueue])
+
+  // Seat the typed cross-tree review API — see reviewCommands.ts. This is
+  // what lets TurnReviewCard (registered into a different slot entirely,
+  // with no React path to this component) reach real accept/reject verbs
+  // and real per-file line counts, instead of the untyped window globals
+  // above (which only the capture pipeline in index.ts needs).
+  useEffect(() => {
+    const dispose = installReviewCommands({
+      summaryForTurn: (turnId) => {
+        const result: ReviewFileSummary[] = []
+        for (const [path, mode] of Object.entries(diffModesRef.current)) {
+          if (mode.kind !== 'ai-review' || mode.turnId !== turnId) continue
+          const baseline = typeof mode.baseline === 'string' ? mode.baseline : mode.baseline.toString()
+          const current = isMarkdown(path)
+            ? (documents.preview(path) ?? registry.getText(path) ?? baseline)
+            : (registry.getText(path) ?? baseline)
+          const { added, removed } = computeLineSummary(baseline, current)
+          result.push({ path, added, removed })
+        }
+        return result
+      },
+      acceptAll: (path) => {
+        const isActive = path === activePathRef.current
+        if (isMarkdown(path) && isActive && tipTapRef.current) tipTapRef.current.acceptAll()
+        else if (!isMarkdown(path) && isActive && editorRef.current) editorRef.current.acceptAll()
+        // Otherwise this is a background path: its content is already the
+        // AI's version (adopted at review-start time), so there is nothing
+        // to change — "accept" here is purely "stop tracking this review".
+        setDiffModes(prev => {
+          if (!(path in prev)) return prev
+          const next = { ...prev }
+          delete next[path]
+          return next
+        })
+      },
+      rejectAll: async (path) => {
+        const mode = diffModesRef.current[path]
+        if (!mode || mode.kind !== 'ai-review') return
+        const baseline = typeof mode.baseline === 'string' ? mode.baseline : mode.baseline.toString()
+        const isActive = path === activePathRef.current
+        if (isMarkdown(path) && isActive && tipTapRef.current) {
+          tipTapRef.current.rejectAll()
+        } else if (!isMarkdown(path) && isActive && editorRef.current) {
+          editorRef.current.rejectAll()
+        } else {
+          // Headless revert: no mounted view to carry the transaction.
+          registry.setText(path, baseline)
+          if (isMarkdown(path)) documents.reopen(path, baseline)
+        }
+        // Reject is a real content change (per the measured invariant, unlike
+        // accept) and must reach disk — a same-content revert would compute
+        // clean and silently never write, leaving disk holding the AI's
+        // version while the screen shows the reverted one.
+        await save(path)
+        setDiffModes(prev => {
+          if (!(path in prev)) return prev
+          const next = { ...prev }
+          delete next[path]
+          return next
+        })
+      },
+    })
+    return dispose
+  }, [documents, registry, save])
+
+  // Seat `requestClose` for AppFrame's global Ctrl+W — see closeCommands.ts.
+  // Without this, Ctrl+W closed tabs directly (via the tab-list store) with
+  // no dirty check at all, bypassing the same unsaved-changes confirmation
+  // TabStrip's own close button goes through.
+  useEffect(() => installCloseCommand(requestClose), [requestClose])
+
+  // Tell reviewCommands subscribers (TurnReviewCard instances) whenever
+  // tracked review state actually changes — summaryForTurn reads
+  // diffModesRef fresh on every call, so this only needs to trigger a
+  // re-render, not carry any data itself.
+  useEffect(() => {
+    notifyReviewCommandsChanged()
+  }, [diffModes])
 
   /** Throw away a tab's unsaved edits and go back to what is on disk. */
   const discard = useCallback((path: string) => {
@@ -535,6 +708,9 @@ export function Workbench({
 
   const isRaw = activePath !== undefined && (rawModes[activePath] ?? false)
   const isTruncated = status?.kind === 'text' && Boolean(status.truncated)
+  // Mirrors the branch condition below that picks TipTap over CodeEditor —
+  // whichever ref is actually mounted is where a review command must land.
+  const usingTipTap = isMd && !isRaw && !diffOpen && !isTruncated
 
   /**
    * Every *text* view of a markdown file is read-only — raw and diff alike.
@@ -579,12 +755,27 @@ export function Workbench({
     return languageName(activePath)
   }, [activePath, isCsv, isHtml, isImage, isMd, isRaw])
 
+  // Every other path still under review from the same agent turn as the
+  // active file — without this, accepting/dismissing the active file's
+  // review left every sibling file in the same turn invisibly still
+  // pending, with no way to tell from here that they existed.
+  const turnPaths = useMemo(() => {
+    const activeMode = activePath !== undefined ? diffModes[activePath] : undefined
+    if (activeMode?.kind !== 'ai-review') return []
+    const turnId = activeMode.turnId
+    if (turnId === undefined) return []
+    return Object.entries(diffModes)
+      .filter(([, m]) => m.kind === 'ai-review' && m.turnId === turnId)
+      .map(([p]) => p)
+  }, [activePath, diffModes])
+
   return (
     <div className={css.column}>
       <TabStrip
         tabs={tabs}
         active={activePath}
         dirty={dirty}
+        reviewing={reviewingPaths}
         onSelect={onOpenFile}
         onClose={requestClose}
         onCloseOthers={path => { applyBulk(tabModel.closeOthers(tabs, path)) }}
@@ -597,6 +788,66 @@ export function Workbench({
 
       {activePath !== undefined && (
         <Breadcrumb path={activePath} root={explorerRoot} onNavigate={onRevealDir} />
+      )}
+
+      {/*
+        Docked once, here, regardless of which editor is live underneath —
+        replaces two separate <FloatingReviewBar> instances (one per branch
+        below) that duplicated every handler and could diverge, and that in
+        the markdown branch had no positioned ancestor to float against.
+      */}
+      {activePath !== undefined && effectiveDiffMode.kind === 'ai-review' && (
+        <FloatingReviewBar
+          chunkCount={reviewStats[activePath]?.count ?? 0}
+          canUndo={reviewStats[activePath]?.canUndo ?? false}
+          onAcceptAll={() => {
+            if (usingTipTap) tipTapRef.current?.acceptAll()
+            else editorRef.current?.acceptAll()
+          }}
+          onRejectAll={() => {
+            // Reject is a real content change (unlike accept, per the
+            // measured invariant) and must reach disk, or the screen and
+            // disk silently disagree from here on.
+            if (usingTipTap) tipTapRef.current?.rejectAll()
+            else editorRef.current?.rejectAll()
+            void save(activePath)
+          }}
+          onUndo={() => {
+            if (usingTipTap) tipTapRef.current?.undoReview()
+            else editorRef.current?.undoReview()
+          }}
+          onPrevChunk={() => {
+            if (usingTipTap) tipTapRef.current?.prevChunk()
+            else editorRef.current?.prevChunk()
+          }}
+          onNextChunk={() => {
+            if (usingTipTap) tipTapRef.current?.nextChunk()
+            else editorRef.current?.nextChunk()
+          }}
+          onClose={() => {
+            setDiffModes(prev => {
+              const next = { ...prev }
+              delete next[activePath]
+              return next
+            })
+            if (dirty.has(activePath)) void save(activePath)
+          }}
+          turnStepper={turnPaths.length > 1
+            ? {
+                fileName: basename(activePath) || activePath,
+                index: turnPaths.indexOf(activePath),
+                total: turnPaths.length,
+                onPrevFile: () => {
+                  const i = turnPaths.indexOf(activePath)
+                  onOpenFile(turnPaths[(i - 1 + turnPaths.length) % turnPaths.length]!)
+                },
+                onNextFile: () => {
+                  const i = turnPaths.indexOf(activePath)
+                  onOpenFile(turnPaths[(i + 1) % turnPaths.length]!)
+                },
+              }
+            : undefined}
+        />
       )}
 
       <div className={css.body}>
@@ -634,27 +885,6 @@ export function Workbench({
                   effect has run would leave it permanently blank. `docs.version`
                   re-renders us the moment the document lands.
                 */}
-                {effectiveDiffMode.kind === 'ai-review' && (
-                  <FloatingReviewBar
-                    chunkCount={reviewStats[activePath]?.count ?? 0}
-                    canUndo={reviewStats[activePath]?.canUndo ?? false}
-                    onAcceptAll={() => { tipTapRef.current?.acceptAll() }}
-                    onRejectAll={() => { tipTapRef.current?.rejectAll() }}
-                    onUndo={() => { tipTapRef.current?.undoReview() }}
-                    onPrevChunk={() => { tipTapRef.current?.prevChunk() }}
-                    onNextChunk={() => { tipTapRef.current?.nextChunk() }}
-                    onClose={() => {
-                      setDiffModes(prev => {
-                        const next = { ...prev }
-                        delete next[activePath]
-                        return next
-                      })
-                      if (dirty.has(activePath)) {
-                        void save(activePath)
-                      }
-                    }}
-                  />
-                )}
                 {documents.editor(activePath) !== undefined
                   ? (
                     <TipTapEditor
@@ -668,6 +898,20 @@ export function Workbench({
                       onReviewStatsChange={handleReviewStatsChange}
                       onSave={(p) => { void save(p) }}
                       onViewRaw={() => {
+                        // The raw view is a read-only CodeMirror projection of
+                        // the tree, refreshed from it on every save/view-flip
+                        // (projectMarkdown). A per-hunk reject there edits
+                        // only that projection — the tree, which is what
+                        // actually gets saved, never changes — so the very
+                        // next projection would silently restore the AI's
+                        // text, making the reject look like it worked and
+                        // then quietly reverse itself. Simplest correct fix:
+                        // stay in the tree view (where reject genuinely
+                        // writes back) for as long as a review is open.
+                        if (effectiveDiffMode.kind === 'ai-review') {
+                          onNotify('Không thể xem bản thô khi đang review — hãy Accept/Reject xong trước.')
+                          return
+                        }
                         showTextView(() => {
                           setRawModes(prev => ({ ...prev, [activePath]: true }))
                         })
@@ -744,27 +988,6 @@ export function Workbench({
                           {isMd ? '📝 Switch to Notion WYSIWYG' : isCsv ? '📊 Switch to Table' : '🌐 Switch to Preview'}
                         </button>
                       </div>
-                    )}
-                    {effectiveDiffMode.kind === 'ai-review' && (
-                      <FloatingReviewBar
-                        chunkCount={reviewStats[activePath]?.count ?? 0}
-                        canUndo={reviewStats[activePath]?.canUndo ?? false}
-                        onAcceptAll={() => { editorRef.current?.acceptAll() }}
-                        onRejectAll={() => { editorRef.current?.rejectAll() }}
-                        onUndo={() => { editorRef.current?.undoReview() }}
-                        onPrevChunk={() => { editorRef.current?.prevChunk() }}
-                        onNextChunk={() => { editorRef.current?.nextChunk() }}
-                        onClose={() => {
-                          setDiffModes(prev => {
-                            const next = { ...prev }
-                            delete next[activePath]
-                            return next
-                          })
-                          if (dirty.has(activePath)) {
-                            void save(activePath)
-                          }
-                        }}
-                      />
                     )}
                     <div style={{ flex: 1, minHeight: 0, height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
                       <CodeEditor

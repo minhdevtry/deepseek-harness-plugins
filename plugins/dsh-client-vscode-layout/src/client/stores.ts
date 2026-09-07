@@ -8,7 +8,7 @@
  * share from the return type, and the service face receives the bound actions
  * through the registration's inject hook.
  */
-import { defineStore, type EngineStoreHandle } from '@deepseek-ai/dsh-client-runtime/client'
+import { defineStore, type StoreHandle } from '@deepseek-ai/dsh-client-store'
 import {
   clampWidth, RIGHT_DEFAULT, RIGHT_MIN, SIDEBAR_DEFAULT, SIDEBAR_MAX, SIDEBAR_MIN, rightMax,
 } from './columns.ts'
@@ -69,6 +69,8 @@ type LayoutActions = {
   toggleRight: (draft: LayoutState) => void
   setRightTab: (draft: LayoutState, tab: RightTab) => void
   openFile: (draft: LayoutState, path: string, line?: number) => void
+  /** Open a tab without activating it — see `openFile`'s doc for why this exists. */
+  openFileBackground: (draft: LayoutState, path: string) => void
   setTabs: (draft: LayoutState, tabs: string[], active: string | undefined) => void
   moveTab: (draft: LayoutState, from: number, to: number) => void
   toggleAutoSave: (draft: LayoutState) => void
@@ -88,7 +90,7 @@ type LayoutActions = {
  * preference.
  * @returns the store handle (spec + type + identity + factory in one).
  */
-export function createLayoutStore(): EngineStoreHandle<LayoutState, LayoutActions> {
+export function createLayoutStore(): StoreHandle<LayoutState, LayoutActions> {
   return defineStore({
     init: (): LayoutState => {
       let initialRight = RIGHT_DEFAULT
@@ -234,6 +236,12 @@ export function createLayoutStore(): EngineStoreHandle<LayoutState, LayoutAction
         if (!d.tabs.includes(path)) d.tabs.push(path)
         d.activePath = path
         d.activeLine = line
+      },
+      // The agent-initiated twin of openFile: reachable (in tabs, in the
+      // explorer, in a review surface) without moving activePath or focus,
+      // because nothing here was the operator asking to look at this file.
+      openFileBackground: (d, path: string) => {
+        if (!d.tabs.includes(path)) d.tabs.push(path)
       },
       // The list arithmetic lives in model/tabs.ts; the store just adopts the
       // result, so closing rules stay assertable without a store.

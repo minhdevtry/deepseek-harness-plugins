@@ -12,14 +12,29 @@
  * in the profile's cordis.patch.yml — two occupants of a `single` slot is a
  * load-time failure, by design.
  */
-import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
+import type { Context as ClientContext } from '@deepseek-ai/cordis'
 // Type-only: pulls the theme plugin's Context merge (ctx.theme).
 import type {} from '@deepseek-ai/dsh-client-ui-theme/client'
 // Type-only: pulls ui-sidebar's SlotMap merge, so the footer-action seat this
 // package registers into resolves. We do not own that hole — we join it.
 import type {} from '@deepseek-ai/dsh-client-ui-sidebar/client'
+// Type-only: each of these packages' Context/SlotMap merge is NOT transitive
+// through another package's import — every plugin that reads ctx.slots,
+// ctx.sessions, ctx.workspaces, ctx.uiWorkspace or GlobalStandardProps's
+// useSessions must import that package's own `/client` entry directly, even
+// if it also imports a concrete type from it elsewhere (dsh-client-runtime,
+// which used to pre-merge all of these into one ClientContext, is retired).
+import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
+import type {} from '@deepseek-ai/dsh-client-ui-session/client'
+import type {} from '@deepseek-ai/dsh-api-session-controller/client'
+import type {} from '@deepseek-ai/dsh-api-workspace-controller/client'
+import type {} from '@deepseek-ai/dsh-client-ui-workspace/client'
 import type { InputTriggerServiceContract } from '@deepseek-ai/dsh-client-ui-input-trigger/client'
 import type { IConversation } from '@deepseek-ai/dsh-client-ui-conversation/client'
+// Type-only: the 'conversation.chat.turnTail' SlotMap key and TurnTailOwnerProps
+// now live in ui-chat, not ui-conversation (the owner-props themselves are
+// imported directly in chat/TurnReviewCard.tsx).
+import type {} from '@deepseek-ai/dsh-client-ui-chat/client'
 import type { PanelActions } from './service.ts'
 import type { FrameInjected } from './contract/slots.ts'
 import './styles/tokens.css'
@@ -29,13 +44,11 @@ import { LayoutController } from './service.ts'
 import { ThemePresenter } from './theme-presenter.ts'
 import { mountSprite } from './explorer/icons/index.ts'
 import { createViewState, type ExplorerView } from './explorer/views.ts'
-import { basename } from './utils/path.ts'
+import { basename, resolveWorkspacePath } from './utils/path.ts'
 import { RailViews, type RailViewsInjected } from './explorer/RailViews.tsx'
 import { createFileSource } from './inputTriggers/fileSource.ts'
 import { installComposerWriter, installReferenceWriter, toWorkspaceRelative, type ComposerReference } from './composer.ts'
-import { openInWorkbench, routeFor } from './fileOpener.ts'
-import { readFile } from './api/files.ts'
-import { TurnReviewCard, selectTurnModifiedFiles } from './chat/TurnReviewCard.tsx'
+import { TurnReviewCard, selectTurnId } from './chat/TurnReviewCard.tsx'
 
 export { toWorkspaceRelative }
 
@@ -54,7 +67,7 @@ declare module '@deepseek-ai/cordis' {
 }
 
 /** Required services (cordis fiber inject — the loader passes all module exports as an object plugin). */
-export const inject = ['slots', 'theme', 'sessions', 'workspaces']
+export const inject = ['slots', 'theme', 'sessions', 'workspaces', 'uiWorkspace']
 
 /**
  * Client plugin body: provide ctx.layout, then one register() call — AppFrame
@@ -150,39 +163,16 @@ export function apply(ctx: ClientContext): void {
     return input.insertReference(resolvedRef, { start: at, end: at, draftRev: snap.draftRev })
   }), 'vscode-layout: composer reference writer')
 
-  /**
-   * Route a clicked file into the workbench instead of the OS (see fileOpener.ts).
-   *
-   * A decoration, not a replacement: anything the workbench cannot genuinely
-   * show — a PDF, an archive, a directory, or any path at all while the frame
-   * is unmounted — falls through to the host's own method, and unloading the
-   * plugin puts the original back.
-   *
-   * The probe asks for positive evidence, not absence of it: a path whose name
-   * settles nothing (`Makefile`, `LICENSE`, `~/notes`) is claimed only if the
-   * host can actually read it as a file. Testing for a directory instead would
-   * claim everything a directory test merely *failed* on — a path outside the
-   * sandbox, a broken symlink — and hand the operator a tab that cannot open
-   * where the OS would have done something sensible. Paths with a known file
-   * extension skip the probe, so the common click costs no extra round trip.
-   */
-  ctx.effect(() => {
-    const workspaces = ctx.workspaces
-    // No workspaces service: nothing to decorate, and nothing to undo either.
-    if (workspaces === undefined) return () => {}
-    const original = workspaces.openPath.bind(workspaces)
-    workspaces.openPath = async (path: string): Promise<void> => {
-      const route = routeFor(path)
-      if (route === 'os') return original(path)
-      if (route === 'probe') {
-        const probe = await readFile(path)
-        if (!probe.ok) return original(path)
-      }
-      if (openInWorkbench(path)) return
-      return original(path)
-    }
-    return () => { workspaces.openPath = original }
-  }, 'vscode-layout: file clicks open in the workbench')
+  // NOTE (dsh 0.1.3-alpha.1 port): this used to decorate `ctx.workspaces.openPath`
+  // so a clicked file (a tool-result row, a closing-turn file mention) opened
+  // in this workbench instead of the OS's default application — see
+  // fileOpener.ts's routeFor/openInWorkbench for the policy this fed. That
+  // method no longer exists on IWorkspaces (or anywhere else client-side —
+  // searched the whole new monorepo for a replacement and found none), so the
+  // decoration is removed rather than left to throw on a bind() of undefined.
+  // `openInWorkbench`/`routeFor` themselves are untouched and still work for
+  // whatever DOES call them explicitly (TurnReviewCard's file rows); only the
+  // host-wide click interception is gone until a new hook turns up upstream.
 
   /**
    * Transient operator feedback.
@@ -203,7 +193,7 @@ export function apply(ctx: ClientContext): void {
         ws = await ctx.workspaces.create({ path: targetPath })
       }
       if (ws?.workspaceId) {
-        const sessionId = await ctx.workspaces.connectWorkspace(ws.workspaceId)
+        const sessionId = await ctx.uiWorkspace.connectWorkspace(ws.workspaceId)
         ctx.sessions.open(sessionId)
       }
     } catch (err) {
@@ -216,8 +206,8 @@ export function apply(ctx: ClientContext): void {
    */
   const pickDirectory: FrameInjected['pickDirectory'] = async () => {
     try {
-      if (!ctx.workspaces) return null
-      return await ctx.workspaces.pickDirectory()
+      if (!ctx.uiWorkspace) return null
+      return await ctx.uiWorkspace.pickDirectory()
     } catch (err) {
       ctx.logger.error('Directory picker error:', err)
       return null
@@ -300,7 +290,7 @@ export function apply(ctx: ClientContext): void {
    */
   ctx.effect(() => ctx.slots.inject('conversation.chat.turnTail', () => ctx.slots.register({
     name: 'conversation.chat.turnTail',
-    select: selectTurnModifiedFiles,
+    select: selectTurnId,
   }, TurnReviewCard)), 'vscode-layout: in-chat turn review card')
 
   /**
@@ -328,69 +318,133 @@ export function apply(ctx: ClientContext): void {
   ctx.inject(['sessions'], (scope: ClientContext) => {
     scope.effect(() => {
       const processedCallIds = new Set<string>()
+      // Paths held per in-flight callId, so a hold taken for a call that
+      // later errors, is cancelled, or settles without a diff still gets
+      // released — not only the settled-with-a-write path. A hold with no
+      // matching release freezes autosave (and silently no-ops Ctrl+S) for
+      // that path for the rest of the session.
+      const heldByCall = new Map<string, Set<string>>()
+      // The agent turn each callId belongs to, so a review can be grouped
+      // with every other file the same turn touched (the in-chat review
+      // card's whole reason for existing). A settled `ToolResultNode` has
+      // no `turn` field of its own — only `RunningToolCall` does — so this
+      // is captured while the call is still running and carried forward.
+      const turnByCall = new Map<string, number>()
+      // Sessions whose history this watcher has already caught up on once —
+      // see `rebind`'s `suppressReview` for why this exists.
+      const seenSessionIds = new Set<string>()
+      let isVeryFirstRebind = true
       let unsubscribeSession: (() => void) | undefined
 
-      const drainSnapshot = (snap: any) => {
+      const releaseHeld = (paths: Iterable<string>) => {
+        for (const p of paths) (window as any).__dsh_release_autosave?.(p)
+      }
+
+      const drainSnapshot = (snap: any, opts?: { suppressReview?: boolean }) => {
+        const suppressReview = opts?.suppressReview ?? false
         if (!snap) return
         const cwd = scope.sessions.list.getSnapshot().byId[snap.sessionId]?.cwd
+        const resolvePath = (raw: string) => resolveWorkspacePath(cwd, raw)
 
-        // 1. Hold autosave for running tool calls that touch files
+        // 1. Hold autosave for running tool calls that touch files, and
+        // remember which paths this callId is holding so they can be
+        // released together once it settles — however it settles.
+        //
+        // `RunningToolCall` is a FLAT shape (`{callId, name, argsRaw, ...}`),
+        // never a nested `{call: {argsRaw}}` — that shape belongs to a
+        // *settled* `ToolResultNode` only (step 2, below). Reading
+        // `running.call?.argsRaw` here always misses, which is why holds
+        // never actually engaged.
         for (const running of snap.runningCalls ?? []) {
+          if (typeof running.turn === 'number') turnByCall.set(running.callId, running.turn)
           try {
-            const raw = running.call?.argsRaw || running.call?.arguments
+            const raw = running.argsRaw
             if (!raw) continue
             const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw
             const target = parsed.path || parsed.file_path || parsed.target_file || parsed.filePath || parsed.TargetFile
             if (typeof target === 'string') {
-              const absPath = target.startsWith('/') ? target : (cwd ? `${cwd}/${target}` : target)
+              const absPath = resolvePath(target)
               ;(window as any).__dsh_hold_autosave?.(absPath)
+              let held = heldByCall.get(running.callId)
+              if (held === undefined) { held = new Set(); heldByCall.set(running.callId, held) }
+              held.add(absPath)
             }
           } catch {}
         }
 
-        // 2. Inspect settled tool results for file writes & diffs
+        // 2. Inspect settled tool results: release any hold this call took,
+        // then — if it actually mutated files and did not error out — start
+        // a review.
         for (const node of snap.nodes ?? []) {
           if (node.kind !== 'tool-result') continue
           if (processedCallIds.has(node.callId)) continue
 
-          // Check if this tool result has a diff card or was a write/edit tool
-          const diffs = node.resultView?.card === 'diff' ? node.resultView.diffs : null
-          if (Array.isArray(diffs) && diffs.length > 0) {
-            processedCallIds.add(node.callId)
-            for (const hunk of diffs) {
-              if (typeof hunk?.path === 'string') {
-                const absPath = hunk.path.startsWith('/') ? hunk.path : (cwd ? `${cwd}/${hunk.path}` : hunk.path)
-                ;(window as any).__dsh_release_autosave?.(absPath)
-                ;(window as any).__dsh_start_ai_review?.(absPath, hunk.oldText ?? '', hunk.newText)
-              }
-            }
-            continue
-          }
+          // An interrupted or failed call mutated nothing this plugin should
+          // act on — the arguments it carries describe what was ASKED, not
+          // what happened, and (for an interrupted `edit`) may be a fragment
+          // the agent never actually wrote.
+          //
+          // The host's own "this call changed files" signal: a settled diff
+          // card, never a name-substring guess. Each hunk names the FileDiff
+          // the underlying tool computed at execute time — real contextual
+          // fragments for an edit or an overwrite of an existing file, or a
+          // single whole-file hunk (oldText: null) for a genuine create.
+          const diffs = !node.isError && node.resultView?.card === 'diff' ? node.resultView.diffs : null
+          const hasDiffs = Array.isArray(diffs) && diffs.length > 0
 
-          // Fallback: check call name / args for write_file, edit_file, etc.
-          const callName = (node.call?.name || '').toLowerCase()
-          if (
-            callName.includes('write') ||
-            callName.includes('edit') ||
-            callName.includes('replace') ||
-            callName.includes('create')
-          ) {
-            try {
-              const raw = node.call?.argsRaw || node.call?.arguments
-              if (raw) {
-                const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw
-                const target = parsed.path || parsed.file_path || parsed.target_file || parsed.filePath || parsed.TargetFile
-                if (typeof target === 'string') {
-                  processedCallIds.add(node.callId)
-                  const absPath = target.startsWith('/') ? target : (cwd ? `${cwd}/${target}` : target)
-                  ;(window as any).__dsh_release_autosave?.(absPath)
-                  const oldContent = typeof parsed.old_str === 'string' ? parsed.old_str : (parsed.old_text || '')
-                  const newContent = typeof parsed.content === 'string' ? parsed.content : (parsed.new_str || parsed.new_text || parsed.CodeContent || '')
-                  ;(window as any).__dsh_start_ai_review?.(absPath, oldContent, newContent)
-                }
-              }
-            } catch {}
+          // Only commit (mark processed, release the hold, consume the turn)
+          // once there is somewhere real to hand a review off to. Marking
+          // processed unconditionally used to mean: if this node settled
+          // before Workbench had mounted and installed the window global,
+          // its write was silently dropped forever — a later snapshot would
+          // never see it again to retry. A node with nothing to dispatch
+          // (no diffs, or errored) has no such dependency and commits right away.
+          if (hasDiffs && !suppressReview && typeof (window as any).__dsh_start_ai_review !== 'function') continue
+
+          processedCallIds.add(node.callId)
+          const held = heldByCall.get(node.callId)
+          if (held !== undefined) {
+            releaseHeld(held)
+            heldByCall.delete(node.callId)
           }
+          const turn = turnByCall.get(node.callId)
+          turnByCall.delete(node.callId)
+
+          // `suppressReview` marks this node "seen" (above) without popping a
+          // review for it — used only for a session's pre-existing history at
+          // the moment this watcher first looks at it (see `rebind`).
+          if (!hasDiffs || suppressReview) continue
+
+          // A page reload (or window truncation) mid-turn can settle a call
+          // whose running phase this watcher never observed — there is no
+          // turn number to attribute it to. Falling back to the callId keeps
+          // it out of every real turn's grouping rather than merging it into
+          // whichever turn happens to be numbered the same as `undefined`.
+          const turnId = turn !== undefined ? String(turn) : `unattributed-${node.callId}`
+
+          // Group by path first: a multi-hunk edit reports one FileDiff per
+          // hunk, and each must reach the review as one call carrying every
+          // hunk for that path — not one call per hunk, which would each
+          // reset the review Workbench had just installed for the last one.
+          const byPath = new Map<string, { oldText: string | null; newText: string }[]>()
+          for (const hunk of diffs) {
+            if (typeof hunk?.path !== 'string' || typeof hunk?.newText !== 'string') continue
+            const absPath = resolvePath(hunk.path)
+            const list = byPath.get(absPath) ?? []
+            list.push({ oldText: typeof hunk.oldText === 'string' ? hunk.oldText : null, newText: hunk.newText })
+            byPath.set(absPath, list)
+          }
+          for (const [absPath, hunksForPath] of byPath) {
+            ;(window as any).__dsh_start_ai_review(absPath, hunksForPath, turnId)
+          }
+        }
+
+        // Backstop: the turn ended (or was interrupted) with a call whose
+        // settlement never arrived in this window. Release everything rather
+        // than freeze autosave on those paths for the rest of the session.
+        if (snap.running === false && heldByCall.size > 0) {
+          for (const held of heldByCall.values()) releaseHeld(held)
+          heldByCall.clear()
         }
       }
 
@@ -411,10 +465,26 @@ export function apply(ctx: ClientContext): void {
           unsubscribeSession = undefined
           return
         }
+
+        // A session's full node history is whatever `getSnapshot()` returns
+        // right after subscribing — there is no server-side "only what's
+        // new" filter. Without suppressing this first catch-up, switching to
+        // (or resuming) a session with a long history popped a review for
+        // every past diff in it, all at once, as if the agent had just
+        // written every one of those files this instant. The exception is
+        // the very first rebind of this watcher's own lifetime (a page
+        // load): the active session's most recent write may be a review the
+        // operator was mid-way through before the reload, and that one
+        // should still reappear.
+        const isFirstLookAtThisSession = !seenSessionIds.has(currentSessionId)
+        seenSessionIds.add(currentSessionId)
+        const suppressReview = isFirstLookAtThisSession && !isVeryFirstRebind
+        isVeryFirstRebind = false
+
         unsubscribeSession = sessionFace.subscribe(() => {
           drainSnapshot(sessionFace.getSnapshot())
         })
-        drainSnapshot(sessionFace.getSnapshot())
+        drainSnapshot(sessionFace.getSnapshot(), { suppressReview })
       }
 
       const offList = scope.sessions.list.subscribe(rebind)
@@ -423,6 +493,10 @@ export function apply(ctx: ClientContext): void {
       return () => {
         offList()
         unsubscribeSession?.()
+        // Backstop: a hold must never outlive the watcher that took it.
+        for (const held of heldByCall.values()) releaseHeld(held)
+        heldByCall.clear()
+        turnByCall.clear()
       }
     }, 'vscode-layout: watch agent file writes')
   })

@@ -558,6 +558,12 @@ export function DocLinkMenu({ editor, state, currentPath, root, openTabs, onClos
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Same reasoning as usePickerNavigation.ts: an IME's own Enter to
+      // confirm a composed candidate must not be read as "select this menu
+      // item" — that swallows the keystroke and leaves the candidate window
+      // stuck open, breaking Vietnamese/CJK input while this menu is up.
+      if (e.isComposing || e.keyCode === 229) return
+
       if (e.key === 'ArrowDown') {
         e.preventDefault()
         setSelectedIndex(i => (hits.length > 0 ? (i + 1) % hits.length : 0))

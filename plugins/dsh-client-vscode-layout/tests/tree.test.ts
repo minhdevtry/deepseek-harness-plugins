@@ -162,7 +162,7 @@ describe('creationParent', () => {
   })
 })
 
-import { getDocLinkInfo, resolveRelativePath, removeDiacritics, getAcronym, slugifyHeading } from '../src/client/utils/path.ts'
+import { getDocLinkInfo, resolveRelativePath, removeDiacritics, getAcronym, slugifyHeading, resolveWorkspacePath } from '../src/client/utils/path.ts'
 
 describe('getDocLinkInfo', () => {
   it('uses simple filename without extension for same directory files', () => {
@@ -211,6 +211,23 @@ describe('resolveRelativePath', () => {
   it('preserves hash fragments in resolved paths', () => {
     assert.equal(resolveRelativePath('/work/app/src/App.tsx', './ARCHITECTURE.md#entrypoint'), '/work/app/src/ARCHITECTURE.md#entrypoint')
     assert.equal(resolveRelativePath('/work/app/src/App.tsx', '#heading'), '/work/app/src/App.tsx#heading')
+  })
+})
+
+describe('resolveWorkspacePath', () => {
+  it('resolves ./ and bare relative paths against cwd to the same key', () => {
+    assert.equal(resolveWorkspacePath('/work/app', './src/a.ts'), '/work/app/src/a.ts')
+    assert.equal(resolveWorkspacePath('/work/app', 'src/a.ts'), '/work/app/src/a.ts')
+    assert.equal(resolveWorkspacePath('/work/app', '/work/app/src/a.ts'), '/work/app/src/a.ts')
+  })
+
+  it('collapses ../ segments, including past an already-absolute path', () => {
+    assert.equal(resolveWorkspacePath('/work/app/src', '../utils/path.ts'), '/work/app/utils/path.ts')
+    assert.equal(resolveWorkspacePath(undefined, '/work/app/src/../utils/path.ts'), '/work/app/utils/path.ts')
+  })
+
+  it('normalizes a Windows drive-letter path', () => {
+    assert.equal(resolveWorkspacePath(undefined, 'C:\\work\\app\\..\\utils\\path.ts'), 'C:/work/utils/path.ts')
   })
 })
 

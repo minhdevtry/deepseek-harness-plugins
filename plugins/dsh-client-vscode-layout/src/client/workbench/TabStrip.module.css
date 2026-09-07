@@ -105,3 +105,13 @@
 .tab[data-dirty] .close:hover .cross {
   display: inline;
 }
+
+/* A tab under AI review, whether or not it is the active tab — this is the
+   only on-screen sign a background review exists (see onOpenFileBackground). */
+.reviewDot {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--dsw-alias-state-business-primary);
+}

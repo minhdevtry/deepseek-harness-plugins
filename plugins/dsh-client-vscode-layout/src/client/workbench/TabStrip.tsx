@@ -23,6 +23,12 @@ export interface TabStripProps {
   active: string | undefined
   /** Paths with unsaved edits. */
   dirty: ReadonlySet<string>
+  /**
+   * Paths under AI review right now — including a tab the review opened in
+   * the background, which has no other on-screen sign it exists (see
+   * `Workbench.__dsh_start_ai_review`'s use of `onOpenFileBackground`).
+   */
+  reviewing?: ReadonlySet<string>
   onSelect: (path: string) => void
   onClose: (path: string) => void
   onCloseOthers: (path: string) => void
@@ -35,7 +41,7 @@ export interface TabStripProps {
 
 /** The open-tab strip (see module doc). */
 export const TabStrip = memo(function TabStrip({
-  tabs, active, dirty, onSelect, onClose, onCloseOthers,
+  tabs, active, dirty, reviewing, onSelect, onClose, onCloseOthers,
   onCloseToLeft, onCloseToRight, onCloseAll, onMove, onCopyPath,
 }: TabStripProps) {
   const [menu, setMenu] = useState<MenuState | undefined>(undefined)
@@ -84,6 +90,7 @@ export const TabStrip = memo(function TabStrip({
               className={css.tab}
               data-active={path === active || undefined}
               data-dirty={dirty.has(path) || undefined}
+              data-reviewing={reviewing?.has(path) || undefined}
               data-drop={dropTo === index && dragFrom !== index || undefined}
               draggable
               onClick={() => { onSelect(path) }}
@@ -115,6 +122,9 @@ export const TabStrip = memo(function TabStrip({
             <FileIcon symbolId={fileIconId(name)} />
             <span className={css.name}>{name}</span>
             {parent !== undefined && <span className={css.parent}>{parent}</span>}
+            {reviewing?.has(path) && (
+              <span className={css.reviewDot} aria-hidden title="AI review đang chờ duyệt" />
+            )}
             <button
               type="button"
               className={css.close}

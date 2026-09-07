@@ -1,11 +1,7 @@
 import { Plugin, PluginKey } from '@tiptap/pm/state'
 import { Decoration, DecorationSet } from '@tiptap/pm/view'
 import { DOMSerializer, type Node as ProseMirrorNode } from '@tiptap/pm/model'
-import { Editor } from '@tiptap/core'
 import { getBlocks, diffBlockArrays, parseMarkdownToBlocks, type BlockHunk } from './blockMap.ts'
-import { documentExtensions } from './extensions.ts'
-import { encodeRawHtmlLines } from './html/rawHtmlLine.ts'
-import { splitFrontmatter } from './frontmatter/splitFrontmatter.ts'
 
 export interface ReviewPluginState {
   baselineMarkdown: string | null
@@ -37,7 +33,10 @@ export function createTipTapReviewPlugin(options?: {
         if (meta !== undefined) {
           if (meta.type === 'SET_BASELINE') {
             const baselineMarkdown = meta.baseline as string | null
-            if (!baselineMarkdown) {
+            // `=== null`, not a falsy check: a genuine create's baseline is
+            // the empty string, which must still arm the review (as "the
+            // whole file is new") — treating it as falsy disarms instead.
+            if (baselineMarkdown === null) {
               nextValue = {
                 baselineMarkdown: null,
                 baselineBlocks: [],
@@ -59,6 +58,13 @@ export function createTipTapReviewPlugin(options?: {
             nextValue = {
               ...value,
               baselineBlocks: meta.baselineBlocks,
+              // baseNodes must move together with baselineBlocks — reject
+              // reads baseNodes directly (see rejectSingleHunk), and any
+              // accept whose replacement block count differs from the
+              // replaced count desyncs a later hunk's fromA/toA against a
+              // baseNodes array that never advanced, which silently deletes
+              // content instead of restoring it.
+              baseNodes: meta.baseNodes ?? value.baseNodes,
               hunks: [],
             }
           } else if (meta.type === 'PUSH_SNAPSHOT') {
@@ -134,7 +140,7 @@ export function createTipTapReviewPlugin(options?: {
           decos.push(
             Decoration.widget(
               widgetPos,
-              (view) => renderHunkWidget(hunk, view, pluginState),
+              (view) => renderHunkWidget(hunk, view),
               { side: -1, key: hunk.id }
             )
           )
@@ -148,12 +154,24 @@ export function createTipTapReviewPlugin(options?: {
 
 /**
  * Render deleted block preview & Notion action buttons [✓ Giữ] [✕ Bỏ].
+ *
+ * `prosemirror-view` keys this widget's decoration on `hunk.id`, which
+ * encodes block INDICES only (see `blockMap.ts`) — a keystroke inside the
+ * changed block leaves the id unchanged, so the DOM node (and whatever this
+ * call closed over) is reused verbatim rather than redrawn. The button
+ * handlers below must therefore never close over `hunk`/`pluginState`
+ * themselves: only `hunk.id` is captured, and each click re-reads the
+ * CURRENT plugin state and looks the hunk up fresh, so a click always acts
+ * on what is actually on screen right now rather than a stale snapshot from
+ * whenever this widget was first drawn — which is also why this function no
+ * longer takes a `pluginState` parameter: reading one at render time would
+ * only invite closing over it by mistake.
  */
 function renderHunkWidget(
   hunk: BlockHunk,
   view: any,
-  pluginState: ReviewPluginState
 ): HTMLElement {
+  const hunkId = hunk.id
   const container = document.createElement('div')
   container.className = 'dsh-notion-deleted-widget'
 
@@ -187,7 +205,13 @@ function renderHunkWidget(
   btnAccept.onclick = (e) => {
     e.preventDefault()
     e.stopPropagation()
-    acceptSingleHunk(view, hunk, pluginState)
+    const state = reviewPluginKey.getState(view.state)
+    const current = state?.hunks.find((h) => h.id === hunkId)
+    // The reused-DOM hunk may have already been resolved (or shifted to a
+    // different ordinal) since this widget was drawn — bail quietly rather
+    // than act on data that no longer describes anything real.
+    if (!state || !current) return
+    acceptSingleHunk(view, current, state)
   }
   actionsGroup.appendChild(btnAccept)
 
@@ -199,7 +223,10 @@ function renderHunkWidget(
   btnReject.onclick = (e) => {
     e.preventDefault()
     e.stopPropagation()
-    rejectSingleHunk(view, hunk, pluginState)
+    const state = reviewPluginKey.getState(view.state)
+    const current = state?.hunks.find((h) => h.id === hunkId)
+    if (!state || !current) return
+    rejectSingleHunk(view, current, state)
   }
   actionsGroup.appendChild(btnReject)
 
@@ -239,6 +266,15 @@ function renderHunkWidget(
 
 /**
  * Accept a single hunk: update baseline to match current working document.
+ *
+ * Advances `baselineBlocks` AND `baseNodes` together, from the LIVE
+ * document — accept never changes the document (baseline-only, per the
+ * measured invariant), so the blocks at `[hunk.fromB, hunk.toB)` right now
+ * ARE the accepted content. The two arrays must move together: a later
+ * `rejectSingleHunk` indexes `baseNodes` with `fromA`/`toA`, and if only
+ * `baselineBlocks` advanced, a hunk whose replacement block count differed
+ * from what it replaced would index the wrong (or absent) nodes — see
+ * `rejectSingleHunk`'s doc.
  */
 export function acceptSingleHunk(view: any, hunk: BlockHunk, pluginState: ReviewPluginState): void {
   // Push current baseline to snapshot stack for undo
@@ -252,51 +288,97 @@ export function acceptSingleHunk(view: any, hunk: BlockHunk, pluginState: Review
     )
   }
 
-  // Update baselineBlocks in place by replacing the hunk range
+  // The accepted content, read from the CURRENT live document — not from
+  // `hunk.currentBlocks`, which is text only and cannot rebuild real nodes.
+  const liveBlocks = getBlocks(view.state.doc)
+  const acceptedNodes = liveBlocks.slice(hunk.fromB, hunk.toB).map((b) => b.node)
+
   const nextBaselineBlocks = [...pluginState.baselineBlocks]
   nextBaselineBlocks.splice(hunk.fromA, hunk.toA - hunk.fromA, ...hunk.currentBlocks)
+
+  const nextBaseNodes = [...pluginState.baseNodes]
+  nextBaseNodes.splice(hunk.fromA, hunk.toA - hunk.fromA, ...acceptedNodes)
 
   view.dispatch(
     view.state.tr.setMeta(reviewPluginKey, {
       type: 'SET_BASELINE_BLOCKS',
       baselineBlocks: nextBaselineBlocks,
+      baseNodes: nextBaseNodes,
     })
   )
 }
 
 /**
  * Reject a single hunk: revert blocks at hunk position to baseline content.
+ *
+ * Reads `pluginState.baseNodes` directly rather than re-parsing
+ * `baselineMarkdown` through a throwaway editor: `baselineMarkdown` is not
+ * updated by `acceptSingleHunk` (only `baselineBlocks`/`baseNodes` are, see
+ * its doc), so re-parsing it here after any prior accept in the same review
+ * would index a document that no longer matches `hunk.fromA`/`toA` — the
+ * exact mechanism that made a reject silently delete content instead of
+ * restoring it. `baseNodes` is kept in sync by every writer of the plugin
+ * state, so it is always the correct source for what a hunk's range looked
+ * like before its own change.
  */
-export function rejectSingleHunk(view: any, hunk: BlockHunk, pluginState: ReviewPluginState): void {
-  const currentBaseline = pluginState.baselineMarkdown
-  if (!currentBaseline) return
-
-  const { body } = splitFrontmatter(currentBaseline)
-  const throwaway = new Editor({
-    element: typeof document !== 'undefined' ? document.createElement('div') : null,
-    extensions: documentExtensions(),
-    content: encodeRawHtmlLines(body),
-    contentType: 'markdown',
-  })
-
-  try {
-    const baseDoc = throwaway.state.doc
-    const baseBlocks = getBlocks(baseDoc)
-
-    // Collect baseline replacement nodes for [hunk.fromA, hunk.toA)
-    const replacementNodes: any[] = []
-    for (let i = hunk.fromA; i < hunk.toA; i++) {
-      const block = baseBlocks[i]
-      if (block) {
-        // Rebuild in live editor's schema
-        const liveNode = view.state.schema.nodeFromJSON(block.node.toJSON())
-        replacementNodes.push(liveNode)
+/**
+ * Rebuild a hunk's replacement nodes from `baseNodes`, in the given schema.
+ * Pure — no dispatch — so both a single reject and a batched Reject All can
+ * share the exact same rebuild-and-refuse logic.
+ * @returns the replacement nodes, or `null` if the hunk must be refused
+ * (an empty replacement for anything but a legitimate `add` hunk).
+ */
+function buildRejectReplacement(schema: any, hunk: BlockHunk, pluginState: ReviewPluginState): ProseMirrorNode[] | null {
+  const baseSlice = pluginState.baseNodes.slice(hunk.fromA, hunk.toA)
+  const replacementNodes = baseSlice
+    .map((node) => {
+      // A fragment parsed in (or advanced from) a different schema instance
+      // splices in as empty, silently — rebuild in the live editor's schema.
+      try {
+        return schema.nodeFromJSON(node.toJSON())
+      } catch {
+        return null
       }
-    }
+    })
+    .filter((node): node is ProseMirrorNode => node !== null)
 
-    const tr = view.state.tr.replaceWith(hunk.fromPos, hunk.toPos, replacementNodes)
-    view.dispatch(tr)
-  } finally {
-    throwaway.destroy()
+  // An `add` hunk has fromA === toA and legitimately rejects to nothing —
+  // that is a real, intentional delete. Anything else with an empty
+  // replacement means baseNodes desynced from this hunk's range somewhere;
+  // refusing beats silently deleting live content.
+  if (replacementNodes.length === 0 && hunk.type !== 'add') {
+    console.warn(`[dsh-tiptap-review] reject: no baseline content for hunk ${hunk.id}; refusing to delete`)
+    return null
   }
+  return replacementNodes
+}
+
+export function rejectSingleHunk(view: any, hunk: BlockHunk, pluginState: ReviewPluginState): void {
+  const replacementNodes = buildRejectReplacement(view.state.schema, hunk, pluginState)
+  if (replacementNodes === null) return
+  const tr = view.state.tr.replaceWith(hunk.fromPos, hunk.toPos, replacementNodes)
+  view.dispatch(tr)
+}
+
+/**
+ * Reject every given hunk in ONE transaction instead of one dispatch per
+ * hunk — previously Reject All was N separate dispatches (still correct,
+ * since processing highest-position-first means an earlier dispatch's edit
+ * never shifts a not-yet-processed hunk's position — but N undo steps for
+ * one user action, and an accidental Ctrl+Z only undid the last of them).
+ * Same reverse-order trick, just accumulated onto one `tr` before a single
+ * dispatch: `tr.replaceWith` only shifts positions *after* its own range, so
+ * as long as hunks are applied highest-position-first, every hunk still to
+ * come reads a position `tr` has not touched yet.
+ */
+export function rejectHunksBatch(view: any, hunks: readonly BlockHunk[], pluginState: ReviewPluginState): void {
+  const ordered = [...hunks].sort((a, b) => b.fromPos - a.fromPos)
+  const schema = view.state.schema
+  let tr = view.state.tr
+  for (const hunk of ordered) {
+    const replacementNodes = buildRejectReplacement(schema, hunk, pluginState)
+    if (replacementNodes === null) continue
+    tr = tr.replaceWith(hunk.fromPos, hunk.toPos, replacementNodes)
+  }
+  if (tr.docChanged) view.dispatch(tr)
 }

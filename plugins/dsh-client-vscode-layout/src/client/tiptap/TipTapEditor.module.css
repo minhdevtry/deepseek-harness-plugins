@@ -1297,6 +1297,12 @@
   border-color: rgba(34, 197, 94, 0.4);
 }
 
+/*
+ * Same reasoning as CodeMirror's .cm-chunkButtons (CodeEditor.module.css):
+ * hidden-until-hover made these unreachable by keyboard (focusable but
+ * invisible while focused) and by touch (no hover state exists at all).
+ * Always-visible-but-quiet, full on hover or focus, is reachable either way.
+ */
 .container :global(.dsh-notion-btn-action) {
   display: inline-flex;
   align-items: center;
@@ -1307,18 +1313,17 @@
   font-weight: 600;
   cursor: pointer;
   border: 1px solid transparent;
-  opacity: 0;
-  pointer-events: none;
-  transform: translateY(2px);
-  transition: opacity 0.15s ease, transform 0.15s ease, background 0.15s ease;
+  opacity: 0.6;
+  pointer-events: auto;
+  transition: opacity 0.15s ease, background 0.15s ease;
   line-height: 16px;
 }
 
 .container :global(.dsh-notion-deleted-widget:hover .dsh-notion-btn-action),
-.container :global(.dsh-notion-review-toolbar:hover .dsh-notion-btn-action) {
+.container :global(.dsh-notion-review-toolbar:hover .dsh-notion-btn-action),
+.container :global(.dsh-notion-btn-action:hover),
+.container :global(.dsh-notion-btn-action:focus-visible) {
   opacity: 1;
-  pointer-events: auto;
-  transform: translateY(0);
 }
 
 .container :global(.dsh-notion-btn-accept) {
