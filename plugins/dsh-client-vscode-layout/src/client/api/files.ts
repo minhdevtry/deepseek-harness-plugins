@@ -323,11 +323,29 @@ export async function searchNames(
   return { ok: true, value: (result.value as { results?: NameHit[] }).results ?? [] }
 }
 
+/** One line the search endpoint actually returns — flat, one per match, never grouped by file. */
+interface RawContentMatch {
+  name: string
+  path: string
+  rel: string
+  line: number
+  preview: string
+}
+
 /**
  * Search file *contents* under a root.
  *
  * Takes a signal because this walks the whole tree on the host: a superseded
  * query must actually stop the work, not merely have its answer discarded.
+ *
+ * The endpoint's `results` is a flat array — one entry per matching *line*,
+ * `{name, path, rel, line, preview}` — never the `{path, matches: [...]}`
+ * shape `ContentHit` describes. Casting the flat response straight to
+ * `ContentHit[]` (as this used to) type-checked but crashed the whole
+ * search panel at runtime on any non-empty result (`hit.matches` was always
+ * `undefined`, so `.length` on it always threw). Group by path here so the
+ * panel's own file-then-lines rendering — and its `hit.matches` reads — see
+ * the shape the type actually promises.
  */
 export async function searchContent(
   root: string,
@@ -343,7 +361,17 @@ export async function searchContent(
     isRegex: String(options.regex),
   }, signal)
   if (!result.ok) return result
-  return { ok: true, value: (result.value as { results?: ContentHit[] }).results ?? [] }
+  const raw = (result.value as { results?: RawContentMatch[] }).results ?? []
+  const byPath = new Map<string, ContentHit>()
+  for (const match of raw) {
+    let hit = byPath.get(match.path)
+    if (hit === undefined) {
+      hit = { name: match.name, path: match.path, rel: match.rel, matches: [] }
+      byPath.set(match.path, hit)
+    }
+    hit.matches.push({ line: match.line, preview: match.preview })
+  }
+  return { ok: true, value: [...byPath.values()] }
 }
 
 /** Create an empty file inside `parent`. Fails when the name is taken. */
