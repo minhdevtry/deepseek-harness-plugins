@@ -45,6 +45,7 @@ import { ThemePresenter } from './theme-presenter.ts'
 import { mountSprite } from './explorer/icons/index.ts'
 import { createViewState, type ExplorerView } from './explorer/views.ts'
 import { basename, resolveWorkspacePath } from './utils/path.ts'
+import { extractSettledDiffs } from './utils/extractSettledDiffs.ts'
 import { RailViews, type RailViewsInjected } from './explorer/RailViews.tsx'
 import { createFileSource } from './inputTriggers/fileSource.ts'
 import { installComposerWriter, installReferenceWriter, toWorkspaceRelative, type ComposerReference } from './composer.ts'
@@ -384,13 +385,14 @@ export function apply(ctx: ClientContext): void {
           // what happened, and (for an interrupted `edit`) may be a fragment
           // the agent never actually wrote.
           //
-          // The host's own "this call changed files" signal: a settled diff
-          // card, never a name-substring guess. Each hunk names the FileDiff
-          // the underlying tool computed at execute time — real contextual
+          // The host's own "this call changed files" signal: settled
+          // reconciliation metadata (or, for a write, its own arguments),
+          // never a name-substring guess. Each hunk names the FileDiff the
+          // underlying tool computed at execute time — real contextual
           // fragments for an edit or an overwrite of an existing file, or a
           // single whole-file hunk (oldText: null) for a genuine create.
-          const diffs = !node.isError && node.resultView?.card === 'diff' ? node.resultView.diffs : null
-          const hasDiffs = Array.isArray(diffs) && diffs.length > 0
+          const diffs = !node.isError ? extractSettledDiffs(node) : null
+          const hasDiffs = diffs !== null
 
           // Only commit (mark processed, release the hold, consume the turn)
           // once there is somewhere real to hand a review off to. Marking
