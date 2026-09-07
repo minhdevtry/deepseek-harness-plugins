@@ -45,7 +45,19 @@ export type DiffMode =
    * touched, for a per-turn surface (the in-chat review card) that has no
    * other way to know which files belong together.
    */
-  | { kind: 'ai-review'; baseline: Text | string; snapshots?: string[]; turnId?: string | undefined }
+  | {
+      kind: 'ai-review'
+      baseline: Text | string
+      snapshots?: string[]
+      turnId?: string | undefined
+      /**
+       * The pre-write frontmatter block (fences included, or `''`), for
+       * markdown only. `undefined` means "not computed" (a non-markdown
+       * path, or a review started before this field existed), distinct from
+       * `''` meaning "the baseline genuinely had no frontmatter."
+       */
+      frontmatterBaseline?: string | undefined
+    }
 
 /**
  * Live review stats, reported on every transaction (see `onReviewStatsChange`).

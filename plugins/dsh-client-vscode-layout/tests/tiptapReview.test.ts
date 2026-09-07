@@ -23,6 +23,7 @@ import { Editor } from '@tiptap/core'
 import { documentExtensions } from '../src/client/tiptap/extensions.ts'
 import { getBlocks, diffBlockArrays, parseMarkdownToBlocks, findTextPosition } from '../src/client/tiptap/blockMap.ts'
 import { reviewPluginKey, acceptSingleHunk, rejectSingleHunk, rejectHunksBatch } from '../src/client/tiptap/TipTapReviewPlugin.ts'
+import { DocumentRegistry } from '../src/client/tiptap/documents.ts'
 
 describe('TipTap Notion WYSIWYG AI Review (Phase 2)', () => {
   test('getBlocks extracts top-level blocks from TipTap Editor', () => {
@@ -378,5 +379,41 @@ describe('TipTap Notion WYSIWYG AI Review (Phase 2)', () => {
     } finally {
       editor.destroy()
     }
+  })
+
+  test('setFrontmatter reverts only the header — body, tree and undo history are untouched', () => {
+    const path = '/work/notes.md'
+    const md = '---\ntitle: New Title\ntags:\n  - ai\n---\n\n# Body\n\nSome text.'
+    const registry = new DocumentRegistry()
+    registry.open(path, md)
+
+    const before = registry.frontmatter(path)
+    assert.ok(before?.includes('title: New Title'))
+
+    const editor = registry.editor(path)!
+    const bodyBefore = editor.getText()
+    const baselineFrontmatter = '---\ntitle: Old Title\n---\n'
+
+    registry.setFrontmatter(path, baselineFrontmatter)
+
+    assert.equal(registry.frontmatter(path), baselineFrontmatter, 'frontmatter must be replaced')
+    assert.equal(registry.editor(path), editor, 'the same Editor instance must survive — no reopen/remount')
+    assert.equal(editor.getText(), bodyBefore, 'the tree must not change')
+    assert.equal(
+      registry.source(path),
+      baselineFrontmatter.replace(/\n*$/, '\n') + '\n# Body\n\nSome text.',
+      'source must be the reverted frontmatter joined with the unchanged body',
+    )
+  })
+
+  test('setFrontmatter can add a frontmatter block to a file that started without one', () => {
+    const path = '/work/plain.md'
+    const registry = new DocumentRegistry()
+    registry.open(path, '# Just a heading\n\nNo frontmatter here.')
+    assert.equal(registry.frontmatter(path), '')
+
+    registry.setFrontmatter(path, '---\nrestored: true\n---\n')
+    assert.equal(registry.frontmatter(path), '---\nrestored: true\n---\n')
+    assert.ok(registry.source(path)?.startsWith('---\nrestored: true\n---\n'))
   })
 })

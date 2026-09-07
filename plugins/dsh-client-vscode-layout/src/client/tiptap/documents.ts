@@ -409,6 +409,46 @@ export class DocumentRegistry {
   }
 
   /**
+   * The file's current frontmatter block, verbatim (fences included, or `''`
+   * when the file has none) — see {@link OpenDocument.frontmatter}.
+   * @param path - absolute file path.
+   * @returns the frontmatter block, or undefined when not open.
+   */
+  frontmatter(path: string): string | undefined {
+    return this.#docs.get(path)?.frontmatter
+  }
+
+  /**
+   * Replace a document's frontmatter block, leaving the tree — and with it
+   * the undo history and any in-progress body review — untouched.
+   *
+   * Frontmatter lives entirely outside the ProseMirror document (see
+   * `splitFrontmatter.ts`), so a body-only mechanism (a transaction, an
+   * `undoReview`) has nothing to act on when only frontmatter needs to
+   * change. The tempting alternative — `reopen()` with the reverted full
+   * text — goes through `forget()` first, destroying the live `Editor` (and
+   * with it undo history and any unresolved body hunks) just to change a
+   * header. This instead mirrors `open()`'s own `baseCanonical` formula
+   * against the *current* editor content, so save-time reconcile stays
+   * correctly seeded without a full reparse. Callers must still explicitly
+   * save afterward — `isDocDirty` compares ProseMirror nodes only, so a
+   * frontmatter-only change is invisible to the normal dirty check.
+   * @param path - absolute file path; a no-op if not open.
+   * @param frontmatter - the new frontmatter block, fences included (or `''`).
+   */
+  setFrontmatter(path: string, frontmatter: string): void {
+    const doc = this.#docs.get(path)
+    if (doc === undefined) return
+    const { body } = splitFrontmatter(doc.source)
+    doc.frontmatter = frontmatter
+    doc.source = joinFrontmatter(frontmatter, body)
+    doc.baseCanonical = doc.source.length > 120_000
+      ? ''
+      : joinFrontmatter(frontmatter, serializeStable(doc.editor))
+    this.#bump(true)
+  }
+
+  /**
    * Rebase the dirty comparison and the reconcile baseline after a successful write.
    * @param path - absolute file path.
    * @param written - the markdown that reached disk; becomes the new source.

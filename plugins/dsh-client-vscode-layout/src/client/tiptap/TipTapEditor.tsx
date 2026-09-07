@@ -70,6 +70,18 @@ export interface TipTapEditorProps {
   revealLine?: number | undefined
   /** Active baseline for Notion WYSIWYG AI review */
   diffBaseline?: string | undefined
+  /**
+   * Pre-write frontmatter block (fences included, or `''`) while a review is
+   * active, `undefined` otherwise. Frontmatter lives outside the tree
+   * (`splitFrontmatter` strips it before the parser ever sees it), so it is
+   * invisible to `diffBaseline`'s block-level diff — this is the whole
+   * baseline `FrontmatterWidget` needs to notice a frontmatter-only change.
+   */
+  frontmatterBaseline?: string | undefined
+  /** Frontmatter already holds the AI's version — stop tracking it as changed. */
+  onAcceptFrontmatter?: (() => void) | undefined
+  /** Revert frontmatter to `frontmatterBaseline` and persist it. */
+  onRejectFrontmatter?: (() => void) | undefined
   /** Notified on every transaction that could have changed review state. */
   onReviewStatsChange?: ((stats: ReviewStats) => void) | undefined
 }
@@ -89,6 +101,9 @@ export const TipTapEditor = forwardRef(function TipTapEditor({
   onViewRaw: _onViewRaw,
   revealLine,
   diffBaseline,
+  frontmatterBaseline,
+  onAcceptFrontmatter,
+  onRejectFrontmatter,
   onReviewStatsChange,
 }: TipTapEditorProps, ref: ForwardedRef<TipTapEditorHandle>) {
   const wrapperRef = useRef<HTMLDivElement | null>(null)
@@ -608,7 +623,12 @@ export const TipTapEditor = forwardRef(function TipTapEditor({
         {/* The file's own text, not a re-serialisation: frontmatter is a
             file-level header this surface renders as a card rather than as
             editable nodes, so the tree is not where it lives. */}
-        <FrontmatterWidget rawMarkdown={documents.source(path) ?? ''} />
+        <FrontmatterWidget
+          rawMarkdown={documents.source(path) ?? ''}
+          frontmatterBaseline={frontmatterBaseline}
+          onAcceptFrontmatter={onAcceptFrontmatter}
+          onRejectFrontmatter={onRejectFrontmatter}
+        />
         <div ref={containerRef} className={css.container} />
       </div>
 

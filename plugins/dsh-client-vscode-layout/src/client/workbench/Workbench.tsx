@@ -33,6 +33,7 @@ import { BufferRegistry } from './buffers.ts'
 import { DocumentRegistry } from '../tiptap/documents.ts'
 import { SaveQueue } from './saveQueue.ts'
 import { isMarkdown } from './language.ts'
+import { splitFrontmatter } from '../tiptap/frontmatter/splitFrontmatter.ts'
 import { languageExtension, languageName } from './language.ts'
 import { editorTheme } from './theme.ts'
 import { CodeEditor, type CodeEditorHandle, type CursorInfo, type DiffMode, type ReviewStats } from './CodeEditor.tsx'
@@ -565,10 +566,22 @@ export function Workbench({
         setRawModes(prev => ({ ...prev, [targetPath]: true }))
       }
 
-      // 6. Activate AI review mode
+      // 6. Activate AI review mode. Frontmatter lives outside the tree
+      // entirely (splitFrontmatter strips it before anything parses the
+      // body), so a body-only baseline made an AI edit that only touched
+      // frontmatter invisible to review — zero hunks, nothing to accept or
+      // reject, despite the file genuinely differing. `effectiveBaseline`
+      // is already the pre-write file's full raw text; splitFrontmatter
+      // just needs to read the header back off it.
       setDiffModes(prev => ({
         ...prev,
-        [targetPath]: { kind: 'ai-review', baseline: effectiveBaseline, snapshots: [], turnId },
+        [targetPath]: {
+          kind: 'ai-review',
+          baseline: effectiveBaseline,
+          snapshots: [],
+          turnId,
+          frontmatterBaseline: isMarkdown(targetPath) ? splitFrontmatter(effectiveBaseline).frontmatter : undefined,
+        },
       }))
     }
 
@@ -896,6 +909,26 @@ export function Workbench({
                       documents={documents}
                       revealLine={activeLine}
                       diffBaseline={effectiveDiffMode.kind === 'ai-review' ? (typeof effectiveDiffMode.baseline === 'string' ? effectiveDiffMode.baseline : effectiveDiffMode.baseline.toString()) : undefined}
+                      frontmatterBaseline={effectiveDiffMode.kind === 'ai-review' ? effectiveDiffMode.frontmatterBaseline : undefined}
+                      onAcceptFrontmatter={() => {
+                        // Frontmatter already holds the AI's version — same
+                        // "accept never touches content" invariant as the
+                        // body. Just stop tracking it as changed.
+                        const current = documents.frontmatter(activePath)
+                        setDiffModes(prev => {
+                          const mode = prev[activePath]
+                          if (mode?.kind !== 'ai-review') return prev
+                          return { ...prev, [activePath]: { ...mode, frontmatterBaseline: current } }
+                        })
+                      }}
+                      onRejectFrontmatter={() => {
+                        const mode = diffModesRef.current[activePath]
+                        if (mode?.kind !== 'ai-review' || mode.frontmatterBaseline === undefined) return
+                        // A real content change, same as a body reject — must
+                        // reach disk, or the screen and disk disagree.
+                        documents.setFrontmatter(activePath, mode.frontmatterBaseline)
+                        void save(activePath)
+                      }}
                       onReviewStatsChange={handleReviewStatsChange}
                       onSave={(p) => { void save(p) }}
                       onViewRaw={() => {
