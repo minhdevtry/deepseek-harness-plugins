@@ -1292,6 +1292,28 @@
   border-color: var(--dsw-alias-state-business-primary, #3b82f6);
 }
 
+/* ── TipTap Wiki-Link Pill ([[doc]]) ── */
+.container :global(.tiptap-wiki-link) {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background: rgba(124, 58, 237, 0.08);
+  color: #7c3aed;
+  border-bottom: 1.5px dashed #7c3aed;
+  border-radius: 3px;
+  padding: 0 4px;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.container :global(.tiptap-wiki-link:hover) {
+  background: rgba(124, 58, 237, 0.18);
+  border-bottom-style: solid;
+  color: #6d28d9;
+}
+
 /* ── TipTap Dropcursor Glowing Indicator ── */
 .container :global(.prosemirror-dropcursor),
 .container :global(.tiptap-dropcursor) {

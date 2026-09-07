@@ -52,6 +52,7 @@ import { TipTapEditor, type TipTapEditorHandle } from '../tiptap/TipTapEditor.ts
 import { ImagePreview } from './previews/ImagePreview.tsx'
 import { CsvPreview } from './previews/CsvPreview.tsx'
 import { HtmlPreview } from './previews/HtmlPreview.tsx'
+import { KnowledgeGraphView } from '../graph/KnowledgeGraphView.tsx'
 import * as tabModel from './model/tabs.ts'
 import { Spinner } from '../ui/primitives/index.ts'
 import css from './Workbench.module.css'
@@ -101,6 +102,7 @@ export function Workbench({
   const [reviewStats, setReviewStats] = useState<Record<string, { count: number }>>({})
   const [branch, setBranch] = useState<string | undefined>(undefined)
   const [rawModes, setRawModes] = useState<Record<string, boolean>>({})
+  const [graphOpen, setGraphOpen] = useState(false)
   const [targetRevealLine, setTargetRevealLine] = useState<number | undefined>(undefined)
   const effectiveRevealLine = targetRevealLine ?? activeLine
 
@@ -811,9 +813,33 @@ export function Workbench({
         onCopyPath={copyPath}
       />
 
-      {activePath !== undefined && (
-        <Breadcrumb path={activePath} root={explorerRoot} onNavigate={onRevealDir} />
-      )}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingRight: 8, background: 'var(--dsw-alias-bg-canvas, transparent)' }}>
+        {activePath !== undefined ? (
+          <Breadcrumb path={activePath} root={explorerRoot} onNavigate={onRevealDir} />
+        ) : <div />}
+        <button
+          type="button"
+          onClick={() => setGraphOpen(prev => !prev)}
+          title="Toggle 2D Interactive Knowledge Graph"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 5,
+            padding: '2px 8px',
+            fontSize: 11,
+            fontWeight: 600,
+            borderRadius: 4,
+            border: '1px solid var(--dsw-alias-border-l1, #cbd5e1)',
+            background: graphOpen ? 'var(--dsw-alias-state-business-primary, #2563eb)' : 'var(--dsw-alias-bg-elevated, #ffffff)',
+            color: graphOpen ? '#ffffff' : 'var(--dsw-alias-text-primary, #334155)',
+            cursor: 'pointer',
+            height: 22,
+          }}
+        >
+          <span style={{ fontSize: 13 }}>🕸️</span>
+          <span>{graphOpen ? 'Close Graph' : 'Graph View'}</span>
+        </button>
+      </div>
 
       {/*
         Docked once, here, regardless of which editor is live underneath —
@@ -879,7 +905,22 @@ export function Workbench({
       )}
 
       <div className={css.body}>
-        {activePath === undefined && (
+        {graphOpen ? (
+          <KnowledgeGraphView
+            root={explorerRoot ?? ''}
+            documents={tabs.map(p => ({
+              path: p,
+              content: documents.preview(p) ?? registry.getText(p) ?? '',
+            }))}
+            onOpenDocument={(p) => {
+              setGraphOpen(false)
+              onOpenFile(p)
+            }}
+            onClose={() => setGraphOpen(false)}
+          />
+        ) : (
+          <>
+            {activePath === undefined && (
           <div className={css.empty}>
             <p>No file open</p>
             <p className={css.hint}>Pick one from the Explorer, or press Ctrl+P.</p>
@@ -1058,6 +1099,8 @@ export function Workbench({
                     </div>
                   </div>
                 )
+        )}
+          </>
         )}
       </div>
 

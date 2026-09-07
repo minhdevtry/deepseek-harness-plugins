@@ -1,0 +1,107 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  background: var(--dsw-alias-bg-canvas, #0f172a);
+  color: var(--dsw-alias-text-primary, #f8fafc);
+  position: relative;
+  overflow: hidden;
+  user-select: none;
+}
+
+.toolbar {
+  position: absolute;
+  top: 16px;
+  left: 20px;
+  right: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  z-index: 20;
+  pointer-events: none;
+}
+
+.toolbarGroup {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  pointer-events: auto;
+  background: rgba(15, 23, 42, 0.75);
+  backdrop-filter: blur(12px);
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--dsw-alias-border-l1, rgba(255, 255, 255, 0.1));
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+.title {
+  font-size: 13px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--dsw-alias-state-business-primary, #38bdf8);
+}
+
+.searchInput {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 12px;
+  color: #ffffff;
+  outline: none;
+  width: 180px;
+  transition: all 0.2s ease;
+}
+
+.searchInput:focus {
+  width: 240px;
+  border-color: var(--dsw-alias-state-business-primary, #38bdf8);
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.toolButton {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 12px;
+  color: #f8fafc;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.toolButton:hover {
+  background: rgba(255, 255, 255, 0.2);
+  color: var(--dsw-alias-state-business-primary, #38bdf8);
+}
+
+.canvas {
+  flex: 1;
+  width: 100%;
+  height: 100%;
+  cursor: grab;
+}
+
+.canvas:active {
+  cursor: grabbing;
+}
+
+.statsBar {
+  position: absolute;
+  bottom: 16px;
+  left: 20px;
+  background: rgba(15, 23, 42, 0.75);
+  backdrop-filter: blur(12px);
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--dsw-alias-border-l1, rgba(255, 255, 255, 0.1));
+  font-size: 11px;
+  color: var(--dsw-alias-text-secondary, #94a3b8);
+  z-index: 20;
+}

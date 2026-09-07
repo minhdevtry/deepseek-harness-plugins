@@ -38,6 +38,7 @@ import { MermaidExtension } from './mermaid/MermaidExtension.tsx'
 import { MathBlockExtension } from './math/MathExtension.tsx'
 import { RichImageExtension } from './image/ImageViewExtension.tsx'
 import { RawHtmlLineExtension } from './html/rawHtmlLine.ts'
+import { WikiLinkExtension } from './wiki/wikiLink.ts'
 
 /** Shared highlighter; building it per editor would re-register every grammar. */
 const lowlight = createLowlight(common)
@@ -151,6 +152,7 @@ export function documentExtensions(): Extensions {
     MermaidExtension,
     MathBlockExtension,
     RichImageExtension,
+    WikiLinkExtension,
     Image,
     Youtube.configure({
       inline: false,

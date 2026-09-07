@@ -493,9 +493,25 @@ export const TipTapEditor = forwardRef(function TipTapEditor({
 
     setEditor(instance)
 
-    // Global click handler to intercept doc links and mentions
+    // Global click handler to intercept doc links, wiki-links and mentions
     const handleLinkClicks = (e: MouseEvent) => {
       const target = e.target as HTMLElement
+      const wiki = target.closest('.tiptap-wiki-link') as HTMLElement | null
+      if (wiki) {
+        const targetDoc = wiki.getAttribute('data-target')
+        if (targetDoc) {
+          e.preventDefault()
+          e.stopPropagation()
+          const targetPath = targetDoc.endsWith('.md') || targetDoc.endsWith('.markdown')
+            ? targetDoc
+            : `${targetDoc}.md`
+          const resolved = resolveRelativePath(path, targetPath)
+          const opened = openInWorkbench(resolved)
+          if (!opened) openInWorkbench(targetPath)
+          return
+        }
+      }
+
       const mention = target.closest('.tiptap-mention') as HTMLElement | null
       if (mention) {
         const id = mention.getAttribute('data-id')
