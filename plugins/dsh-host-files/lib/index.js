@@ -13,6 +13,7 @@ import * as awarenessProtocol from "y-protocols/awareness";
 import * as encoding from "lib0/encoding";
 import * as decoding from "lib0/decoding";
 import { uploadImageToR2 } from "./r2Service.js";
+import { healWorkspaceLinksOnRename } from "./managedRenameRewrite.js";
 
 /** Plugin name (for loader entry). */
 const name = "dsh-host-files";
@@ -780,7 +781,8 @@ function apply(ctx) {
 						return sendJson(res, 403, { ok: false, error: "Access Denied: Target path is outside the sandboxed workspace directory" });
 					}
 					await rename(oldPath, newPath);
-					return sendJson(res, 200, { ok: true, path: newPath });
+					const healedFiles = await healWorkspaceLinksOnRename(SANDBOX_ROOT, oldPath, newPath);
+					return sendJson(res, 200, { ok: true, path: newPath, healedFiles });
 				}
 				if (url.pathname === "/vscode-files/delete") {
 					const delPath = body?.path;
