@@ -609,6 +609,46 @@
   border-color: #10b981;
 }
 
+.container :global(.tiptap-codeblock-tab-btn) {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--dsw-alias-label-secondary, #64748b);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.container :global(.tiptap-codeblock-tab-btn:hover) {
+  color: var(--dsw-alias-label-primary, #0f172a);
+}
+
+.container :global(.tiptap-codeblock-tab-btn.active) {
+  background: var(--dsw-alias-bg-elevated, #ffffff);
+  border-color: var(--dsw-alias-border-l1, #cbd5e1);
+  color: var(--dsw-alias-state-business-primary, #2563eb);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.container :global(.tiptap-codeblock-sandbox-preview) {
+  padding: 12px;
+  background: var(--dsw-alias-bg-elevated, #ffffff);
+  border-top: 1px solid var(--dsw-alias-border-l1, #e2e8f0);
+  min-height: 120px;
+  display: flex;
+  flex-direction: column;
+}
+
+.container :global(.tiptap-codeblock-sandbox-iframe) {
+  width: 100%;
+  min-height: 240px;
+  border: 1px solid var(--dsw-alias-border-l1, #cbd5e1);
+  border-radius: 6px;
+  background: #ffffff;
+}
+
 .container :global(.tiptap-codeblock-wrapper pre) {
   position: relative !important;
   background: transparent !important;

@@ -1,6 +1,6 @@
 import { Node, mergeAttributes } from '@tiptap/core'
 import { ReactNodeViewRenderer, NodeViewWrapper } from '@tiptap/react'
-import { useRef, useState, type MouseEvent as ReactMouseEvent } from 'react'
+import { useRef, useState, useEffect, type MouseEvent as ReactMouseEvent } from 'react'
 
 declare module '@tiptap/core' {
   interface Commands<ReturnType> {
@@ -11,10 +11,20 @@ declare module '@tiptap/core' {
 }
 
 function ImageViewComponent(props: any) {
-  const { src = '', alt = '', title = '', width = 'auto' } = props.node.attrs
+  const { src = '', alt = '', title = '', width = 'auto', align = 'center' } = props.node.attrs
   const [isLightboxOpen, setIsLightboxOpen] = useState(false)
   const [currentWidth, setCurrentWidth] = useState<string | number>(width)
+  const [copiedLink, setCopiedLink] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!isLightboxOpen) return
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setIsLightboxOpen(false)
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [isLightboxOpen])
 
   const handleMouseDownResize = (e: ReactMouseEvent) => {
     e.preventDefault()
@@ -43,8 +53,23 @@ function ImageViewComponent(props: any) {
     props.deleteNode()
   }
 
+  const handleCopyLink = (e: ReactMouseEvent) => {
+    e.stopPropagation()
+    if (!src) return
+    void navigator.clipboard.writeText(src).then(() => {
+      setCopiedLink(true)
+      setTimeout(() => setCopiedLink(false), 1500)
+    })
+  }
+
   return (
-    <NodeViewWrapper className="tiptap-image-wrapper" contentEditable={false}>
+    <NodeViewWrapper
+      className="tiptap-image-wrapper"
+      contentEditable={false}
+      style={{
+        alignItems: align === 'left' ? 'flex-start' : align === 'right' ? 'flex-end' : 'center',
+      }}
+    >
       <div
         ref={containerRef}
         className="tiptap-image-container"
@@ -63,9 +88,17 @@ function ImageViewComponent(props: any) {
             type="button"
             className="tiptap-image-tool-btn"
             onClick={() => setIsLightboxOpen(true)}
-            title="View Fullscreen"
+            title="View Fullscreen Lightbox"
           >
             🔍 Zoom
+          </button>
+          <button
+            type="button"
+            className="tiptap-image-tool-btn"
+            onClick={() => props.updateAttributes({ align: align === 'left' ? 'center' : align === 'center' ? 'right' : 'left' })}
+            title={`Align: ${align} (click to toggle)`}
+          >
+            {align === 'left' ? '⇥ Left' : align === 'right' ? '⇤ Right' : '↔ Center'}
           </button>
           <button
             type="button"
@@ -94,7 +127,77 @@ function ImageViewComponent(props: any) {
       />
 
       {isLightboxOpen && (
-        <div className="tiptap-lightbox-backdrop" onClick={() => setIsLightboxOpen(false)}>
+        <div
+          className="tiptap-lightbox-backdrop"
+          onClick={() => setIsLightboxOpen(false)}
+          title="Click or press ESC to close"
+        >
+          <div
+            style={{
+              position: 'fixed',
+              top: 16,
+              right: 20,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              zIndex: 10001,
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              style={{
+                background: 'rgba(255,255,255,0.15)',
+                backdropFilter: 'blur(8px)',
+                border: '1px solid rgba(255,255,255,0.25)',
+                color: '#fff',
+                borderRadius: 6,
+                padding: '6px 12px',
+                fontSize: 12,
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 4,
+              }}
+              onClick={handleCopyLink}
+            >
+              {copiedLink ? '✓ Copied Link' : '🔗 Copy Link'}
+            </button>
+            <a
+              href={src}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                background: 'rgba(255,255,255,0.15)',
+                backdropFilter: 'blur(8px)',
+                border: '1px solid rgba(255,255,255,0.25)',
+                color: '#fff',
+                borderRadius: 6,
+                padding: '6px 12px',
+                fontSize: 12,
+                textDecoration: 'none',
+                cursor: 'pointer',
+              }}
+            >
+              ↗ Open
+            </a>
+            <button
+              type="button"
+              style={{
+                background: 'rgba(255,255,255,0.25)',
+                border: 'none',
+                color: '#fff',
+                borderRadius: 6,
+                padding: '6px 10px',
+                fontSize: 12,
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}
+              onClick={() => setIsLightboxOpen(false)}
+            >
+              ✕ ESC
+            </button>
+          </div>
           <img
             src={src}
             alt={alt}
@@ -127,6 +230,7 @@ export const RichImageExtension = Node.create({
       alt: { default: '' },
       title: { default: '' },
       width: { default: 'auto' },
+      align: { default: 'center' },
     }
   },
 
