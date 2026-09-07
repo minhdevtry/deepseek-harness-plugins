@@ -125,21 +125,26 @@ export function ScmPanel({ root, onOpenFile, onNotify }: ScmPanelProps) {
   const statusRef = useRef(status)
   statusRef.current = status
 
-  const refresh = useCallback(async () => {
+  // `silent` skips the loading-spinner toggle: the 15s auto-refresh polls in
+  // the background and, most ticks, finds nothing new — flashing both
+  // spinners on every tick regardless read as UI jitter, not "refreshing".
+  // Manual clicks (the refresh buttons, the initial mount) still want the
+  // spinner as real, visible feedback that something is happening.
+  const refresh = useCallback(async (opts?: { silent?: boolean }) => {
     if (!root) return
-    setLoading(true)
+    if (!opts?.silent) setLoading(true)
     const res = await gitStatus(root)
-    setLoading(false)
+    if (!opts?.silent) setLoading(false)
     if (res.ok) {
       setStatus(res.value)
     }
   }, [root])
 
-  const refreshGraph = useCallback(async () => {
+  const refreshGraph = useCallback(async (opts?: { silent?: boolean }) => {
     if (!root) return
-    setGraphLoading(true)
+    if (!opts?.silent) setGraphLoading(true)
     const res = await gitLog(root, GRAPH_LIMIT)
-    setGraphLoading(false)
+    if (!opts?.silent) setGraphLoading(false)
     if (res.ok) setCommits(res.value)
   }, [root])
 
@@ -151,8 +156,8 @@ export function ScmPanel({ root, onOpenFile, onNotify }: ScmPanelProps) {
   useEffect(() => {
     if (!autoRefresh || !root) return
     const id = window.setInterval(() => {
-      void refresh()
-      void refreshGraph()
+      void refresh({ silent: true })
+      void refreshGraph({ silent: true })
     }, AUTO_REFRESH_MS)
     return () => { window.clearInterval(id) }
   }, [autoRefresh, root, refresh, refreshGraph])
@@ -332,6 +337,16 @@ export function ScmPanel({ root, onOpenFile, onNotify }: ScmPanelProps) {
       void refresh()
     } else {
       onNotify?.(`Fetch failed: ${res.error}`)
+    }
+  }
+
+  const handleCopyHash = async (hash: string, e?: React.MouseEvent) => {
+    e?.stopPropagation()
+    try {
+      await navigator.clipboard.writeText(hash)
+      onNotify?.(`Copied ${hash.slice(0, 7)}`)
+    } catch {
+      onNotify?.('Copy failed')
     }
   }
 
@@ -770,7 +785,8 @@ export function ScmPanel({ root, onOpenFile, onNotify }: ScmPanelProps) {
                   <div
                     key={c.hash}
                     className={css.graphRow}
-                    title={`${c.hash.slice(0, 7)} • ${c.author} • ${c.date}`}
+                    title={`${c.hash.slice(0, 7)} • ${c.author} • ${c.date}\nClick to copy commit hash`}
+                    onClick={() => { void handleCopyHash(c.hash) }}
                   >
                     <div className={css.graphRail}>
                       {idx !== 0 && <span className={css.railLine} data-pos="top" />}
@@ -778,6 +794,7 @@ export function ScmPanel({ root, onOpenFile, onNotify }: ScmPanelProps) {
                       {idx !== commits.length - 1 && <span className={css.railLine} data-pos="bottom" />}
                     </div>
                     <div className={css.graphContent}>
+                      <span className={css.graphHash}>{c.hash.slice(0, 7)}</span>
                       <span className={css.graphSubject}>{c.subject}</span>
                       <span className={css.graphAuthor}>{c.author}</span>
                       {badges.length > 0 && (
@@ -790,6 +807,18 @@ export function ScmPanel({ root, onOpenFile, onNotify }: ScmPanelProps) {
                           ))}
                         </span>
                       )}
+                      <div className={css.graphActions}>
+                        <Tooltip content="Copy commit hash">
+                          <IconButton
+                            size="xs"
+                            variant="ghost"
+                            onClick={e => { void handleCopyHash(c.hash, e) }}
+                            aria-label="Copy commit hash"
+                          >
+                            ⧉
+                          </IconButton>
+                        </Tooltip>
+                      </div>
                     </div>
                   </div>
                 )

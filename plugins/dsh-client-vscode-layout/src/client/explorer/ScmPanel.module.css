@@ -312,7 +312,7 @@
   padding: 0 12px;
   height: 26px;
   font-size: 12.5px;
-  cursor: default;
+  cursor: pointer;
 }
 
 .graphRow:hover {
@@ -369,6 +369,13 @@
   flex: 1;
 }
 
+.graphHash {
+  flex: none;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 10.5px;
+  color: var(--dsw-alias-label-tertiary, #6b7280);
+}
+
 .graphSubject {
   flex: 1 1 auto;
   min-width: 0;
@@ -394,6 +401,20 @@
   align-items: center;
   gap: 4px;
   margin-left: auto;
+}
+
+/* Hidden until hover, same convention as .fileActions on the Changes rows —
+   without this the graph felt like a separate, inert widget bolted onto a
+   panel where every other row is interactive. */
+.graphActions {
+  flex: none;
+  display: none;
+  align-items: center;
+  margin-left: auto;
+}
+
+.graphRow:hover .graphActions {
+  display: flex;
 }
 
 .branchPill {
