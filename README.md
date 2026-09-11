@@ -1,210 +1,278 @@
-# DeepSeek Harness Plugins (`deepseek-harness-plugins`)
+# @anoslide/dsh-vscode-workspace
 
-> **Unified 3-Column VS Code Layout, TipTap Notion WYSIWYG Suite, and Advanced Productivity Plugins for [DeepSeek Harness (`dsh`)](https://github.com/deepseek-ai/deepseek-harness).**
+> **Unified 3-Column VS Code Workspace, TipTap Notion WYSIWYG Suite, and Advanced AI Productivity Plugin for [DeepSeek Harness (`dsh`)](https://github.com/deepseek-ai/deepseek-harness).**
 
 ---
 
-## 🌟 Key Features (All-in-One Non-Dev & Dev Workspace)
+## 📖 Overview
+
+`@anoslide/dsh-vscode-workspace` is an upstream-aligned, dual-face Cordis plugin for DeepSeek Harness. It unifies the entire backend workspace file services and modern IDE frontend into a single package, replacing legacy decoupled plugins (`@anoslide/dsh-host-files` and `@anoslide/dsh-client-vscode-layout`).
+
+It combines:
+- A **3-Column VS Code IDE Layout** (Explorer, Search, Git Source Control, Multi-Tab Code & Markdown Workbench, and Collapsible AI Chat & Tool Trajectory).
+- A **TipTap Notion WYSIWYG Document Suite** (Interactive blocks, slash commands `/`, callout boxes, toggle lists, interactive tables, KaTeX math, Mermaid diagrams, and Table of Contents outline).
+- **Deep AI Chat Integration** (Authentic blue reference chips, Cursor-like `Ctrl+K` Inline AI Assist, `@` file mention autocomplete, and 1-click code application).
+- **Knowledge & Productivity Tools** (Interactive Knowledge Graph view, embedded Excalidraw whiteboards, and visual side-by-side / unified Diff Viewer).
+
+---
+
+## 🏛️ Architecture: Dual-Face Cordis Model
+
+DeepSeek Harness operates a modular Cordis micro-kernel architecture. `@anoslide/dsh-vscode-workspace` implements a **Dual-Face** structure where a single package provides both the Node.js host services and the browser micro-frontend client bundle.
+
+```mermaid
+flowchart TD
+    subgraph DSH["DeepSeek Harness Platform (Cordis Kernel)"]
+        Launcher["dsh CLI Launcher (dsh web)"]
+        Profile["Profile Bundle Layer (~/.dsh/profiles/web)"]
+        CordisHost["Cordis Host Container (Node.js 22)"]
+        CordisClient["Cordis Web Client (Browser Runtime)"]
+    end
+
+    subgraph UnifiedPlugin["@anoslide/dsh-vscode-workspace"]
+        Patch["cordis.patch.yml<br/>(inserts vscode-workspace)"]
+        
+        subgraph HostHalf["Host Node.js Half (lib/index.js)"]
+            WebServer["ctx.webServer Injection"]
+            HostRoutes["/vscode-files/* Endpoints"]
+            FS["File Service & Sandbox Guards"]
+            Git["Git Porcelain Service"]
+            Shiki["Shiki Syntax Highlighter"]
+            Persona["Persona System Prompt Hook"]
+        end
+
+        subgraph ClientHalf["Client Browser Half (lib/client.js)"]
+            ModuleLoader["window.__ModuleLoader__<br/>(Lazy-CJS Closure Factory)"]
+            Slots["ctx.slots.register('root', AppFrame)"]
+            
+            subgraph Layout["3-Column IDE Workbench"]
+                Rail["Sidebar Rail & Switcher (Explorer, Search, Git)"]
+                Editor["Multi-Tab Editor (CodeMirror + TipTap)"]
+                Chat["AI Chat Tray & Reference Chips"]
+            end
+            
+            subgraph Tools["Productivity Modules"]
+                Excalidraw["Excalidraw Whiteboard"]
+                Graph["Knowledge Graph"]
+                Diff["Visual Diff Engine"]
+            end
+        end
+    end
+
+    Launcher --> Profile
+    Profile --> Patch
+    Patch --> CordisHost
+    Patch --> CordisClient
+
+    CordisHost --> WebServer
+    WebServer --> HostRoutes
+    HostRoutes --> FS
+    HostRoutes --> Git
+    HostRoutes --> Shiki
+    HostRoutes --> Persona
+
+    CordisClient --> ModuleLoader
+    ModuleLoader --> Slots
+    Slots --> Layout
+    Layout --> Tools
+
+    ClientHalf -.->|"HTTP /vscode-files/*"| HostRoutes
+```
+
+---
+
+## 🌟 Key Features
 
 ### 1. 🖥️ Professional 3-Column VS Code IDE Layout
-- **Left Sidebar (280px)** — the host's own sidebar keeps the column; these views sit beside its 56px rail:
-  - 🐋 **Host rail (unchanged)**: the shipped `ui-sidebar` renders its brand row, New Session, workspace controls (search sessions, add workspace) and **Settings** exactly as it does in the stock shell. This plugin *adds* to that rail through the `sidebar.footer.action` seat — it re-implements none of it.
-  - 📁 **Explorer (`Ctrl+Shift+E`)**: Workspace file tree with Git status badges (`M`, `U`, `A`, `D`, `R`), hidden files toggle (`👁`), and manual path navigation.
-  - 🔍 **Search (`Ctrl+Shift+F`)**: Fast recursive full-text workspace grep with match count badges, line numbers, and click-to-jump. A *mode*, not a permanent tab — VS Code's convention.
-  - ⑂ **Source Control (`Ctrl+Shift+G`)**: stage, unstage, discard and commit.
-  - 💬 **Sessions**: the host's *own* panel toggle at the top of the column switches to it — no duplicate button in the rail — and it hands the whole column back to the host's sidebar at full width. `Ctrl+B` collapses to the rail rather than to zero, so the host's controls are never off screen.
-- **Center Workspace (Multi-Tab Editor)**:
-  - Independent tabs with drag-and-drop reordering, active highlighting, and dirty state indicators (`•` unsaved dot).
-  - High-performance server-side syntax highlighting powered by **Shiki** (`github-dark` / `github-light`).
-  - **Interactive Breadcrumb Navigation**: Clickable directory hierarchy above the editor for rapid folder navigation.
-  - **Bottom Status Bar**: Live Git branch (`🌿 main`), active file, line/word counters, UTF-8 encoding, language mode badge, `💾 Auto-Save: ON/OFF` toggle, and quick `⚡ Diff` toggle.
-  - Right-click Tab Context Menu (`Close`, `Close Others`, `Close to the Left/Right`, `Close All`, `📋 Copy Path`).
+- **Left Sidebar & Rail (280px)**:
+  - 🐋 **Host Rail Integration**: Preserves the native `ui-sidebar` controls (New Session, Sessions, Settings) while contributing an interactive switcher via the `sidebar.footer.action` seat.
+  - 📁 **Explorer (`Ctrl+Shift+E`)**: Hierarchical workspace file tree with live Git status badges (`M`, `U`, `A`, `D`, `R`), hidden files toggle (`👁`), directory creation, and deletion to OS Trash.
+  - 🔍 **Search (`Ctrl+Shift+F`)**: High-performance recursive workspace search with file-name and full-text content matching (`ripgrep`), case-sensitivity toggle (`Aa`), regex support (`.*`), and match count badges.
+  - ⑂ **Source Control (`Ctrl+Shift+G`)**: Stage, unstage, discard, and commit changes with diff previews and commit log history.
+  - 💬 **Sessions**: Hands the column back to the host's session management at full width. Collapsing via `Ctrl+B` hides the panel to the 56px rail without losing navigation.
+- **Center Workspace (Multi-Tab Workbench)**:
+  - Independent editor tabs with drag-and-drop reordering, active tab indicators, and dirty state badges (`•` unsaved dot).
+  - High-performance server-side syntax highlighting powered by **Shiki** (`github-dark` / `github-light`) alongside interactive **CodeMirror** for code files.
+  - **Interactive Breadcrumbs**: Clickable directory hierarchy above the editor for quick path navigation.
+  - **Status Bar**: Live Git branch (`🌿 main`), active file path, line & column indicators, word counter, UTF-8 encoding, language mode badge, and `💾 Auto-Save: ON/OFF` toggle.
+  - Tab context menu (`Close`, `Close Others`, `Close to the Left/Right`, `Close All`, `📋 Copy Path`).
 - **Right Column (AI Chat & Tool Trajectory)**:
-  - Integrated chat assistant and real-time tool execution logs.
-  - 1-Click toggle between **Full-Width Canvas** and **3-Column IDE Layout** (`Ctrl+L`).
+  - Seamlessly embedded AI conversation panel and real-time tool execution stream.
+  - 1-Click toggle between **Full-Width Editor Canvas** and **3-Column IDE Layout** (`Ctrl+L`).
   - Floating **Open Chat** pill button when the panel is collapsed.
 
 ---
 
-### 2. ⚡ Inline AI Code Assistant & Chat Integration
-- **Inline AI Assistant (`Ctrl+K` like Cursor IDE)**:
-  - Highlight any text, paragraph, or code lines and press `Ctrl+K`.
-  - Floating glassmorphism card appears with quick action chips (`⚡ Polish Text`, `📊 Format Table`, `💡 Summarize`, `🔧 Refactor Code`) or custom natural language instructions.
-- **`@` Mention File Autocomplete & Authentic Blue Reference Chips**:
-  - Type `@` in the chat input: workspace files appear inside the host's own `@` menu (`files` group) with search-by-filename and path hint.
-  - Selecting a file candidate inserts an authentic **Blue Reference Chip** (`OccurrenceChip`) directly into the composer.
-  - Mentions automatically format with pure filename (`@ARCHITECTURE.md`) and precise line ranges (`#L36-43`, `#L6`) when text is selected in the active editor.
-- **`Ctrl+L` Smart Chat Navigation & Mentions**:
-  - **With selection in editor**: Inserts an authentic reference chip (e.g. `@ARCHITECTURE.md#L36-43` or `@AppFrame.tsx#L2-6`) into chat and focuses the composer.
-  - **Without selection**: Instantly toggles the Right Chat panel open or closed without stealing editor focus.
-- **TipTap WYSIWYG `💬 Mention` Bubble Button**:
-  - Any selection in TipTap or Code editor can be sent directly to chat as a reference chip with 1 click from the selection bubble menu.
-- **1-Click "⚡ Apply to Tab" & "📋 Copy" on Chat Code Blocks**:
-  - Every code block in AI responses has action buttons to apply directly to the open file or copy to clipboard.
+### 2. 📝 TipTap Notion WYSIWYG Document Suite
+- **Interactive Block Editing**: Markdown files (`.md`) render directly into rich, interactive Notion-style blocks.
+- **Collapsible Toggle Lists (`/toggle`)**: Foldable summary and details blocks matching Notion's UX.
+- **Notion Callouts (`/callout` or `💡`)**: High-visibility callout boxes with custom icons and background tints.
+- **Slash Menu (`/`)**: Type `/` to insert Headings (H1/H2/H3), Toggle Lists, Task Lists (`[ ]`), Interactive Tables, Callout Boxes, Syntax-highlighted Code Blocks, Blockquotes, KaTeX Math, Mermaid Diagrams, and YouTube embeds.
+- **Interactive Tables**: Add and delete rows and columns dynamically with toggleable header rows.
+- **Mathematical Equations**: Inline and block KaTeX rendering (`$E=mc^2$` and `$$\int ...$$`).
+- **Mermaid Diagrams**: Live rendering of flowcharts, sequence diagrams, and architecture maps inside notes.
+- **Document Outline (`📑 Outline`)**: Slide-out Table of Contents drawer displaying hierarchical H1, H2, and H3 headings with click-to-scroll navigation.
+- **1-Click Export Suite (`📤 Export`)**:
+  - `📋 Copy Clean Markdown`
+  - `📋 Copy Formatted HTML`
+  - `📄 Print / PDF Preview` (`window.print()`)
+- **Intelligent Auto-Save Engine**: 1.5-second debounce silently persists document edits to disk with subtle `Saved ✓` indicator.
+- **Notion Drag Handle**: Hover over blocks to drag and reorder content effortlessly.
+- **Floating Selection Bubble Menu**: Highlight text to format: **Bold** (`B`), *Italic* (`I`), <u>Underline</u> (`U`), ~~Strikethrough~~ (`S`), `Inline Code` (`</>`), 🎨 Text & Highlight Colors, `💬 Mention in Chat`, and `🤖 Ask AI`.
+
+---
+
+### 3. ⚡ AI Chat Integration & Reference Chips
+- **Authentic Blue Reference Chips (`OccurrenceChip`)**:
+  - Type `@` in chat: workspace files appear in the native `@` menu with instant search.
+  - Selecting a file candidate inserts an authentic reference chip (`@filename`) directly into the composer.
+  - Automatic line-range precision: when text is selected in the active editor, mentions format with exact lines (e.g. `@AppFrame.tsx#L45-80`).
+- **Smart `Ctrl+L` Navigation**:
+  - **With selection in editor**: Formats selection as a reference chip into chat and focuses the composer.
+  - **Without selection**: Toggles the Right AI Chat panel open or closed without stealing editor focus.
+- **Inline Code Action Buttons**:
+  - Every code block in AI responses features 1-click **⚡ Apply to Tab** (replaces selection or writes to active file) and **📋 Copy**.
+- **Turn Review Card & Review Tree**:
+  - Visual inspection of AI tool actions, file diffs, and settled code changes per turn.
 - **AI Assist Quick Actions Menu (`🤖 AI Assist ▾`)**:
   - `📖 Explain Code / File`: Injects deep architectural breakdown prompt.
   - `🧪 Generate Unit Tests`: Generates comprehensive unit tests for current file.
   - `🔧 Refactor & Optimize`: Suggests clean refactorings and modern optimizations.
   - `📝 Generate JSDoc / Docs`: Creates documentation and inline comments.
   - `🔍 Code Review & Bug Check`: Performs thorough review for edge cases and security.
-- **Click-to-Open from AI Chat**: Any file paths or tool outputs mentioned in chat (e.g. `src/app.js`, `package.json`, `note.md`) are automatically interactive and open directly in an editor tab upon click.
-- **Built-in Diff Viewer (`⚡ Diff`)**:
-  - Compare unsaved changes or AI modifications side-by-side / unified with syntax-highlighted additions (`+ green`) and deletions (`- red`).
-  - Change statistics counter (`+12 -4`).
-  - 1-Click `✓ Accept Changes` and `✕ Discard` actions.
-- **Robust Undo / Redo (`Ctrl+Z`, `Ctrl+Shift+Z` / `Ctrl+Y`)**:
-  - Full history stack in both raw code editor and TipTap WYSIWYG editor so you never lose typing history.
-  - Dedicated `↺ Undo` and `↻ Redo` buttons in the toolbar.
 
 ---
 
-### 3. 🎨 Sleek In-App Modal Dialogs (No Ugly Browser Alerts)
-- **Unsaved Changes Dialog**: When closing dirty tabs or discarding unsaved work, a modern in-app dialog appears with 3 clear options:
-  - 💾 **Save** (`Enter`): Saves the file to disk and closes the tab.
-  - 🗑️ **Don't Save**: Discards unsaved modifications and closes the tab.
-  - ✕ **Cancel** (`Escape`): Keeps the file open.
-- **Trash Confirmation Dialog**: Clean modal confirmation when moving files or folders to Trash.
+### 4. 🪄 Inline AI Assistant (`Ctrl+K` Cursor-Style)
+- Highlight any code lines, markdown paragraph, or text and press `Ctrl+K`.
+- Floating glassmorphism card appears directly above the selection.
+- Quick action chips:
+  - `⚡ Polish Text`: Clean grammar, improve tone, and enhance readability.
+  - `📊 Format Table`: Converts unstructured data or messy rows into clean tables.
+  - `💡 Summarize`: Condenses selected section into bullet points.
+  - `🔧 Refactor Code`: Refactors code for readability, performance, and best practices.
+- Natural language input bar allows custom instructions (e.g., *"Convert this function to async/await with typed errors"*).
 
 ---
 
-### 4. 📝 TipTap Notion WYSIWYG Markdown & Document Suite
-- **Direct WYSIWYG Editing**: Markdown files (`.md`) render directly into rich interactive Notion-style blocks.
-- **Collapsible Toggle Lists (`/toggle`)**: Foldable summary/details blocks matching Notion's UX.
-- **Notion Callouts (`/callout` or `💡`)**: Beautiful highlighted callout boxes with custom icons.
-- **Document Outline TOC (`📑 Outline`)**: Instant drawer showing hierarchical H1, H2, and H3 headings with click-to-scroll navigation.
-- **1-Click Export Suite (`📤 Export`)**:
-  - `📋 Copy Clean Markdown`
-  - `📋 Copy Formatted HTML`
-  - `📄 Print / PDF Preview` (`window.print()`)
-- **Intelligent Auto-Save Engine**: 1.5-second debounce silently persists document edits to disk with subtle `Saved ✓` indicator.
-- **Floating Selection Bubble Menu**: Highlight text to format: **Bold** (`B`), *Italic* (`I`), <u>Underline</u> (`U`), ~~Strikethrough~~ (`S`), `Inline Code` (`</>`), 🎨 Text & Highlight Colors, `💬 Mention in Chat`, and `🤖 Ask AI`.
-- **Slash Menu (`/`)**: Type `/` anywhere to insert Headings (H1/H2/H3), Collapsible Toggle Lists (`/toggle`), Task Lists (`[ ]`), Tables, Notion Callouts (`💡`), Code Blocks with syntax highlighting, Blockquotes, YouTube Embeds, Images, and Dividers.
-- **Interactive Tables**: Add/delete rows and columns dynamically, toggle header row formatting.
-- **Document Statistics**: Live word count and character count in the editor footer and status bar.
+### 5. 🌿 Git Source Control & Porcelain
+- **File Explorer Badges**: Live Git status indicators:
+  - `M` (Modified - yellow)
+  - `U` (Untracked - green)
+  - `A` (Added / Staged - cyan)
+  - `D` (Deleted - red)
+  - `R` (Renamed - purple)
+- **Source Control View (`Ctrl+Shift+G`)**:
+  - Staged and Unstaged changes groupings.
+  - 1-Click Stage (`+`), Unstage (`-`), and Discard (`↺`).
+  - Commit message box with `Commit` action.
+  - Commit Log Viewer displaying recent commits with author and timestamp.
+  - Remote sync actions (`Fetch`, `Pull`, `Push`).
 
 ---
 
-### 5. ⚡ Power-User Keyboard Shortcuts & Command Palette
-
-| Shortcut | Action | Description |
-| :--- | :--- | :--- |
-| `Ctrl+K` / `Cmd+K` | **Inline AI Assist** | Floating AI prompt input over selected text or code. |
-| `Ctrl+Shift+P` / `F1` | **Command Palette** | Floating searchable palette for all editor commands and AI actions. |
-| `Ctrl+P` / `Cmd+P` | **Quick Open File** | Centered floating palette with fuzzy search across all workspace files. |
-| `Ctrl+Shift+F` | **Global Search** | Activates the Workspace Search panel with match case (`Aa`) and regex (`.*`). |
-| `Ctrl+F` | **Find in File** | In-editor search widget with match counter and previous/next navigation. |
-| `Ctrl+H` | **Find & Replace** | Expands in-editor find widget with single and replace-all controls. |
-| `Ctrl+Z` | **Undo** | Reverts recent typing/formatting in code and TipTap editors. |
-| `Ctrl+Y` / `Ctrl+Shift+Z` | **Redo** | Re-applies reverted typing/formatting. |
-| `Ctrl+L` | **Chat / Selection to AI** | **With selection:** sends mention chip (`@filename#L36-43`) to AI chat and focuses composer.<br>**Without selection:** toggles AI panel open/closed without stealing focus. |
-| `Ctrl+B` | **Toggle Left Sidebar** | Toggles file explorer sidebar, collapsing to the rail. |
-| `Ctrl+S` / `Cmd+S` | **Save File** | Saves active code document or TipTap markdown document. |
-| `F2` | **Rename File** | Inline renaming in the File Explorer. |
-| `Escape` | **Dismiss Modal** | Closes Command Palette, Quick Open, Find Widget, or Dialogs. |
+### 6. 🎨 Excalidraw Whiteboard & Sketching
+- Built-in full-featured Excalidraw canvas.
+- Sketch architecture diagrams, user flows, and wireframes directly inside the IDE.
+- Save drawings locally or embed them within Markdown documents.
 
 ---
 
-### 6. 🖱️ Smart Right-Click Context Menus
-- **File Explorer Row Context Menu**:
-  - `📄 Open File`: Opens file in a new tab.
-  - `📄 New File...` / `📁 New Folder...`: Directory-aware creation (right-clicking a subfolder targets that directory as parent).
-  - `✏️ Rename (F2)`: Rename file/folder.
-  - `🗑️ Move to Trash`: Safely move file/folder to OS Recycle Bin / Trash with sleek confirmation.
-  - `📋 Copy Path` & `📋 Copy Relative Path`: Copies absolute or workspace-relative path to clipboard.
-  - *No "Ask AI about this file" entry, on purpose*: the composer's own `@` menu does that where you are already typing.
+### 7. 🕸️ Knowledge Graph View
+- Interactive visual knowledge graph mapping files, links, and cross-references.
+- Explore workspace connectivity, orphan documents, and central hub nodes.
 
 ---
 
-## 🚀 Quickstart & Installation Guide
+### 8. ⚡ Visual Diff Viewer
+- Compare unsaved changes, file versions, or AI modifications.
+- Side-by-side split view and unified inline view.
+- Syntax-highlighted additions (`+ green`) and deletions (`- red`).
+- Live change counter (`+12 -4`) and 1-click `✓ Accept` / `✕ Discard`.
 
-### Option 1: 1-Click Install Script (Linux / macOS)
+---
+
+## ⌨️ Keyboard Shortcuts
+
+| Shortcut | Action | Scope | Description |
+| :--- | :--- | :--- | :--- |
+| `Ctrl+K` / `Cmd+K` | **Inline AI Assist** | Editor | Opens Cursor-style floating AI prompt over selection. |
+| `Ctrl+L` | **Chat / Selection to AI** | Global | **With selection:** sends `@file#L...` chip to chat.<br>**Without selection:** toggles Right Chat panel. |
+| `Ctrl+B` | **Toggle Left Sidebar** | Global | Toggles Explorer/Search panel, collapsing to the 56px rail. |
+| `Ctrl+Shift+E` | **Show File Explorer** | Global | Focuses the Explorer file tree view. |
+| `Ctrl+Shift+F` | **Workspace Search** | Global | Opens full-text grep search with case and regex options. |
+| `Ctrl+Shift+G` | **Source Control** | Global | Opens Git staging and commit panel. |
+| `Ctrl+P` / `Cmd+P` | **Quick Open File** | Global | Fuzzy file finder across all workspace files. |
+| `Ctrl+Shift+P` / `F1` | **Command Palette** | Global | Searchable palette for all commands and actions. |
+| `Ctrl+S` / `Cmd+S` | **Save File** | Editor | Saves active document to disk. |
+| `Ctrl+F` | **Find in File** | Editor | Search widget with previous/next navigation. |
+| `Ctrl+H` | **Find & Replace** | Editor | In-file search and replace widget. |
+| `Ctrl+Z` | **Undo** | Editor | Undo recent typing/formatting in Code or TipTap. |
+| `Ctrl+Y` / `Ctrl+Shift+Z` | **Redo** | Editor | Redo undone changes. |
+| `F2` | **Rename Item** | Explorer | Inline file or directory rename. |
+| `Escape` | **Dismiss Modal** | Global | Closes dialogs, palettes, find bars, or inline prompt. |
+
+---
+
+## 🚀 Quickstart & Installation
+
+### Prerequisites
+- **Node.js**: `v22.0.0` or higher
+- **pnpm**: `v9.0.0` or higher
+- **DeepSeek Harness (`dsh`)**: Shipped and configured
+
+---
+
+### Single-Step Deployment (Recommended)
+
+Run the deployment script to compile host & client targets, clean up any legacy plugins, and link the unified package into your DeepSeek Harness profile:
 
 ```bash
+# Clone the repository
 git clone https://github.com/minhdevtry/deepseek-harness-plugins.git
 cd deepseek-harness-plugins
 
-# Run 1-click installer
-./install.sh
+# Install dependencies
+pnpm install
 
-# Start DeepSeek Harness
+# Deploy to default "web" profile
+pnpm run deploy
+# Or specify a custom profile:
+# node deploy.mjs --profile custom-profile
+```
+
+### Direct CLI Installation
+
+Alternatively, link the repository root directly using the `dsh` CLI:
+
+```bash
+# Build the unified plugin
+pnpm run build
+
+# Link into profile
+dsh plugin --profile web add link:.
+```
+
+### Launch DeepSeek Harness
+
+```bash
 dsh web
 ```
 
----
-
-### Option 2: Universal NPM Setup (Windows, macOS, Linux)
-
-```bash
-git clone https://github.com/minhdevtry/deepseek-harness-plugins.git
-cd deepseek-harness-plugins
-
-# Install, build, and deploy in one command:
-npm run setup
-
-# Start DeepSeek Harness
-dsh web
-```
+Navigate to `http://127.0.0.1:3080` to experience the unified VS Code workspace.
 
 ---
 
-### Option 3: Step-by-Step Manual Setup
+## 🔒 Security Sandboxing & Configuration
 
-1. **Install Dependencies**:
-   ```bash
-   npm install --legacy-peer-deps
-   ```
+The host service enforces sandbox security:
 
-2. **Build TipTap Bundle & Unified Layout**:
-   ```bash
-   npm run build
-   ```
+- **Sandbox Root (`DSH_SANDBOX_ROOT`)**: Defaults to `process.cwd()`. All file access, reading, writing, and deletion are strictly bounded within this directory.
+- **Path Traversal Prevention**: Absolute path resolution and realpath verification (`isInsideSandbox`) block directory traversal attacks (`../`).
+- **Optional Authentication (`DSH_PASSWORD`)**: When set in the environment, `/vscode-files/*` routes require session-based or token authentication.
+- **Cloudflare R2 Integration**: Configure Cloudflare R2 bucket credentials (`R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET_NAME`, `R2_PUBLIC_DOMAIN`) for cloud asset storage, or default to local image persistence.
 
-3. **Deploy Plugins to Profile**:
-   ```bash
-   npm run deploy
-   ```
-   *This automatically registers `@anoslide/dsh-client-vscode-layout` and `@anoslide/dsh-host-files` into `~/.dsh/profiles/web/` and updates `cordis.patch.yml`.*
-
-4. **Launch DeepSeek Harness**:
-   ```bash
-   dsh web
-   ```
-   Open `http://127.0.0.1:3080` in your browser.
-
----
-
-## 🧪 Automated Testing
-
-Run the full end-to-end Playwright test suite (14 automated steps):
-
-```bash
-npm test
-```
-
----
-
-## 📂 Repository Architecture
-
-```text
-deepseek-harness-plugins/
-├── install.sh                          # 1-Click automated installer for Linux/macOS
-├── package.json                        # Scripts & dependencies
-├── build-tiptap.mjs                    # Rollup compiler for standalone TipTap 3 suite
-├── build-unified-vscode-layout.mjs     # Compiler for 3-Column VS Code Layout
-├── deploy-vscode-notion-layout.mjs     # Installer into ~/.dsh/profiles/web
-├── plugins/
-│   ├── dsh-client-vscode-layout/       # Browser frontend plugin (React + Shiki + TipTap)
-│   │   ├── assets/                     # Bundled assets (tiptap.bundle.js, file icons)
-│   │   ├── lib/                        # Generated client bundle
-│   │   └── package.json
-│   ├── dsh-host-files/                 # Node.js backend plugin (file endpoints, search, git, trash)
-│   │   ├── lib/index.js
-│   │   └── package.json
-│   ├── dsh-at-file/                    # @file mention autocomplete plugin
-│   └── dsh-task-board/                 # Kanban Task Board UI plugin
-└── tests/
-    └── e2e.test.mjs                    # Comprehensive Playwright end-to-end test suite
-```
+For comprehensive technical design and API documentation, see [Architecture & Technical Specification](docs/architecture.md).
 
 ---
 
