@@ -1,90 +1,48 @@
 {
-	"name": "deepseek-harness-plugins",
-	"version": "1.0.0",
-	"description": "Unified 3-Column VS Code IDE Layout & TipTap Notion WYSIWYG Suite for DeepSeek Harness",
-	"main": "plugins/dsh-client-vscode-layout/lib/client.js",
-	"type": "module",
-	"scripts": {
-		"typecheck": "tsc --build plugins/dsh-client-vscode-layout",
-		"build:tiptap": "node build-tiptap.mjs",
-		"build:layout": "pnpm --filter @anoslide/dsh-client-vscode-layout bundle",
-		"build:legacy": "node build-unified-vscode-layout.mjs",
-		"build": "npm run typecheck && npm run build:layout",
-		"deploy": "node deploy.mjs",
-		"setup": "(pnpm install --ignore-scripts || npm install --legacy-peer-deps) && npm run build && npm run deploy",
-		"test:unit": "tsx --test plugins/dsh-client-vscode-layout/tests/*.test.ts",
-		"test": "node tests/e2e.test.mjs"
-	},
-	"keywords": [
-		"deepseek-harness",
-		"vscode-layout",
-		"tiptap",
-		"notion",
-		"wysiwyg",
-		"ide"
-	],
-	"author": "Lucas Minh",
-	"license": "MIT",
-	"devDependencies": {
-		"@deepseek-ai/cordis": "^4.0.2",
-		"@deepseek-ai/dsh-api-session-controller": "0.1.2-rc.1",
-		"@deepseek-ai/dsh-api-workspace-controller": "0.1.2-rc.1",
-		"@deepseek-ai/dsh-client-store": "0.1.2-rc.1",
-		"@deepseek-ai/dsh-client-ui-chat": "0.1.2-rc.1",
-		"@deepseek-ai/dsh-client-ui-conversation": "0.1.2-rc.1",
-		"@deepseek-ai/dsh-client-ui-input-trigger": "0.1.2-rc.1",
-		"@deepseek-ai/dsh-client-ui-renderer": "0.1.2-rc.1",
-		"@deepseek-ai/dsh-client-ui-session": "0.1.2-rc.1",
-		"@deepseek-ai/dsh-client-ui-sidebar": "0.1.2-rc.1",
-		"@deepseek-ai/dsh-client-ui-slots": "0.1.2-rc.1",
-		"@deepseek-ai/dsh-client-ui-theme": "0.1.2-rc.1",
-		"@deepseek-ai/dsh-client-ui-workspace": "0.1.2-rc.1",
-		"@rollup/plugin-commonjs": "^29.0.3",
-		"@rollup/plugin-node-resolve": "^16.0.3",
-		"@rollup/plugin-replace": "^6.0.3",
-		"@tiptap/core": "^3.30.1",
-		"@tiptap/extension-bubble-menu": "^3.30.1",
-		"@tiptap/extension-code-block-lowlight": "^3.30.1",
-		"@tiptap/extension-floating-menu": "^3.30.1",
-		"@tiptap/extension-highlight": "^3.30.1",
-		"@tiptap/extension-image": "^3.30.1",
-		"@tiptap/extension-mention": "^3.30.1",
-		"@tiptap/extension-table": "^3.30.1",
-		"@tiptap/extension-table-cell": "^3.30.1",
-		"@tiptap/extension-table-header": "^3.30.1",
-		"@tiptap/extension-table-row": "^3.30.1",
-		"@tiptap/extension-task-item": "^3.30.1",
-		"@tiptap/extension-task-list": "^3.30.1",
-		"@tiptap/extension-text-align": "^3.30.1",
-		"@tiptap/extension-underline": "^3.30.1",
-		"@tiptap/extension-youtube": "^3.30.1",
-		"@tiptap/starter-kit": "^3.30.1",
-		"@types/react": "~18.3.1",
-		"esbuild": "^0.28.2",
-		"lightningcss": "^1.30.2",
-		"lowlight": "^3.3.0",
-		"playwright": "^1.62.1",
-		"react": "^18.2.0",
-		"rollup": "^4.62.4",
-		"tippy.js": "^6.3.7",
-		"tiptap-markdown": "^0.9.0",
-		"tsdown": "^0.22.14",
-		"tsx": "^4.23.12",
-		"typescript": "^5.9.3",
-		"unrun": "^0.3.1"
-	},
-	"dependencies": {
-		"@tiptap/extension-collaboration": "^3.30.1",
-		"@tiptap/extension-collaboration-cursor": "^3.0.0",
-		"@tiptap/extension-color": "^3.30.1",
-		"@tiptap/extension-link": "^3.30.1",
-		"@tiptap/extension-text-style": "^3.30.1",
-		"@tiptap/extension-typography": "^3.30.1",
-		"@tiptap/y-tiptap": "3.0.8",
-		"lib0": "^0.2.117",
-		"ws": "^8.21.3",
-		"y-protocols": "^1.0.7",
-		"y-websocket": "^3.1.0",
-		"yjs": "^13.6.32"
-	}
+  "name": "@anoslide/dsh-vscode-workspace",
+  "version": "1.0.0",
+  "description": "Unified 3-Column VS Code Workspace & TipTap Notion WYSIWYG Suite for DeepSeek Harness",
+  "type": "module",
+  "main": "lib/index.js",
+  "types": "lib/types/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./lib/types/index.d.ts",
+      "default": "./lib/index.js"
+    },
+    "./client": {
+      "types": "./lib/types/client/index.d.ts",
+      "default": "./lib/client.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "dsh": {
+    "client": {
+      "platform": "web",
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-theme"
+      ]
+    },
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "build": "tsdown",
+    "test": "tsx --test tests/**/*.test.ts",
+    "deploy": "node deploy.mjs"
+  },
+  "files": [
+    "lib/**/*.js",
+    "lib/**/*.d.ts",
+    "cordis.patch.yml"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "lib0": "^0.2.117",
+    "ws": "^8.21.3",
+    "y-protocols": "^1.0.7",
+    "yjs": "^13.6.32"
+  }
 }
