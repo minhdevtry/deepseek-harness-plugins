@@ -141,6 +141,49 @@ test('HTTP Routes enforce sandbox traversal security', async () => {
       assert.match(data.error, /Access Denied/)
     }
 
+    // 8a. POST /vscode-files/upload-image traversal attempt -> 403
+    {
+      const res = await fetch(`${baseUrl}/vscode-files/upload-image`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          root: outsideDir,
+          data: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+          mimeType: 'image/png',
+        }),
+      })
+      assert.equal(res.status, 403)
+      const data = await res.json()
+      assert.equal(data.ok, false)
+      assert.match(data.error, /Access Denied/)
+    }
+
+    // 8b. POST /vscode-files/git/stage traversal file attempt -> 403
+    {
+      const res = await fetch(`${baseUrl}/vscode-files/git/stage`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ root: tempSandbox, file: '../../outside.txt' }),
+      })
+      assert.equal(res.status, 403)
+      const data = await res.json()
+      assert.equal(data.ok, false)
+      assert.match(data.error, /Access Denied/)
+    }
+
+    // 8c. POST /vscode-files/git/stage traversal root attempt -> 403
+    {
+      const res = await fetch(`${baseUrl}/vscode-files/git/stage`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ root: outsideDir, file: 'secret.txt' }),
+      })
+      assert.equal(res.status, 403)
+      const data = await res.json()
+      assert.equal(data.ok, false)
+      assert.match(data.error, /Access Denied/)
+    }
+
     // 9. Valid operations inside sandbox work correctly
     {
       // sandbox-info
@@ -167,13 +210,20 @@ test('HTTP Routes enforce sandbox traversal security', async () => {
       })
       assert.equal(writeRes.status, 200)
 
-      // read
+      // read (absolute path)
       const readRes = await fetch(`${baseUrl}/vscode-files/read?path=${encodeURIComponent(targetFile)}`)
       assert.equal(readRes.status, 200)
       const readData = await readRes.json()
       assert.equal(readData.ok, true)
       assert.equal(readData.content, 'Hello Sandbox')
       assert.equal(readData.kind, 'text')
+
+      // read (relative non-absolute path resolved against sandbox root)
+      const readRelRes = await fetch(`${baseUrl}/vscode-files/read?path=hello.txt`)
+      assert.equal(readRelRes.status, 200)
+      const readRelData = await readRelRes.json()
+      assert.equal(readRelData.ok, true)
+      assert.equal(readRelData.content, 'Hello Sandbox')
 
       // list
       const listRes = await fetch(`${baseUrl}/vscode-files/list?path=${encodeURIComponent(tempSandbox)}`)

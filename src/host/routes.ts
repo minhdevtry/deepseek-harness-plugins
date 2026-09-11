@@ -40,7 +40,7 @@ import {
   gitUnstage,
 } from './gitService.ts'
 import { uploadImageToR2 } from './r2Service.ts'
-import { readPersona, writePersona } from './personaService.ts'
+import { readPersona, readPersonaSync, registerPersonaPrompt, writePersona } from './personaService.ts'
 
 export function getSandboxRoot(): string {
   return resolve(process.env.DSH_SANDBOX_ROOT || process.cwd())
@@ -412,8 +412,12 @@ export function createHostRequestHandler(options: RouteHandlerOptions = {}) {
       if (url.pathname === '/vscode-files/git/stage') {
         const root = body?.root || defaultRoot
         const file = body?.file
-        if (!file) return sendJson(res, 400, { ok: false, error: 'missing file' })
+        if (!file || typeof file !== 'string') return sendJson(res, 400, { ok: false, error: 'missing file' })
         if (!isInsideSandbox(root, defaultRoot)) {
+          return sendJson(res, 403, { ok: false, error: 'Access Denied: Path is outside the sandboxed workspace directory' })
+        }
+        const resolvedFile = isAbsolute(file) ? resolve(file) : resolve(root, file)
+        if (!isInsideSandbox(resolvedFile, root)) {
           return sendJson(res, 403, { ok: false, error: 'Access Denied: Path is outside the sandboxed workspace directory' })
         }
         try {
@@ -427,8 +431,12 @@ export function createHostRequestHandler(options: RouteHandlerOptions = {}) {
       if (url.pathname === '/vscode-files/git/unstage') {
         const root = body?.root || defaultRoot
         const file = body?.file
-        if (!file) return sendJson(res, 400, { ok: false, error: 'missing file' })
+        if (!file || typeof file !== 'string') return sendJson(res, 400, { ok: false, error: 'missing file' })
         if (!isInsideSandbox(root, defaultRoot)) {
+          return sendJson(res, 403, { ok: false, error: 'Access Denied: Path is outside the sandboxed workspace directory' })
+        }
+        const resolvedFile = isAbsolute(file) ? resolve(file) : resolve(root, file)
+        if (!isInsideSandbox(resolvedFile, root)) {
           return sendJson(res, 403, { ok: false, error: 'Access Denied: Path is outside the sandboxed workspace directory' })
         }
         try {
@@ -442,8 +450,12 @@ export function createHostRequestHandler(options: RouteHandlerOptions = {}) {
       if (url.pathname === '/vscode-files/git/discard') {
         const root = body?.root || defaultRoot
         const file = body?.file
-        if (!file) return sendJson(res, 400, { ok: false, error: 'missing file' })
+        if (!file || typeof file !== 'string') return sendJson(res, 400, { ok: false, error: 'missing file' })
         if (!isInsideSandbox(root, defaultRoot)) {
+          return sendJson(res, 403, { ok: false, error: 'Access Denied: Path is outside the sandboxed workspace directory' })
+        }
+        const resolvedFile = isAbsolute(file) ? resolve(file) : resolve(root, file)
+        if (!isInsideSandbox(resolvedFile, root)) {
           return sendJson(res, 403, { ok: false, error: 'Access Denied: Path is outside the sandboxed workspace directory' })
         }
         try {
@@ -512,6 +524,9 @@ export function createHostRequestHandler(options: RouteHandlerOptions = {}) {
 
       if (url.pathname === '/vscode-files/upload-image') {
         const root = body?.root ? resolve(body.root) : defaultRoot
+        if (!isInsideSandbox(root, defaultRoot)) {
+          return sendJson(res, 403, { ok: false, error: 'Access Denied: Path is outside the sandboxed workspace directory' })
+        }
         const storage = body?.storage || 'local'
         const base64Data = body?.data
         const mimeType = body?.mimeType || 'image/png'
@@ -556,7 +571,7 @@ export function createHostRequestHandler(options: RouteHandlerOptions = {}) {
     } else if (rawTarget.startsWith('~/')) {
       rawTarget = join(homedir(), rawTarget.slice(2))
     }
-    const target = resolve(rawTarget)
+    const target = isAbsolute(rawTarget) ? resolve(rawTarget) : resolve(defaultRoot, rawTarget)
 
     if (!isInsideSandbox(target, defaultRoot)) {
       sendJson(res, 403, {
@@ -677,20 +692,7 @@ export function createHostRequestHandler(options: RouteHandlerOptions = {}) {
  */
 export function registerHostRoutes(ctx: Context): void {
   // Register global persona injection into systemPrompt
-  ctx.inject?.(['systemPrompt'], (promptCtx: any) => {
-    promptCtx.systemPrompt?.section({
-      name: 'user:global-persona',
-      order: 1,
-      text: () => {
-        try {
-          const { readPersonaSync } = createRequire(import.meta.url)('./personaService.ts')
-          return readPersonaSync()
-        } catch {
-          return ''
-        }
-      },
-    })
-  })
+  registerPersonaPrompt(ctx)
 
   const handler = createHostRequestHandler()
 
