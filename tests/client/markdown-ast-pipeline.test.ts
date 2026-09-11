@@ -19,7 +19,7 @@ for (const k of [
   ;(globalThis as any)[k] = (dom.window as any)[k]
 }
 
-import { normalizeMarkdownAST, serializeStableAST } from '../../src/client/tiptap/markdown/pipeline.ts'
+import { normalizeMarkdownAST } from '../../src/client/tiptap/markdown/pipeline.ts'
 
 test('normalizeMarkdownAST: triệt tiêu thẻ <br /> và <br/> rác thành newline sạch', () => {
   const input = 'Dòng 1<br>Dòng 2<br />Dòng 3<br   />Dòng 4\n'

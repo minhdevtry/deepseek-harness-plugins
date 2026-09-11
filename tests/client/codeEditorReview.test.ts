@@ -150,7 +150,7 @@ describe('Phase 1 AI Review: @codemirror/merge integration', () => {
     // Snapshot before accepting hunk 1
     baselineSnapshots.push(getOriginalDoc(view.state).toString())
     const chunk1 = getChunks(view.state)!.chunks[0]
-    acceptChunk(view, chunk1.fromB)
+    acceptChunk(view, chunk1!.fromB)
 
     // Now 1 chunk remains
     assert.equal(getChunks(view.state)?.chunks.length, 1)

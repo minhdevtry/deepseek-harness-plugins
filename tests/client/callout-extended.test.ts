@@ -51,7 +51,7 @@ test('Callout: defines 15 distinct callout types and maps aliases', () => {
 })
 
 test('Callout schema: supports title, icon, color, collapsible, and defaultOpen attributes', () => {
-  const attrs = Callout.config.addAttributes?.call({ options: {} })
+  const attrs = Callout.config.addAttributes?.call({ options: { HTMLAttributes: {} } } as any)
   assert.ok(attrs, 'Attributes must be defined')
   assert.ok('type' in attrs, 'Should have type attribute')
   assert.ok('title' in attrs, 'Should have title attribute')
@@ -69,7 +69,7 @@ test('Callout renderHTML: renders details/summary for collapsible callouts and d
     { options: { HTMLAttributes: {} } } as any,
     { HTMLAttributes: { 'data-callout-type': 'tip' } } as any
   )
-  assert.equal(staticRender?.[0], 'div', 'Static callout should render div')
+  assert.equal((staticRender as any)?.[0], 'div', 'Static callout should render div')
 
   // Collapsible callout
   const collapsibleRender = renderHTML?.call(
@@ -83,7 +83,7 @@ test('Callout renderHTML: renders details/summary for collapsible callouts and d
       },
     } as any
   )
-  assert.equal(collapsibleRender?.[0], 'details', 'Collapsible callout should render details')
+  assert.equal((collapsibleRender as any)?.[0], 'details', 'Collapsible callout should render details')
 })
 
 test('Callout markdown tokenizer & serializer: preserves collapsible marker and title', () => {
@@ -111,13 +111,13 @@ test('Callout markdown tokenizer & serializer: preserves collapsible marker and 
       parseBlockChildren: (toks: any) => toks,
     } as any
   )
-  assert.equal(node?.attrs?.type, 'note')
-  assert.equal(node?.attrs?.collapsible, true)
-  assert.equal(node?.attrs?.defaultOpen, true)
-  assert.equal(node?.attrs?.title, 'Collapsible Open')
+  assert.equal((node as any)?.attrs?.type, 'note')
+  assert.equal((node as any)?.attrs?.collapsible, true)
+  assert.equal((node as any)?.attrs?.defaultOpen, true)
+  assert.equal((node as any)?.attrs?.title, 'Collapsible Open')
 
   // Test renderMarkdown
-  const rendered = Callout.config.renderMarkdown?.call(
+  const rendered = (Callout.config as any).renderMarkdown?.call(
     {} as any,
     {
       attrs: {

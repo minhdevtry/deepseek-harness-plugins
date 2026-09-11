@@ -11,7 +11,6 @@ import crypto from 'node:crypto'
 import type {
   DirEntry,
   FileEntry,
-  FileKind,
   FileReadResult,
   Listing,
   RenameResult,

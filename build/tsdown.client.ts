@@ -46,6 +46,7 @@ export const PLATFORM_MODULES = [
   '@deepseek-ai/dsh-client-store',
   '@deepseek-ai/dsh-client-ui-slots',
   '@deepseek-ai/dsh-client-ui-primitives',
+  '@deepseek-ai/dsh-client-ui-dockkit',
 ] as const
 
 /** Externals resolved from the loader module table. */
@@ -59,27 +60,32 @@ export const CLIENT_EXTERNALS: readonly string[] = [...PLATFORM_MODULES]
 const CSS_VIRTUAL_PREFIX = '\0dsh-css:'
 const CSS_VIRTUAL_SUFFIX = '.mjs'
 
+export interface ClientBundleOptions {
+  entry?: string
+  outDir?: string
+}
+
 /**
- * Build the tsdown config for one UI plugin package: the node half (`src/index.ts`
- * → `lib/index.js`) plus the browser client bundle (`src/client/index.ts` →
+ * Build the tsdown config for the browser client bundle (`src/client/index.ts` →
  * `lib/client.js`).
  * @param id - plugin id (package name), stamped into the `__ModuleLoader__.load`
  * handoff and onto the injected style tags.
- * @returns the two tsdown configs.
+ * @param options - optional entry and outDir overrides
+ * @returns the tsdown config for the client bundle.
  */
-export function clientBundle(id: string): UserConfig[] {
-  return [nodeHalf(id), browserHalf(id)]
+export function clientBundle(id: string, options?: ClientBundleOptions): UserConfig {
+  return browserHalf(id, options)
 }
 
 /** The node half: a thin cordis plugin the host Loader imports. */
-function nodeHalf(id: string): UserConfig {
+export function nodeHalf(id: string): UserConfig {
   return {
     name: id,
     entry: ['src/index.ts'],
     outDir: 'lib',
     format: ['esm'],
     platform: 'node',
-    target: 'es2024',
+    target: 'node22',
     fixedExtension: false,
     dts: false,
     clean: false,
@@ -87,13 +93,15 @@ function nodeHalf(id: string): UserConfig {
 }
 
 /** The browser half: the `__ModuleLoader__` closure-factory artifact. */
-function browserHalf(id: string): UserConfig {
+export function browserHalf(id: string, options?: ClientBundleOptions): UserConfig {
+  const entryPath = options?.entry ?? 'src/client/index.ts'
+  const outDir = options?.outDir ?? 'lib'
   return {
     name: `${id}/client`,
-    entry: { client: 'src/client/index.ts' },
+    entry: { client: entryPath },
     // Browser bundle lands next to the node half; `clean` must stay off or it
     // would wipe the node-half output emitted above.
-    outDir: 'lib',
+    outDir,
     format: 'cjs',
     platform: 'browser',
     dts: false,

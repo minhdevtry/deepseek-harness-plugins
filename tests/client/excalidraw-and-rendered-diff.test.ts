@@ -16,7 +16,6 @@ import {
   serializeExcalidrawScene,
   renderExcalidrawToSvg,
   type ExcalidrawScene,
-  type ExcalidrawElement,
 } from '../../src/client/excalidraw/excalidrawScene.ts'
 
 import { alignBlocks, type BlockItem } from '../../src/client/diff/blockDiff.ts'

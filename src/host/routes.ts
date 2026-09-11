@@ -40,7 +40,7 @@ import {
   gitUnstage,
 } from './gitService.ts'
 import { uploadImageToR2 } from './r2Service.ts'
-import { readPersona, readPersonaSync, registerPersonaPrompt, writePersona } from './personaService.ts'
+import { readPersona, registerPersonaPrompt, writePersona } from './personaService.ts'
 
 export function getSandboxRoot(): string {
   return resolve(process.env.DSH_SANDBOX_ROOT || process.cwd())

@@ -17,7 +17,6 @@ import { documentExtensions } from '../../src/client/tiptap/extensions.ts'
 import {
   tableWithMovedRow,
   tableWithMovedColumn,
-  FIRST_MOVABLE_ROW_INDEX,
 } from '../../src/client/tiptap/table/tableReorder.ts'
 
 describe('Table Drag Reorder', () => {

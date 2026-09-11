@@ -26,8 +26,6 @@ import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight'
 import { common, createLowlight } from 'lowlight'
 import {
   detectLoneTrustedUrl,
-  detectLoneGfmUrl,
-  isAllowedLinkUri,
 } from '../../src/client/tiptap/clipboard/loneUrl.ts'
 import {
   linkifySelection,
@@ -48,7 +46,6 @@ test('detectLoneTrustedUrl: detects standalone valid URLs and normalizes bare do
 })
 
 test('linkifySelection: wraps non-empty text selection into a link mark without replacing text', () => {
-  const lowlight = createLowlight(common)
   const editor = new Editor({
     extensions: [StarterKit, Link.configure({ openOnClick: false })],
     content: '<p>Click here to read documentation</p>',
@@ -96,7 +93,7 @@ test('insertVsCodeCodeBlock: parses vscode-editor-data and inserts codeBlock wit
   const codeNode = json.content?.find((c: any) => c.type === 'codeBlock')
   assert.ok(codeNode, 'codeBlock node should be created')
   assert.equal(codeNode.attrs?.language, 'typescript')
-  assert.equal(codeNode.content?.[0]?.text, 'const x: number = 42;')
+  assert.equal((codeNode.content?.[0] as any)?.text, 'const x: number = 42;')
 
   editor.destroy()
 })

@@ -1,10 +1,10 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import http from 'node:http'
-import { mkdtemp, rm, writeFile, mkdir } from 'node:fs/promises'
+import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { createHostRequestHandler, registerHostRoutes } from '../../src/host/routes.ts'
+import { createHostRequestHandler } from '../../src/host/routes.ts'
 import { isInsideSandbox } from '../../src/host/fileService.ts'
 import { apply, name, inject } from '../../src/index.ts'
 
@@ -246,7 +246,7 @@ test('Cordis plugin exports and registration', () => {
 
   let registeredRoute: any = null
   const mockCtx: any = {
-    inject: (deps: string[], cb: Function) => {},
+    inject: (_deps: string[], _cb: Function) => {},
     effect: (fn: Function) => fn(),
     webServer: {
       register: (route: any) => {

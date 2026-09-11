@@ -50,7 +50,6 @@ describe('TipTap Notion WYSIWYG AI Review (Phase 2)', () => {
     const newMd = `# Title\n\nParagraph 1 MODIFIED BY AI.\n\nParagraph 2.\n\nParagraph 3 NEW.`
 
     const { blocks: baseBlocks } = parseMarkdownToBlocks(baseMd)
-    const { blocks: newBlocks } = parseMarkdownToBlocks(newMd)
 
     const editor = new Editor({
       element: document.createElement('div'),

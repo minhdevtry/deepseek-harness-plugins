@@ -5,7 +5,6 @@ import {
   formatFileMention,
   normalizeLineRange,
   appendMentionToComposer,
-  installComposerWriter,
   installReferenceWriter,
   toWorkspaceRelative,
 } from '../../src/client/composer.ts'
@@ -185,6 +184,7 @@ describe('createFileSource', () => {
       session: { sessionId: 'mock-session' as any },
       position: 'inline',
       via: 'menu',
+      action: 'pick',
       span: { start: 0, end: 1, draftRev: 1 },
     })
 
@@ -197,7 +197,7 @@ describe('createFileSource', () => {
 
   test('codec serializes reference with code snippet if active text matches', async () => {
     const source = createFileSource(() => '/mock/root')
-    assert.equal(source.codec.clipboardText('src/main.ts'), '@src/main.ts')
+    assert.equal(source.codec!.clipboardText('src/main.ts'), '@src/main.ts')
 
     // Mock active text on window
     const sampleCode = ['const a = 1', 'const b = 2', 'const c = 3', 'const d = 4'].join('\n')
@@ -206,14 +206,14 @@ describe('createFileSource', () => {
       return undefined
     }
 
-    const serialized = await source.codec.serialize('src/main.ts#L2-3', new AbortController().signal)
+    const serialized = await source.codec!.serialize('src/main.ts#L2-3', new AbortController().signal)
     assert.equal(
       serialized,
       '@src/main.ts#L2-3\n```\nconst b = 2\nconst c = 3\n```',
     )
 
     // Fallback if no #L
-    const noRange = await source.codec.serialize('src/main.ts', new AbortController().signal)
+    const noRange = await source.codec!.serialize('src/main.ts', new AbortController().signal)
     assert.equal(noRange, '@src/main.ts')
 
     delete (globalThis as any).__dsh_get_active_text

@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { executeAITransform, LANGUAGE_NAMES, TONE_NAMES } from '../../src/client/tiptap/ai/aiEngine.ts'
+import { executeAITransform } from '../../src/client/tiptap/ai/aiEngine.ts'
 import { SLASH_COMMANDS, matchCommands } from '../../src/client/tiptap/commands.ts'
 
 test('AI Engine: Improve writing transformation', async () => {
