@@ -70,7 +70,7 @@ declare module '@deepseek-ai/cordis' {
 export const name = 'dsh-vscode-workspace/client'
 
 /** Required services (cordis fiber inject — the loader passes all module exports as an object plugin). */
-export const inject = ['slots', 'theme', 'sessions', 'workspaces', 'uiWorkspace']
+export const inject = ['slots', 'theme', 'sessions', 'workspaces']
 
 /**
  * Client plugin body: provide ctx.layout, then one register() call — AppFrame
@@ -195,7 +195,7 @@ export function apply(ctx: ClientContext): void {
       if (!ws) {
         ws = await ctx.workspaces.create({ path: targetPath })
       }
-      if (ws?.workspaceId) {
+      if (ws?.workspaceId && ctx.uiWorkspace) {
         const sessionId = await ctx.uiWorkspace.connectWorkspace(ws.workspaceId)
         ctx.sessions.open(sessionId)
       }

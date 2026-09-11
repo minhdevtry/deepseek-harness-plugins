@@ -1,4 +1,13 @@
 # Profile bundle layer for the unified VS Code Workspace & Host Files plugin.
+#
+# 1. Retire the stock frame. `root` is a `single` slot: two occupants is a
+#    load-time failure by design, so the stock AppFrame has to stand down
+#    before ours can take the column layout over. Disabling ui-layout also
+#    prevents colliding on the process-global service `layout`.
+- id: ui-layout
+  disabled: true
+
+# 2. Mount the unified plugin.
 - insert:
     - id: vscode-workspace
       name: '@anoslide/dsh-vscode-workspace'
