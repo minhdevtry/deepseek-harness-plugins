@@ -86,6 +86,8 @@ export interface WorkbenchProps {
   onToggleAutoSave: () => void
   onRevealDir: (dir: string) => void
   onNotify: (message: string) => void
+  onToggleRight?: () => void
+  rightOpen?: boolean
 }
 
 /** A tab waiting on the unsaved-changes question. */
@@ -95,7 +97,16 @@ type PendingClose = { path: string; busy: boolean; error?: string }
 export function Workbench({
   tabs, activePath, activeLine, autoSave, explorerRoot,
   onOpenFile, onOpenFileBackground, onSetTabs, onMoveTab, onToggleAutoSave, onRevealDir, onNotify,
+  onToggleRight, rightOpen,
 }: WorkbenchProps) {
+  // Auto-activate first tab if tabs exist but none is active,
+  // preventing the "No file open" disconnect while tabs are visible.
+  useEffect(() => {
+    if (tabs.length > 0 && (activePath === undefined || !tabs.includes(activePath))) {
+      onOpenFile(tabs[0]!)
+    }
+  }, [tabs, activePath, onOpenFile])
+
   const [cursor, setCursor] = useState<CursorInfo | undefined>(undefined)
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | { error: string }>('idle')
   const [pendingClose, setPendingClose] = useState<PendingClose | undefined>(undefined)
@@ -822,28 +833,54 @@ export function Workbench({
         {activePath !== undefined ? (
           <Breadcrumb path={activePath} root={explorerRoot} onNavigate={onRevealDir} />
         ) : <div />}
-        <button
-          type="button"
-          onClick={() => setGraphOpen(prev => !prev)}
-          title="Toggle 2D Interactive Knowledge Graph"
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 5,
-            padding: '2px 8px',
-            fontSize: 11,
-            fontWeight: 600,
-            borderRadius: 4,
-            border: '1px solid var(--dsw-alias-border-l1, #cbd5e1)',
-            background: graphOpen ? 'var(--dsw-alias-state-business-primary, #2563eb)' : 'var(--dsw-alias-bg-elevated, #ffffff)',
-            color: graphOpen ? '#ffffff' : 'var(--dsw-alias-text-primary, #334155)',
-            cursor: 'pointer',
-            height: 22,
-          }}
-        >
-          <span style={{ fontSize: 13 }}>🕸️</span>
-          <span>{graphOpen ? 'Close Graph' : 'Graph View'}</span>
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <button
+            type="button"
+            onClick={() => setGraphOpen(prev => !prev)}
+            title="Toggle 2D Interactive Knowledge Graph"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 5,
+              padding: '2px 8px',
+              fontSize: 11,
+              fontWeight: 600,
+              borderRadius: 4,
+              border: '1px solid var(--dsw-alias-border-l1, #cbd5e1)',
+              background: graphOpen ? 'var(--dsw-alias-state-business-primary, #2563eb)' : 'var(--dsw-alias-bg-elevated, #ffffff)',
+              color: graphOpen ? '#ffffff' : 'var(--dsw-alias-text-primary, #334155)',
+              cursor: 'pointer',
+              height: 22,
+            }}
+          >
+            <span style={{ fontSize: 13 }}>🕸️</span>
+            <span>{graphOpen ? 'Close Graph' : 'Graph View'}</span>
+          </button>
+          {onToggleRight && (
+            <button
+              type="button"
+              onClick={onToggleRight}
+              title="Toggle AI Chat Panel (Ctrl+L)"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 5,
+                padding: '2px 8px',
+                fontSize: 11,
+                fontWeight: 600,
+                borderRadius: 4,
+                border: '1px solid var(--dsw-alias-border-l1, #cbd5e1)',
+                background: rightOpen ? 'var(--dsw-alias-state-business-primary, #2563eb)' : 'var(--dsw-alias-bg-elevated, #ffffff)',
+                color: rightOpen ? '#ffffff' : 'var(--dsw-alias-text-primary, #334155)',
+                cursor: 'pointer',
+                height: 22,
+              }}
+            >
+              <span style={{ fontSize: 12 }}>🤖</span>
+              <span>{rightOpen ? 'Hide AI' : 'AI Chat'}</span>
+            </button>
+          )}
+        </div>
       </div>
 
       {/*

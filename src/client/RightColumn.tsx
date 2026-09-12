@@ -20,14 +20,14 @@ export interface RightColumnProps {
   tab: RightTab
   /** False while no real session is current — the details tab has nothing to show. */
   hasDetails: boolean
-  onTab: (tab: RightTab) => void
+  onTab?: (tab: RightTab) => void
   onClose: () => void
   chat: ReactNode
   details: ReactNode
 }
 
 /** The chat / trajectory column (see module doc). */
-export function RightColumn({ collapsed, tab, hasDetails, onTab, onClose, chat, details }: RightColumnProps) {
+export function RightColumn({ collapsed, tab, hasDetails, onClose, chat, details }: RightColumnProps) {
   // A details tab that loses its session falls back to chat rather than
   // rendering an empty panel.
   const active: RightTab = tab === 'details' && !hasDetails ? 'chat' : tab
@@ -37,34 +37,15 @@ export function RightColumn({ collapsed, tab, hasDetails, onTab, onClose, chat, 
       {/* aria-hidden while collapsed: a zero-width column keeps its DOM, and
           without this the whole chat stays in the accessibility tree. */}
       <div className={css.inner} aria-hidden={collapsed || undefined}>
-        <div className={css.tabBar} role="tablist">
-          <button
-            type="button"
-            role="tab"
-            className={css.tab}
-            aria-selected={active === 'chat'}
-            data-active={active === 'chat' || undefined}
-            onClick={() => onTab('chat')}
-          >
-            Chat
-          </button>
-          {hasDetails && (
-            <button
-              type="button"
-              role="tab"
-              className={css.tab}
-              aria-selected={active === 'details'}
-              data-active={active === 'details' || undefined}
-              onClick={() => onTab('details')}
-            >
-              Trajectory
-            </button>
-          )}
-          <span className={css.spacer} />
-          <button type="button" className={css.close} title="Close panel (Ctrl+L)" onClick={onClose}>
-            ✕
-          </button>
-        </div>
+        <button
+          type="button"
+          className={css.close}
+          title="Close AI panel (Ctrl+L)"
+          aria-label="Close AI panel"
+          onClick={onClose}
+        >
+          ✕
+        </button>
 
         <div data-dsh-chat-panel="true" className={css.panel} hidden={active !== 'chat'}>{chat}</div>
         <div data-dsh-details-panel="true" className={css.panel} hidden={active !== 'details'}>{details}</div>

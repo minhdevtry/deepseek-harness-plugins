@@ -477,6 +477,8 @@ export function AppFrame({
           onToggleAutoSave={actions.toggleAutoSave}
           onRevealDir={actions.setExplorerRoot}
           onNotify={handleNotify}
+          onToggleRight={actions.toggleRight}
+          rightOpen={cols.right > 0}
         />
       </div>
 
