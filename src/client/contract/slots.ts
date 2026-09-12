@@ -88,7 +88,24 @@ export type FrameInjected = {
   setExplorerView: (view: import('../explorer/views.ts').ExplorerView) => void
 }
 
+export interface RightbarOwnerProps {
+  /** Resolved normal panel width in px. */
+  width: number
+  /** Current frame width in px. */
+  viewportWidth: number
+  /** Whether a normal right panel can show. */
+  canShow: boolean
+}
+
+/** Selector hook over root-scoped panel selection. */
+export type UsePanelInfo = import('@deepseek-ai/dsh-client-ui-slots').SnapshotSelectorHook<import('../service.ts').PanelInfo>
+
 declare module '@deepseek-ai/dsh-client-ui-slots' {
+  interface GlobalStandardProps {
+    /** Subscribe to the selected main panel independently of parent renders. */
+    usePanelInfo: UsePanelInfo
+  }
+
   interface SlotMap {
     /**
      * The session-list column. In this frame it is NOT the left column: the
@@ -96,12 +113,15 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
      */
     'sidebar': { kind: 'single'; scope: 'root'; owner: SidebarOwnerProps }
     /**
-     * The AI chat surface. Re-hosted into the RIGHT column here, where the
-     * stock frame puts it in the center.
+     * Central panel selected by sidebar entry id. The reserved `conversation`
+     * key hosts the Conversation; other keys receive no Session binding.
      */
-    'conversation': { kind: 'single'; scope: 'session-maybe'; owner: ConvOwnerProps }
-    /** Tool trajectory / details, rendered as a tab beside the chat in the right column. */
-    'details': { kind: 'single'; scope: 'session'; owner: DetailsOwnerProps }
+    'main': { kind: 'keyed'; scope: 'root' }
+    /**
+     * The right column: a track the centre makes room for, or nothing. OCCUPIED
+     * by the right Sidebar.
+     */
+    'rightbar': { kind: 'single'; scope: 'root'; owner: RightbarOwnerProps }
     /**
      * Frame-wide floating layer, above every column and outside their scroll
      * containers: toasts, the command palette, quick-open, modal dialogs. The
@@ -111,5 +131,9 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
      * rather than replacing them.
      */
     'shell.overlay': { kind: 'list'; scope: 'root' }
+    /** Legacy alias for conversation slot. */
+    'conversation': { kind: 'single'; scope: 'session-maybe'; owner: ConvOwnerProps }
+    /** Legacy alias for details slot. */
+    'details': { kind: 'single'; scope: 'session'; owner: DetailsOwnerProps }
   }
 }

@@ -67,7 +67,7 @@ const VIEW_KEYS: Record<string, ExplorerView | undefined> = {
 /** Full composed props: runtime share + child-slot render share + store share + injected face. */
 export type AppFrameProps =
   & PropsRuntime<'root'>
-  & PropsRenderSlots<'sidebar' | 'conversation' | 'details' | 'shell.overlay'>
+  & PropsRenderSlots<'sidebar' | 'main' | 'rightbar' | 'shell.overlay'>
   & PropsStore<ReturnType<typeof createLayoutStore>>
   & FrameInjected
 
@@ -76,12 +76,6 @@ export function AppFrame({
   useStore, useSessions, actions, renderSlot, notify,
   openWorkspace, pickDirectory, listWorkspaces,
   useExplorerView, setExplorerView,
-  // `'details'` is declared scope: 'session' (a real, non-blank current
-  // session) in contract/slots.ts, which is what makes PropsRenderSlots
-  // compose this in — the framework injects it because a session-scope
-  // child exists, not because we import it from anywhere. Rendering
-  // 'details' without this wrapper throws "rendered without a scope binding".
-  SessionProvider,
 }: AppFrameProps) {
   const panels = useStore(s => s)
 
@@ -417,11 +411,11 @@ export function AppFrame({
         </div>
 
         <div className={css.centerCol}>
-          {renderSlot('conversation', {})}
+          {renderSlot('main', {}, { entryKey: panels.panelInfo.activePanelId ?? 'conversation' })}
         </div>
 
         <div className={css.detailsCol} style={{ width: 0, display: 'none' }}>
-          <SessionProvider>{renderSlot('details', {})}</SessionProvider>
+          {renderSlot('rightbar', { width: 0, viewportWidth: viewport, canShow: false })}
         </div>
 
         <div className={css.overlayLayer} data-shell-overlay>
@@ -494,8 +488,8 @@ export function AppFrame({
         hasDetails={detailsSession !== undefined}
         onTab={actions.setRightTab}
         onClose={actions.closeRight}
-        chat={renderSlot('conversation', {})}
-        details={<SessionProvider>{renderSlot('details', {})}</SessionProvider>}
+        chat={renderSlot('main', {}, { entryKey: panels.panelInfo.activePanelId ?? 'conversation' })}
+        details={renderSlot('rightbar', { width: cols.right, viewportWidth: viewport, canShow: cols.right > 0 })}
       />
 
       <div className={css.overlayLayer} data-shell-overlay>

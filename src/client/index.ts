@@ -70,7 +70,7 @@ declare module '@deepseek-ai/cordis' {
 export const name = 'dsh-vscode-workspace/client'
 
 /** Required services (cordis fiber inject — the loader passes all module exports as an object plugin). */
-export const inject = ['slots', 'theme', 'sessions', 'workspaces']
+export const inject = ['slots', 'theme']
 
 /**
  * Client plugin body: provide ctx.layout, then one register() call — AppFrame
@@ -82,7 +82,22 @@ export function apply(ctx: ClientContext): void {
   // Shared by two registrations that cannot see each other's stores: the frame
   // (root) and the rail switcher (ui-sidebar's footer seat). See explorer/views.ts.
   const views = createViewState()
-  const layout = new LayoutController(views)
+  const handle = createLayoutStore()
+  const instance = handle.create()
+  const store: typeof handle = { ...handle, create: () => instance }
+  const layout = new LayoutController(views, id =>
+    ctx.slots.entries('main').some(entry => entry.options.key === id))
+  layout.attachPanels(instance.actions)
+
+  const retainMainPanels = (): void => {
+    instance.actions.retainMainPanels(ctx.slots.entries('main').flatMap(entry =>
+      entry.options.key === undefined ? [] : [entry.options.key]))
+  }
+
+  const panelInfo = {
+    getSnapshot: () => instance.getSnapshot().panelInfo,
+    subscribe: (listener: () => void) => instance.subscribe(listener),
+  }
 
   /**
    * Select a left-column view, revealing the column if it is collapsed.
@@ -117,9 +132,10 @@ export function apply(ctx: ClientContext): void {
   ctx.effect(() => installComposerWriter((text) => {
     const conversation = ctx.get('conversation') as IConversation | undefined
     if (conversation === undefined) return false
-    const sessionId = ctx.sessions.list.getSnapshot().current
+    const sessions = ctx.get('sessions') as any
+    const sessionId = sessions?.list?.getSnapshot()?.current
     if (sessionId === undefined) return false
-    const actx = ctx.sessions.scope(sessionId)
+    const actx = sessions?.scope(sessionId)
     if (actx === undefined) return false
     const input = conversation.input.for(actx)
     const draft = input.state.getSnapshot().draft
@@ -136,9 +152,10 @@ export function apply(ctx: ClientContext): void {
   ctx.effect(() => installReferenceWriter((reference) => {
     const conversation = ctx.get('conversation') as IConversation | undefined
     if (conversation === undefined) return false
-    const sessionId = ctx.sessions.list.getSnapshot().current
+    const sessions = ctx.get('sessions') as any
+    const sessionId = sessions?.list?.getSnapshot()?.current
     if (sessionId === undefined) return false
-    const actx = ctx.sessions.scope(sessionId)
+    const actx = sessions?.scope(sessionId)
     if (actx === undefined) return false
     const input = conversation.input.for(actx)
 
@@ -155,7 +172,7 @@ export function apply(ctx: ClientContext): void {
     const snap = input.state.getSnapshot()
     const at = snap.draft.length
 
-    const cwd = ctx.sessions.list.getSnapshot().byId[sessionId]?.cwd
+    const cwd = sessions?.list?.getSnapshot()?.byId[sessionId]?.cwd
     const relRef = toWorkspaceRelative(reference.ref, cwd)
     const resolvedRef: ComposerReference = {
       ...reference,
@@ -189,15 +206,18 @@ export function apply(ctx: ClientContext): void {
    */
   const openWorkspace: FrameInjected['openWorkspace'] = async (targetPath: string) => {
     try {
-      if (!ctx.workspaces) return
-      const snapshot = ctx.workspaces.list.getSnapshot()
-      let ws = snapshot.items.find(item => item.path === targetPath)
+      const workspaces = ctx.get('workspaces') as any
+      if (!workspaces) return
+      const snapshot = workspaces.list.getSnapshot()
+      let ws = snapshot.items.find((item: any) => item.path === targetPath)
       if (!ws) {
-        ws = await ctx.workspaces.create({ path: targetPath })
+        ws = await workspaces.create({ path: targetPath })
       }
-      if (ws?.workspaceId && ctx.uiWorkspace) {
-        const sessionId = await ctx.uiWorkspace.connectWorkspace(ws.workspaceId)
-        ctx.sessions.open(sessionId)
+      const uiWorkspace = ctx.get('uiWorkspace') as any
+      const sessions = ctx.get('sessions') as any
+      if (ws?.workspaceId && uiWorkspace && sessions) {
+        const sessionId = await uiWorkspace.connectWorkspace(ws.workspaceId)
+        sessions.open(sessionId)
       }
     } catch (err) {
       ctx.logger.error('Failed to open workspace:', err)
@@ -209,8 +229,9 @@ export function apply(ctx: ClientContext): void {
    */
   const pickDirectory: FrameInjected['pickDirectory'] = async () => {
     try {
-      if (!ctx.uiWorkspace) return null
-      return await ctx.uiWorkspace.pickDirectory()
+      const uiWorkspace = ctx.get('uiWorkspace') as any
+      if (!uiWorkspace) return null
+      return await uiWorkspace.pickDirectory()
     } catch (err) {
       ctx.logger.error('Directory picker error:', err)
       return null
@@ -222,9 +243,10 @@ export function apply(ctx: ClientContext): void {
    */
   const listWorkspaces: FrameInjected['listWorkspaces'] = () => {
     try {
-      if (!ctx.workspaces) return []
-      const items = ctx.workspaces.list.getSnapshot().items
-      return items.map(w => ({
+      const workspaces = ctx.get('workspaces') as any
+      if (!workspaces) return []
+      const items = workspaces.list.getSnapshot().items
+      return items.map((w: any) => ({
         workspaceId: String(w.workspaceId),
         path: w.path,
         name: w.title || basename(w.path) || w.path,
@@ -235,18 +257,19 @@ export function apply(ctx: ClientContext): void {
   }
 
   ctx.effect(() => {
+    const disposePanelInfo = ctx.slots.provideRoot({ hooks: { panelInfo } })
     const disposeService = ctx.reflect.provide('layout', layout)
     const disposeRegistration = ctx.slots.register({
       name: 'root',
       children: {
         'sidebar': { kind: 'single', scope: 'root' },
-        'conversation': { kind: 'single', scope: 'session-maybe' },
-        'details': { kind: 'single', scope: 'session' },
+        'main': { kind: 'keyed', scope: 'root' },
+        'rightbar': { kind: 'single', scope: 'root' },
         'shell.overlay': { kind: 'list', scope: 'root' },
       },
       // Exclusive store: the factory itself — the framework instantiates per
       // entry and delivers useStore/actions to AppFrame as standard props.
-      store: createLayoutStore,
+      store,
       // The hook connects the root store to ctx.layout and hands the frame the
       // ctx-backed callbacks its components cannot build themselves.
       inject: (actions: PanelActions): FrameInjected => {
@@ -258,8 +281,13 @@ export function apply(ctx: ClientContext): void {
         }
       },
     }, AppFrame)
+    const disposePanels = ctx.slots.subscribe('main', retainMainPanels)
+    retainMainPanels()
     return () => {
+      layout.dispose()
+      disposePanels()
       disposeRegistration()
+      disposePanelInfo()
       // provide()'s disposer settles asynchronously; teardown is synchronous fire-and-forget.
       void disposeService()
     }

@@ -16,6 +16,11 @@ import {
 /** Which surface the right column currently shows. */
 export type RightTab = 'chat' | 'details'
 
+export type PanelInfo = {
+  /** Null selects the Conversation; global panels keep the current Session intact. */
+  activePanelId: string | null
+}
+
 /**
  * Layout store state: panel width preferences in px (0 = closed).
  *
@@ -25,6 +30,7 @@ export type RightTab = 'chat' | 'details'
  * without rewriting the width preference.
  */
 export type LayoutState = {
+  panelInfo: PanelInfo
   sidebar: number
   right: number
   rightTab: RightTab
@@ -52,6 +58,9 @@ export type LayoutState = {
   explorerRoot: string | undefined
   /** The sandbox boundary; the target of "reset to workspace folder". */
   workspaceRoot: string | undefined
+  rightbarShown: boolean
+  rightbarTrack: boolean
+  rightbarFullscreen: boolean
 }
 
 /**
@@ -59,6 +68,11 @@ export type LayoutState = {
  * return type); drift fails assignability at the defineStore call.
  */
 type LayoutActions = {
+  selectPanel: (draft: LayoutState, panelId: string | null) => void
+  retainMainPanels: (draft: LayoutState, panelIds: readonly string[]) => void
+  openRightbar: (draft: LayoutState, track: boolean, fullscreen: boolean) => void
+  closeRightbar: (draft: LayoutState) => void
+  setRightbar: (draft: LayoutState, px: number) => void
   setSidebar: (draft: LayoutState, px: number) => void
   setRight: (draft: LayoutState, px: number, viewport: number) => void
   toggleSidebar: (draft: LayoutState) => void
@@ -110,6 +124,7 @@ export function createLayoutStore(): StoreHandle<LayoutState, LayoutActions> {
         } catch {}
       }
       return {
+        panelInfo: { activePanelId: null },
         sidebar: initialSidebar,
         right: initialRight,
         rightTab: 'chat',
@@ -121,9 +136,45 @@ export function createLayoutStore(): StoreHandle<LayoutState, LayoutActions> {
         autoSave: false,
         explorerRoot: undefined,
         workspaceRoot: undefined,
+        rightbarShown: false,
+        rightbarTrack: false,
+        rightbarFullscreen: false,
       }
     },
     actions: {
+      selectPanel: (d, panelId: string | null) => {
+        d.panelInfo.activePanelId = panelId
+      },
+      retainMainPanels: (d, panelIds: readonly string[]) => {
+        if (d.panelInfo.activePanelId !== null && !panelIds.includes(d.panelInfo.activePanelId)) {
+          d.panelInfo.activePanelId = null
+        }
+      },
+      openRightbar: (d, track: boolean, fullscreen: boolean) => {
+        d.rightbarShown = true
+        d.rightbarTrack = track
+        d.rightbarFullscreen = fullscreen
+        d.rightTab = 'details'
+        if (d.right === 0) {
+          d.right = RIGHT_DEFAULT
+        }
+      },
+      closeRightbar: (d) => {
+        d.rightbarShown = false
+        d.rightbarTrack = false
+        d.rightbarFullscreen = false
+        if (d.rightTab === 'details') {
+          d.rightTab = 'chat'
+        }
+      },
+      setRightbar: (d, px: number) => {
+        const viewport = typeof window !== 'undefined' ? window.innerWidth : 1200
+        const clamped = clampWidth(px, RIGHT_MIN, rightMax(viewport))
+        d.right = clamped
+        if (typeof window !== 'undefined' && clamped > 0) {
+          try { localStorage.setItem('dsh_vscode_right_width', String(clamped)) } catch {}
+        }
+      },
       setSidebar: (d, px: number) => {
         if (px < 80) {
           d.sidebar = 0

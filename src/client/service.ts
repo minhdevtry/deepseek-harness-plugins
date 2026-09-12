@@ -20,6 +20,14 @@ import type { BoundActions } from '@deepseek-ai/dsh-client-ui-slots'
 import type { createLayoutStore } from './stores.ts'
 import type { ViewState } from './explorer/views.ts'
 
+export type MainPanelId = string
+
+/** Root-scoped navigation state exposed to panel-aware components. */
+export interface PanelInfo {
+  /** Selected global panel; null displays the current Conversation. */
+  readonly activePanelId: MainPanelId | null
+}
+
 /** The layout store's bound action set (framework-baked, draft params peeled). */
 export type PanelActions = BoundActions<ReturnType<typeof createLayoutStore>>
 
@@ -29,25 +37,47 @@ export type PanelActions = BoundActions<ReturnType<typeof createLayoutStore>>
  * wiring hook stays on the concrete class (root-entry assembly only).
  */
 export interface ILayout {
+  /**
+   * Select a global central panel without changing the current Session.
+   * @param panelId - registered main key, or null to show the Conversation.
+   */
+  selectPanel(panelId: MainPanelId | null): void
+  /**
+   * Start an asynchronous navigation, superseding any earlier pending navigation.
+   * @returns a signal aborted by the next navigation or layout disposal; check it before committing UI state.
+   */
+  beginNavigation(): AbortSignal
   /** Toggle the sidebar panel (closed ⟷ contract default width). */
   toggleSidebar(): void
+  /**
+   * Report the right panel's presentation without changing its expanded state.
+   */
+  openRightbar(track: boolean, fullscreen: boolean): void
+  /** Report the right panel as hidden: no track, no handle. */
+  closeRightbar(): void
   /** Reveal the tool details surface (opens the right column and selects its details tab). */
   openDetails(): void
   /** Leave the tool details surface (returns the right column to the chat tab). */
   closeDetails(): void
+  /** Invalidate pending navigations when layout is disposed. */
+  dispose(): void
 }
 
 /** Cross-plugin panel-action face (`ctx.layout`). */
 export class LayoutController implements ILayout {
+  private navigation = new AbortController()
   #panels: PanelActions | undefined
   readonly #views: ViewState
+  private readonly hasMainPanel?: ((id: MainPanelId) => boolean) | undefined
 
   /**
    * @param views - the shared left-column view seam, needed because "expand the
    *   sidebar" means "give the sessions view the column" in this frame.
+   * @param hasMainPanel - checks the live main-slot registry for a panel id.
    */
-  constructor(views: ViewState) {
+  constructor(views: ViewState, hasMainPanel?: ((id: MainPanelId) => boolean) | undefined) {
     this.#views = views
+    this.hasMainPanel = hasMainPanel
   }
 
   /**
@@ -59,6 +89,27 @@ export class LayoutController implements ILayout {
    */
   attachPanels(actions: PanelActions): void {
     this.#panels = actions
+  }
+
+  /** Select a global panel or return to the Conversation. */
+  selectPanel(panelId: MainPanelId | null): void {
+    if (panelId !== null && this.hasMainPanel && !this.hasMainPanel(panelId)) {
+      throw new Error(`layout.selectPanel: main panel "${panelId}" is not registered`)
+    }
+    this.navigation.abort()
+    this.#panels?.selectPanel(panelId)
+  }
+
+  /** @returns the new pending navigation's cancellation signal. */
+  beginNavigation(): AbortSignal {
+    this.navigation.abort()
+    this.navigation = new AbortController()
+    return this.navigation.signal
+  }
+
+  /** Invalidate pending navigations when the layout owner is unloaded. */
+  dispose(): void {
+    this.navigation.abort()
   }
 
   /**
@@ -80,6 +131,16 @@ export class LayoutController implements ILayout {
     }
     this.#views.set('sessions')
     panels.openSidebar()
+  }
+
+  /** Report the right panel's track and fullscreen presentation. */
+  openRightbar(track: boolean, fullscreen: boolean): void {
+    this.#panels?.openRightbar(track, fullscreen)
+  }
+
+  /** Report the right panel as hidden: no track, no handle. */
+  closeRightbar(): void {
+    this.#panels?.closeRightbar()
   }
 
   /**
